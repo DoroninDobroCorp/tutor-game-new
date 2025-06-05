@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import { StudentDashboardPage } from './pages/StudentDashboardPage';
+import { TeacherDashboardPage } from './pages/TeacherDashboardPage';
 import MathProblemSolver from './pages/student/MathProblemSolver';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
@@ -82,6 +84,7 @@ function App() {
           }
         >
           <Route index element={<StudentDashboard />} />
+          <Route path="dashboard" element={<StudentDashboardPage />} />
           <Route path="math" element={<StudentDashboard><MathProblemSolver /></StudentDashboard>} />
           <Route path="chat" element={<StudentDashboard><ChatPage /></StudentDashboard>} />
         </Route>
@@ -98,6 +101,7 @@ function App() {
           }
         >
           <Route index element={<TeacherDashboard />} />
+          <Route path="dashboard" element={<TeacherDashboardPage />} />
           <Route path="students" element={<TeacherDashboard><div>Students Management</div></TeacherDashboard>} />
           <Route path="students/:studentId" element={<TeacherDashboard><StudentProgress /></TeacherDashboard>} />
           <Route path="progress" element={<TeacherDashboard><div>Progress Overview</div></TeacherDashboard>} />
