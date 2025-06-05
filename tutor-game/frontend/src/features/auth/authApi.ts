@@ -1,5 +1,5 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import { setCredentials, logout } from './authSlice';
+import { logout, setUser, User } from './authSlice';
 
 // Auth API endpoints using the base apiSlice
 export const authApiSlice = apiSlice.injectEndpoints({
@@ -38,9 +38,17 @@ export const authApiSlice = apiSlice.injectEndpoints({
         }
       },
     }),
-    getProfile: builder.query({
+    getProfile: builder.query<User, void>({
       query: () => '/auth/profile',
-      // RTK Query will handle caching automatically
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          // Update only the user data in the auth state
+          dispatch(setUser(data));
+        } catch (err) {
+          console.error('Failed to fetch profile:', err);
+        }
+      },
     }),
   }),
 });

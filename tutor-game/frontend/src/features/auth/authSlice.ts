@@ -1,9 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
 
-type UserRole = 'student' | 'teacher';
+export type UserRole = 'student' | 'teacher';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   firstName: string;
@@ -34,6 +34,10 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    // Updates only the user data in the auth state
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
     setCredentials: (
       state,
       action: PayloadAction<{ user: User; token: string; refreshToken?: string }>
@@ -86,6 +90,7 @@ const authSlice = createSlice({
 });
 
 export const {
+  setUser,
   setCredentials,
   authStart,
   authFailure,
