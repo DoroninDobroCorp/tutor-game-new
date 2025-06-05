@@ -13,9 +13,6 @@ import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 
-// Temporary component for development
-const StoryGenerator = () => <div>Story Generator (Coming Soon)</div>;
-
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = useAppSelector(selectCurrentToken);
