@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLoginMutation } from '@/features/auth/authApi';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useAppDispatch } from '@/app/hooks';
 import { setCredentials } from '@/features/auth/authSlice';
 import { toast } from 'react-hot-toast';
 
@@ -20,13 +20,6 @@ export default function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [error, setError] = useState('');
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
-  
-  // Redirect if already authenticated
-  if (isAuthenticated && user) {
-    const userRole = user.role?.toLowerCase() || 'student';
-    return <Navigate to={userRole === 'teacher' ? '/teacher' : '/game'} />;
-  }
   
   const {
     register,
