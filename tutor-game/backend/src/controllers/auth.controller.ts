@@ -138,20 +138,27 @@ export const loginHandler = async (req: Request, res: Response) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     
     console.log(`Login successful for user: ${user.id}`);
-    res.json({
+    // Prepare user data for response
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role.toLowerCase(),
+    };
+
+    // Include refreshToken in the response body for the frontend
+    const response = {
       success: true,
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-        },
+        user: userData,
         accessToken,
-        // Don't send refresh token in response body - it's in the cookie
+        refreshToken, // Include refresh token in the response
       },
-    });
+    };
+
+    console.log('Sending login response:', JSON.stringify(response, null, 2));
+    res.json(response);
   } catch (error: any) {
     // Increment failed login attempts
     const attempts = (loginAttempts.get(ip)?.count || 0) + 1;

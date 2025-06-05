@@ -114,15 +114,19 @@ export const authApi = createApi({
       }),
       async onQueryStarted(_args, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled;
+          const { data: response } = await queryFulfilled;
+          
+          // Backend returns { success: true, data: { user, accessToken } }
+          const { data } = response;
+          
           dispatch(setCredentials({
             user: data.user,
             token: data.accessToken,
             // Don't store refreshToken here - it's httpOnly cookie
           }));
           
-          // Redirect based on user role
-          const redirectPath = data.user.role === 'teacher' ? '/teacher/dashboard' : '/student/dashboard';
+          // Redirect based on user role (backend sends uppercase TEACHER/STUDENT)
+          const redirectPath = data.user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
           window.location.href = redirectPath;
         } catch (error) {
           console.error('Login failed:', error);
@@ -138,23 +142,23 @@ export const authApi = createApi({
       }),
       async onQueryStarted(_args, { dispatch, queryFulfilled }) {
         try {
-          const { data } = await queryFulfilled;
-          console.log('Registration successful:', data);
+          const { data: response } = await queryFulfilled;
+          console.log('Registration successful:', response);
           
-          // The response is wrapped in a data property
-          const responseData = data.data;
+          // Backend returns { success: true, data: { user, accessToken, refreshToken } }
+          const { data } = response;
           
           dispatch(setCredentials({
-            user: responseData.user,
-            token: responseData.accessToken,
-            refreshToken: responseData.refreshToken
+            user: data.user,
+            token: data.accessToken,
+            refreshToken: data.refreshToken
           }));
           
           // Show success message
           toast.success('Registration successful!');
           
-          // Redirect based on user role
-          const dashboardPath = responseData.user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+          // Redirect based on user role (backend sends uppercase TEACHER/STUDENT)
+          const dashboardPath = data.user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
           console.log('Redirecting to:', dashboardPath);
           window.location.href = dashboardPath;
           

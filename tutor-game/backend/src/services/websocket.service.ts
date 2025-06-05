@@ -37,9 +37,15 @@ class WebSocketService {
           return next(new Error('Authentication error'));
         }
 
-        const decoded = authVerifyToken(token) as { userId: string; role: 'STUDENT' | 'TEACHER' } | null;
+        // Properly await the async verifyToken function
+        const decoded = await authVerifyToken(token);
         if (!decoded || !decoded.userId || !decoded.role) {
           return next(new Error('Invalid token'));
+        }
+
+        // Type check to ensure we have the correct role type
+        if (decoded.role !== 'STUDENT' && decoded.role !== 'TEACHER') {
+          return next(new Error('Invalid user role'));
         }
 
         // Attach user to socket for later use
@@ -49,6 +55,7 @@ class WebSocketService {
         };
         next();
       } catch (error) {
+        console.error('WebSocket authentication error:', error);
         next(new Error('Authentication error'));
       }
     });

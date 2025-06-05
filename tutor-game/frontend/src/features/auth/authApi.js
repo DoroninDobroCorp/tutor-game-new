@@ -79,14 +79,35 @@ export const authApi = createApi({
             async onQueryStarted(_args, { dispatch, queryFulfilled }) {
                 try {
                     const { data } = await queryFulfilled;
+                    console.log('Login response data:', data);
+                    
+                    // Check if data and data.data exists
+                    if (!data || !data.data) {
+                        throw new Error('Invalid response from server');
+                    }
+                    
+                    const { user, accessToken, refreshToken } = data.data;
+                    
+                    // Ensure we have the required data
+                    if (!user || !accessToken) {
+                        throw new Error('Missing user data or access token');
+                    }
+                    
+                    // Dispatch the credentials to the store
                     dispatch(setCredentials({
-                        user: data.user,
-                        token: data.accessToken,
-                        // Don't store refreshToken here - it's httpOnly cookie
+                        user,
+                        token: accessToken,
+                        refreshToken
                     }));
+                    
                     // Redirect based on user role
-                    const redirectPath = data.user.role === 'teacher' ? '/teacher/dashboard' : '/student/dashboard';
-                    window.location.href = redirectPath;
+                    const userRole = (user.role || '').toLowerCase();
+                    const redirectPath = userRole === 'teacher' ? '/teacher/dashboard' : '/student/dashboard';
+                    
+                    // Use a small timeout to ensure the store is updated before redirecting
+                    setTimeout(() => {
+                        window.location.href = redirectPath;
+                    }, 100);
                 }
                 catch (error) {
                     console.error('Login failed:', error);

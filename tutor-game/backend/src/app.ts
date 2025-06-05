@@ -62,6 +62,9 @@ export const createServer = () => {
   app.use(morgan('dev'));
   app.use(json({ limit: '10mb' }));
 
+  // Handle favicon.ico requests
+  app.get('/favicon.ico', (req, res) => res.status(204).end());
+
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({ 

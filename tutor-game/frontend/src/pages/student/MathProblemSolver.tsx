@@ -17,9 +17,28 @@ const MathProblemSolver: React.FC = () => {
     setError('');
     
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSolution(`The solution to "${problem}" would be calculated here.`);
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        setError('Please log in to solve math problems');
+        return;
+      }
+
+      const response = await fetch('/api/student/math-problem', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get math problem');
+      }
+
+      const data = await response.json();
+      
+      // For now, just show the generated problem
+      // In the future, this will be interactive
+      setSolution(`Generated problem: ${data.problem}\nAnswer: ${data.answer}\nExplanation: ${data.explanation}`);
     } catch (err) {
       setError('Failed to solve the problem. Please try again.');
       console.error('Math solver error:', err);

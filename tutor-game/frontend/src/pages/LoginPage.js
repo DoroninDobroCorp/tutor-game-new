@@ -27,16 +27,31 @@ export default function LoginPage() {
             console.log('Calling login API...');
             const result = await login(data).unwrap();
             console.log('Login API response:', result);
+            
+            // Extract user data from the response
+            const { user, accessToken, refreshToken } = result.data || {};
+            
+            if (!user || !accessToken) {
+                throw new Error('Invalid response from server');
+            }
+            
             dispatch(setCredentials({
-                user: result.user,
-                token: result.accessToken,
-                refreshToken: result.refreshToken
+                user: user,
+                token: accessToken,
+                refreshToken: refreshToken
             }));
+            
             console.log('Credentials set, navigating to dashboard...');
             toast.success('Login successful!');
+            
             // Redirect based on user role
-            const userRole = result.user.role.toLowerCase();
-            navigate(`/${userRole}`);
+            const userRole = (user.role || '').toLowerCase();
+            if (userRole) {
+                navigate(`/${userRole}`);
+            } else {
+                console.error('No role found in user data');
+                navigate('/');
+            }
         }
         catch (err) {
             console.error('Login error:', err);

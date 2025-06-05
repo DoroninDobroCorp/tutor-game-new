@@ -18,6 +18,11 @@ interface GenerateImageParams {
 
 export const generateImage = async (params: GenerateImageParams) => {
   try {
+    // Check if API key is available
+    if (!config.leonardo.apiKey) {
+      throw new Error('Leonardo API key is not configured');
+    }
+
     const {
       prompt,
       negativePrompt = '',
