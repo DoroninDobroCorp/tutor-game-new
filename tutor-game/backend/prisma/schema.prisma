@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String
+  firstName  String?
+  lastName   String?
+  lastActive DateTime?
+  role       Role
+  createdAt  DateTime   @default(now())
+  
+  teacher    Teacher?
+  student    Student?
+  sentMessages     Message[]  @relation("Sender")
+  receivedMessages Message[]  @relation("Recipient")
+}
+
+model Teacher {
+  userId   String   @id
+  user     User     @relation(fields: [userId], references: [id])
+  students Student[] @relation("TeacherToStudents")
+  // другие поля учителя
+}
+
+model Student {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id])
+  teacherId String?
+  teacher   Teacher? @relation("TeacherToStudents", fields: [teacherId], references: [userId])
+  goal        Goal?
+  roadmaps    RoadmapEntry[]
+  badges      Badge[]
+  stories     Story[]
+  images      GeneratedImage[]
+}
+
+
+
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  student   Student  @relation(fields: [studentId], references: [userId])
+  studentId String   @unique
+  title     String
+  createdAt DateTime @default(now())
+}
+
+model RoadmapEntry {
+  id        String   @id @default(uuid())
+  student   Student  @relation(fields: [studentId], references: [userId])
+  studentId String
+  topic     String
+  order     Int
+  startAt   DateTime?
+  finished  Boolean  @default(false)
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [userId])
+  title     String
+  status    BadgeStatus
+}
+
+model Story {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [userId])
+  chapter     Int
+  text        String
+  prompt      String
+  createdAt   DateTime @default(now())
+}
+
+model GeneratedImage {
+  id          String   @id
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [userId])
+  storyId     String?
+  url         String
+  prompt      String
+  createdAt   DateTime @default(now())
+}
+
+model BossBattle {
+  id            String  @id @default(uuid())
+  studentId     String  @unique
+  lives         Int
+  timeLimitSec  Int
+  difficulty    Int
+  prompt        String
+}
+
+enum BadgeStatus {
+  HIDDEN
+  ACTIVE
+  EARNED
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  senderId    String
+  recipientId String
+  content     String
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  sender      User     @relation("Sender", fields: [senderId], references: [id])
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
+}
+
+model TokenBlacklist {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

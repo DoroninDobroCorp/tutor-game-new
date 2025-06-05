@@ -1,0 +1,97 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useAppSelector } from './app/hooks';
+import { selectCurrentToken } from './features/auth/authSlice';
+import Layout from './components/common/Layout';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import StudentDashboard from './pages/student/StudentDashboard';
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import StoryGenerator from './pages/student/StoryGenerator';
+import MathProblemSolver from './pages/student/MathProblemSolver';
+import StudentProgress from './pages/teacher/StudentProgress';
+import ChatPage from './pages/chat/ChatPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const token = useAppSelector(selectCurrentToken);
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Role-based Route Component
+const RoleBasedRoute = ({
+  role,
+  children,
+}: {
+  role: 'student' | 'teacher';
+  children: JSX.Element;
+}) => {
+  const { user } = useAppSelector((state) => state.auth);
+  
+  if (!user || user.role.toLowerCase() !== role.toLowerCase()) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
+function App() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+          
+          {/* Protected Student Routes */}
+          <Route
+            path="student"
+            element={
+              <ProtectedRoute>
+                <RoleBasedRoute role="student">
+                  <StudentDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<StoryGenerator />} />
+            <Route path="math" element={<MathProblemSolver />} />
+            <Route path="chat" element={<ChatPage />} />
+          </Route>
+          
+          {/* Protected Teacher Routes */}
+          <Route
+            path="teacher"
+            element={
+              <ProtectedRoute>
+                <RoleBasedRoute role="teacher">
+                  <TeacherDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<div>Teacher Dashboard</div>} />
+            <Route path="students/:studentId" element={<StudentProgress />} />
+            <Route path="chat" element={<ChatPage />} />
+          </Route>
+          
+          {/* 404 Route */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+      
+      <Toaster position="top-right" />
+    </div>
+  );
+}
+
+export default App;
