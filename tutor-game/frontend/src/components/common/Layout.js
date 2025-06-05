@@ -7,13 +7,14 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { logout } from '../../features/auth/authSlice';
 const studentNavigation = [
     { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
-    { name: 'Story Mode', href: '/student/story', icon: BookOpenIcon, current: false },
     { name: 'Math Problems', href: '/student/math', icon: CalculatorIcon, current: false },
+    { name: 'Chat', href: '/student/chat', icon: BookOpenIcon, current: false },
 ];
 const teacherNavigation = [
     { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
     { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
     { name: 'Progress', href: '/teacher/progress', icon: ChartBarIcon, current: false },
+    { name: 'Chat', href: '/teacher/chat', icon: BookOpenIcon, current: false },
 ];
 function classNames(...classes) {
     return classes.filter(Boolean).join(' ');

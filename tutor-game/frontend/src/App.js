@@ -24,9 +24,12 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 // Role-based Route Component
-const RoleBasedRoute = ({ role, children, }) => {
+const RoleBasedRoute = ({ role, children }) => {
     const { user } = useAppSelector((state) => state.auth);
-    if (!user || user.role.toLowerCase() !== role.toLowerCase()) {
+    console.log('RoleBasedRoute - User role:', user?.role, 'Required role:', role);
+    
+    if (!user || (user.role && user.role.toLowerCase() !== role.toLowerCase())) {
+        console.log('RoleBasedRoute - Access denied, redirecting to home');
         return _jsx(Navigate, { to: "/", replace: true });
     }
     return children;

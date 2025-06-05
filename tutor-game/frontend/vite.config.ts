@@ -1,32 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = resolve(__filename, '..');
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@assets': path.resolve(__dirname, 'src/assets'),
-      '@components': path.resolve(__dirname, 'src/components'),
-      '@pages': path.resolve(__dirname, 'src/pages'),
-      '@features': path.resolve(__dirname, 'src/features'),
-      '@hooks': path.resolve(__dirname, 'src/hooks'),
-      '@services': path.resolve(__dirname, 'src/services'),
-      '@store': path.resolve(__dirname, 'src/store'),
-      '@utils': path.resolve(__dirname, 'src/utils'),
-      '@types': path.resolve(__dirname, 'src/types'),
-      '@styles': path.resolve(__dirname, 'src/styles'),
-      '@layouts': path.resolve(__dirname, 'src/layouts'),
-    },
-  },
-
   base: '/',
+  plugins: [react()],
+  appType: 'spa',
+  
+  // Server configuration
   server: {
     port: 3003,
     strictPort: true,
@@ -36,29 +21,43 @@ export default defineConfig({
     hmr: {
       host: 'localhost',
       protocol: 'ws',
+      overlay: false
     },
     proxy: {
-      '/api': {
+      '^/api': {
         target: 'http://localhost:3002',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.error('Proxy error:', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Proxying request:', req.method, req.url, '->', proxyReq.path);
-          });
-        },
+        rewrite: (path) => path.replace(/^\/api/, '')
       },
       '/socket.io': {
         target: 'ws://localhost:3002',
         ws: true,
+      }
+    },
+    // This is the key part for SPA fallback
+    fs: {
+      strict: false
+    }
+  },
+  
+  // Build configuration
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
       },
     },
+    sourcemap: true,
+    minify: 'esbuild',
+    outDir: 'dist',
+    emptyOutDir: true,
   },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
+  
+  // Resolve configuration
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
   },
 });
