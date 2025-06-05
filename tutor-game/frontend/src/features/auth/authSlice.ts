@@ -12,7 +12,7 @@ interface User {
   avatar?: string;
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   token: string | null;
   refreshToken: string | null;

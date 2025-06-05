@@ -40,17 +40,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
     }),
     getProfile: builder.query({
       query: () => '/auth/profile',
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          // Save user data on successful token verification
-          dispatch(setCredentials(data));
-        } catch (err) {
-          // If server returns an error (e.g., 401), do nothing
-          // User will remain unauthenticated
-          console.log('Profile fetch error:', err);
-        }
-      },
+      // RTK Query will handle caching automatically
     }),
   }),
 });
