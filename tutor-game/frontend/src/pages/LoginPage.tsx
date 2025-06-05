@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useLoginMutation } from '@/features/auth/authApi';
+// Убедись, что импорты соответствуют твоей новой структуре
+import { useLoginMutation } from '@/features/auth/authApi'; 
 import { useAppDispatch } from '@/app/hooks';
 import { setCredentials } from '@/features/auth/authSlice';
 import { toast } from 'react-hot-toast';
@@ -30,27 +31,36 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log('Login form submitted with data:', data);
     try {
       setError('');
-      console.log('Calling login API...');
+      // Эта функция из RTK Query делает запрос и в случае ошибки сама её выбросит
       const result = await login(data).unwrap();
-      console.log('Login API response:', result);
+
+      // ИЗМЕНЕНИЕ №1: Сохраняем токен в localStorage.
+      // Без этой строки после перезагрузки страницы приложение забудет, что ты вошел.
+      window.localStorage.setItem('token', result.accessToken);
+
+      // Отправляем данные пользователя и токены в Redux
       dispatch(setCredentials({
         user: result.user,
         token: result.accessToken,
         refreshToken: result.refreshToken
       }));
-      console.log('Credentials set, navigating to dashboard...');
+      
       toast.success('Login successful!');
       
-      // Redirect based on user role
+      // ИЗМЕНЕНИЕ №2: Направляем на правильный роут.
+      // Роуты, которые мы создали, называются "-dashboard", а не просто по имени роли.
       const userRole = result.user.role.toLowerCase();
-      navigate(`/${userRole}`);
+      if (userRole === 'student' || userRole === 'teacher') {
+        navigate(`/${userRole}-dashboard`);
+      } else {
+        // Запасной вариант, если роль будет другой
+        navigate('/game');
+      }
+
     } catch (err: any) {
-      console.error('Login error:', err);
-      const errorMessage = err?.data?.message || 'Login failed. Please try again.';
-      console.error('Error details:', errorMessage);
+      const errorMessage = err?.data?.message || 'Login failed. Please check your credentials.';
       setError(errorMessage);
       toast.error(errorMessage);
     }
