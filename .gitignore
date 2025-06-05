@@ -39,3 +39,5 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+message_1.txt
+tutor-game/backend/.env
