@@ -1,226 +1,64 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { apiSlice } from '../../app/api/apiSlice';
 import { setCredentials, logout } from './authSlice';
-import { RootState } from '../../app/store';
-import { toast } from 'react-hot-toast';
 
-interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-interface RegisterRequest {
-  email: string;
-  password: string;
-  role: 'STUDENT' | 'TEACHER';
-  firstName: string;
-  lastName: string;
-}
-
-interface AuthResponse {
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: 'student' | 'teacher';
-    avatar?: string;
-  };
-  accessToken: string;
-  refreshToken: string;
-}
-
-const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:3002/api/auth',
-  credentials: 'include',
-  mode: 'cors',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-  },
-  prepareHeaders: (headers, { getState }) => {
-    try {
-      const token = (getState() as RootState).auth.token;
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    } catch (error) {
-      console.error('Error in prepareHeaders:', error);
-      return headers;
-    }
-  },
-});
-
-const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
-  let result = await baseQuery(args, api, extraOptions);
-  
-  // If token is invalid or expired
-  if (result?.error?.status === 401) {
-    console.log('Token expired or invalid, attempting to refresh...');
-    
-    try {
-      // Try to refresh the token (refresh token is sent via cookie)
-      const refreshResult = await baseQuery({
-        url: '/refresh',
-        method: 'POST',
-        credentials: 'include',
-      }, api, extraOptions);
-      
-      if (refreshResult?.data) {
-        const data = refreshResult.data as { accessToken: string };
-        console.log('Token refresh successful');
-        
-        // Update the stored access token
-        const state = api.getState() as RootState;
-        const currentUser = state.auth.user;
-        
-        if (currentUser) {
-          api.dispatch(setCredentials({
-            user: currentUser,
-            token: data.accessToken,
-            // Don't update refreshToken here - it's httpOnly cookie
-          }));
-          
-          // Retry the initial query with the new token
-          const retryResult = await baseQuery(args, api, extraOptions);
-          return retryResult;
-        }
-      }
-    } catch (error) {
-      console.error('Error during token refresh:', error);
-    }
-    
-    // If we get here, refresh failed - log the user out
-    console.log('Token refresh failed, logging out...');
-    api.dispatch(logout());
-    window.location.href = '/login';
-    return result;
-  }
-  
-  return result;
-};
-
-export const authApi = createApi({
-  reducerPath: 'authApi',
-  baseQuery: baseQueryWithReauth,
+// Auth API endpoints using the base apiSlice
+export const authApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    login: builder.mutation<AuthResponse, LoginRequest>({
+    login: builder.mutation({
       query: (credentials) => ({
-        url: '/login',
+        url: '/auth/login',
         method: 'POST',
-        body: credentials,
-        credentials: 'include',
+        body: { ...credentials },
       }),
-      async onQueryStarted(_args, { dispatch, queryFulfilled }) {
-        try {
-          const { data: response } = await queryFulfilled;
-          
-          // Backend returns { success: true, data: { user, accessToken } }
-          const { data } = response;
-          
-          dispatch(setCredentials({
-            user: data.user,
-            token: data.accessToken,
-            // Don't store refreshToken here - it's httpOnly cookie
-          }));
-          
-          // Redirect based on user role (backend sends uppercase TEACHER/STUDENT)
-          const redirectPath = data.user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
-          window.location.href = redirectPath;
-        } catch (error) {
-          console.error('Login failed:', error);
-          throw error; // Let the component handle the error
-        }
-      },
     }),
-    register: builder.mutation<{ data: AuthResponse }, RegisterRequest>({
-      query: (userData) => ({
-        url: '/register',
+    register: builder.mutation({
+      query: (credentials) => ({
+        url: '/auth/register',
         method: 'POST',
-        body: userData,
+        body: { ...credentials },
       }),
-      async onQueryStarted(_args, { dispatch, queryFulfilled }) {
-        try {
-          const { data: response } = await queryFulfilled;
-          console.log('Registration successful:', response);
-          
-          // Backend returns { success: true, data: { user, accessToken, refreshToken } }
-          const { data } = response;
-          
-          dispatch(setCredentials({
-            user: data.user,
-            token: data.accessToken,
-            refreshToken: data.refreshToken
-          }));
-          
-          // Show success message
-          toast.success('Registration successful!');
-          
-          // Redirect based on user role (backend sends uppercase TEACHER/STUDENT)
-          const dashboardPath = data.user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
-          console.log('Redirecting to:', dashboardPath);
-          window.location.href = dashboardPath;
-          
-        } catch (error) {
-          console.error('Registration failed in onQueryStarted:', error);
-          // Don't show error here - it will be handled by the component
-        }
-      },
     }),
-    getMe: builder.query<AuthResponse['user'], void>({
+    logout: builder.mutation({
       query: () => ({
-        url: '/me',
-        credentials: 'include',
-      }),
-      // Force refetch when the page is focused or reconnected
-      // This helps recover from token expiration
-      onCacheEntryAdded: async (_arg, { dispatch, cacheDataLoaded }) => {
-        try {
-          const { data: user } = await cacheDataLoaded;
-          
-          // Update the auth state with the latest user data
-          if (user) {
-            dispatch(setCredentials({
-              user,
-              token: localStorage.getItem('token') || '',
-            }));
-          }
-        } catch (error) {
-          console.error('Error in getMe subscription:', error);
-        }
-      },
-    }),
-    logout: builder.mutation<void, void>({
-      query: () => ({
-        url: '/logout',
+        url: '/auth/logout',
         method: 'POST',
-        credentials: 'include',
       }),
-      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
-        } catch (error) {
-          console.error('Logout API call failed, but proceeding with client cleanup:', error);
-        } finally {
-          // Always clear client-side auth state
-          localStorage.removeItem('token');
-          sessionStorage.removeItem('token');
           dispatch(logout());
-          
-          // Redirect to login page after a short delay
+          // Clear the token from localStorage on logout
+          window.localStorage.removeItem('token');
+          // Reset API state after a short delay
           setTimeout(() => {
-            window.location.href = '/login';
-          }, 100);
+            dispatch(apiSlice.util.resetApiState());
+          }, 1000);
+        } catch (err) {
+          console.log(err);
+        }
+      },
+    }),
+    getProfile: builder.query({
+      query: () => '/auth/profile',
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          // Save user data on successful token verification
+          dispatch(setCredentials(data));
+        } catch (err) {
+          // If server returns an error (e.g., 401), do nothing
+          // User will remain unauthenticated
+          console.log('Profile fetch error:', err);
         }
       },
     }),
   }),
 });
 
-export const {
-  useLoginMutation,
-  useRegisterMutation,
-  useGetMeQuery,
+// Export hooks for usage in components
+export const { 
+  useLoginMutation, 
+  useRegisterMutation, 
   useLogoutMutation,
-} = authApi;
+  useGetProfileQuery
+} = authApiSlice;
