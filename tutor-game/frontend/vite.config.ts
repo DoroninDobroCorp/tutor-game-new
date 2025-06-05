@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,11 +25,18 @@ export default defineConfig({
       '@layouts': path.resolve(__dirname, 'src/layouts'),
     },
   },
+
+  base: '/',
   server: {
     port: 3003,
     strictPort: true,
     host: true,
     cors: true,
+    open: true,
+    hmr: {
+      host: 'localhost',
+      protocol: 'ws',
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3002',

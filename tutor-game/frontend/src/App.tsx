@@ -8,11 +8,13 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
-import StoryGenerator from './pages/student/StoryGenerator';
 import MathProblemSolver from './pages/student/MathProblemSolver';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
+
+// Temporary component for development
+const StoryGenerator = () => <div>Story Generator (Coming Soon)</div>;
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -47,46 +49,46 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          
-          {/* Protected Student Routes */}
-          <Route
-            path="student"
-            element={
-              <ProtectedRoute>
-                <RoleBasedRoute role="student">
-                  <StudentDashboard />
-                </RoleBasedRoute>
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<StoryGenerator />} />
-            <Route path="math" element={<MathProblemSolver />} />
-            <Route path="chat" element={<ChatPage />} />
-          </Route>
-          
-          {/* Protected Teacher Routes */}
-          <Route
-            path="teacher"
-            element={
-              <ProtectedRoute>
-                <RoleBasedRoute role="teacher">
-                  <TeacherDashboard />
-                </RoleBasedRoute>
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<div>Teacher Dashboard</div>} />
-            <Route path="students/:studentId" element={<StudentProgress />} />
-            <Route path="chat" element={<ChatPage />} />
-          </Route>
-          
-          {/* 404 Route */}
-          <Route path="*" element={<NotFoundPage />} />
+        <Route path="/" element={<Layout><HomePage /></Layout>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        
+        {/* Protected Student Routes */}
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute>
+              <RoleBasedRoute role="student">
+                <Layout><StudentDashboard /></Layout>
+              </RoleBasedRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StudentDashboard />} />
+          <Route path="math" element={<StudentDashboard><MathProblemSolver /></StudentDashboard>} />
+          <Route path="chat" element={<StudentDashboard><ChatPage /></StudentDashboard>} />
         </Route>
+        
+        {/* Protected Teacher Routes */}
+        <Route
+          path="/teacher"
+          element={
+            <ProtectedRoute>
+              <RoleBasedRoute role="teacher">
+                <Layout><TeacherDashboard /></Layout>
+              </RoleBasedRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<TeacherDashboard />} />
+          <Route path="students" element={<TeacherDashboard><div>Students Management</div></TeacherDashboard>} />
+          <Route path="students/:studentId" element={<TeacherDashboard><StudentProgress /></TeacherDashboard>} />
+          <Route path="progress" element={<TeacherDashboard><div>Progress Overview</div></TeacherDashboard>} />
+          <Route path="chat" element={<TeacherDashboard><ChatPage /></TeacherDashboard>} />
+        </Route>
+        
+        {/* 404 Route */}
+        <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
       </Routes>
       
       <Toaster position="top-right" />
