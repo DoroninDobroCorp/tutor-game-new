@@ -1,7 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppSelector } from './app/hooks';
-import { selectIsAuthenticated, selectAuthLoading } from './features/auth/authSlice';
+import { selectIsAuthenticated } from './features/auth/authSlice';
+import { useGetProfileQuery } from './features/auth/authApi';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -19,7 +20,10 @@ import Spinner from '@/components/common/Spinner';
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const isLoading = useAppSelector(selectAuthLoading);
+  const { isLoading } = useGetProfileQuery(undefined, {
+    // Skip the query if we already have the user data
+    skip: isAuthenticated,
+  });
   
   if (isLoading) {
     return (
@@ -54,7 +58,13 @@ const RoleBasedRoute = ({
 };
 
 function App() {
-  const isLoading = useAppSelector(selectAuthLoading);
+  // This will automatically run on app load if there's a token
+  const { isLoading } = useGetProfileQuery(undefined, {
+    // Skip if we already have the user data in the store
+    skip: false,
+    // Don't refetch on mount if we already have data
+    refetchOnMountOrArgChange: false,
+  });
   
   // Show loading spinner while checking authentication
   if (isLoading) {
