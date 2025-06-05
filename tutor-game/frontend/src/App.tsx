@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppSelector } from './app/hooks';
-import { selectCurrentToken } from './features/auth/authSlice';
+import { selectIsAuthenticated, selectAuthLoading } from './features/auth/authSlice';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -12,12 +12,22 @@ import MathProblemSolver from './pages/student/MathProblemSolver';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
+import Spinner from '@/components/common/Spinner';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const token = useAppSelector(selectCurrentToken);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const isLoading = useAppSelector(selectAuthLoading);
   
-  if (!token) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   
@@ -42,6 +52,16 @@ const RoleBasedRoute = ({
 };
 
 function App() {
+  const isLoading = useAppSelector(selectAuthLoading);
+  
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <Routes>
