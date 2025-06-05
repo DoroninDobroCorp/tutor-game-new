@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// Убедись, что импорты соответствуют твоей новой структуре
+// Импорты для работы с API и состоянием
 import { useLoginMutation } from '@/features/auth/authApi'; 
 import { useAppDispatch } from '@/app/hooks';
 import { setCredentials } from '@/features/auth/authSlice';
@@ -33,14 +33,13 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
-      // Эта функция из RTK Query делает запрос и в случае ошибки сама её выбросит
+      // 1. Делаем запрос и ждем результат
       const result = await login(data).unwrap();
 
-      // ИЗМЕНЕНИЕ №1: Сохраняем токен в localStorage.
-      // Без этой строки после перезагрузки страницы приложение забудет, что ты вошел.
+      // 2. СОХРАНЯЕМ КЛЮЧ! Это самая важная строка, которая связывает все воедино.
       window.localStorage.setItem('token', result.accessToken);
 
-      // Отправляем данные пользователя и токены в Redux
+      // 3. Сохраняем данные в состояние Redux (для текущей сессии)
       dispatch(setCredentials({
         user: result.user,
         token: result.accessToken,
@@ -49,13 +48,11 @@ export default function LoginPage() {
       
       toast.success('Login successful!');
       
-      // ИЗМЕНЕНИЕ №2: Направляем на правильный роут.
-      // Роуты, которые мы создали, называются "-dashboard", а не просто по имени роли.
+      // 4. Перенаправляем на правильный дашборд
       const userRole = result.user.role.toLowerCase();
       if (userRole === 'student' || userRole === 'teacher') {
         navigate(`/${userRole}-dashboard`);
       } else {
-        // Запасной вариант, если роль будет другой
         navigate('/game');
       }
 
