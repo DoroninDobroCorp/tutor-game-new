@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,8 +24,9 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [registerUser, { isLoading }] = useRegisterMutation();
+  const navigate = useNavigate();
   const [error, setError] = useState('');
-  
+
   const {
     register,
     handleSubmit,
@@ -41,9 +42,7 @@ export default function RegisterPage() {
   const onSubmit = async (formData: RegisterFormData) => {
     try {
       setError('');
-      console.log('Registration form submitted:', formData);
-      
-      // Prepare the payload that matches the backend's expectations
+
       const registrationData = {
         email: formData.email,
         password: formData.password,
@@ -51,15 +50,34 @@ export default function RegisterPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
       };
-      
-      console.log('Sending registration data:', registrationData);
-      await registerUser(registrationData).unwrap();
-      
-      // onQueryStarted in authApi will handle the success case
-      console.log('Registration successful, redirecting...');
+
+      const result = await registerUser(registrationData).unwrap();
+
+      // --- ДОБАВЛЕНА ОТЛАДОЧНАЯ СТРОКА ---
+      console.log('API Response:', result);
+      // --- КОНЕЦ ОТЛАДОЧНОЙ СТРОКИ ---
+
+      // Проверяем, что структура ответа правильная, прежде чем использовать
+      if (result && result.data && result.data.user && result.data.user.role) {
+        const userRole = result.data.user.role.toLowerCase();
+
+        toast.success('Registration successful! Redirecting...');
+
+        if (userRole === 'student') {
+          navigate('/student');
+        } else if (userRole === 'teacher') {
+          navigate('/teacher');
+        } else {
+          navigate('/');
+        }
+      } else {
+        // Если структура ответа неверна, выводим ошибку
+        throw new Error('Invalid response structure from server.');
+      }
+
     } catch (err: any) {
       console.error('Registration error:', err);
-      const errorMessage = err.data?.message || 'Registration failed. Please try again.';
+      const errorMessage = err.data?.message || err.message || 'Registration failed. Please try again.';
       setError(errorMessage);
       toast.error(errorMessage);
     }
@@ -83,7 +101,7 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
-        
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
@@ -107,7 +125,7 @@ export default function RegisterPage() {
             </div>
           </div>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -148,7 +166,7 @@ export default function RegisterPage() {
                 )}
               </div>
             </div>
-            
+
             <div className="mb-3">
               <label htmlFor="email-address" className="sr-only">
                 Email address
@@ -167,7 +185,7 @@ export default function RegisterPage() {
                 <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
               )}
             </div>
-            
+
             <div className="mb-3">
               <label htmlFor="password" className="sr-only">
                 Password
@@ -186,7 +204,7 @@ export default function RegisterPage() {
                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="confirm-password" className="sr-only">
                 Confirm password
@@ -262,7 +280,7 @@ export default function RegisterPage() {
               {isLoading ? 'Creating account...' : 'Create account'}
             </button>
           </div>
-          
+
           <div className="text-sm text-center">
             <p className="text-gray-600">
               By creating an account, you agree to our{' '}
