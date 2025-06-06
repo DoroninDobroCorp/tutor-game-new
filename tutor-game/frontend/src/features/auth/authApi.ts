@@ -1,5 +1,6 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import { logout, setUser, User } from './authSlice';
+import { logout, setUser, setCredentials, User } from './authSlice';
+import { toast } from 'react-hot-toast';
 
 // Auth API endpoints using the base apiSlice
 export const authApiSlice = apiSlice.injectEndpoints({
@@ -17,6 +18,24 @@ export const authApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { ...credentials },
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const { user, accessToken, refreshToken } = data.data;
+
+          // Save token to localStorage
+          window.localStorage.setItem('token', accessToken);
+          
+          // Set credentials in Redux store
+          dispatch(setCredentials({ user, token: accessToken, refreshToken }));
+          
+          // Show success message
+          toast.success('Registration successful! Welcome!');
+        } catch (err) {
+          // Error will be handled by the component
+          console.error('Registration failed in onQueryStarted:', err);
+        }
+      },
     }),
     logout: builder.mutation({
       query: () => ({
@@ -38,13 +57,13 @@ export const authApiSlice = apiSlice.injectEndpoints({
         }
       },
     }),
-    getProfile: builder.query<User, void>({
-      query: () => '/auth/profile',
+    getProfile: builder.query<{ data: User }, void>({
+      query: () => '/auth/me',
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           // Update only the user data in the auth state
-          dispatch(setUser(data));
+          dispatch(setUser(data.data)); // Extract user from response.data
         } catch (err) {
           console.error('Failed to fetch profile:', err);
         }

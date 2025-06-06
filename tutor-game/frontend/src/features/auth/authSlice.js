@@ -11,6 +11,10 @@ const authSlice = createSlice({
     name: 'auth',
     initialState,
     reducers: {
+        // Updates only the user data in the auth state
+        setUser: (state, action) => {
+            state.user = action.payload;
+        },
         setCredentials: (state, action) => {
             state.user = action.payload.user;
             state.token = action.payload.token;
@@ -37,22 +41,26 @@ const authSlice = createSlice({
             localStorage.removeItem('token');
         },
         logout: (state) => {
+            // Clear all auth-related data from state and storage
             state.user = null;
             state.token = null;
             state.refreshToken = null;
             state.isAuthenticated = false;
             state.isLoading = false;
             state.error = null;
+            // Remove tokens from all storage locations
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             sessionStorage.removeItem('token');
+            // Ensure the token is removed from localStorage (redundant but explicit)
+            window.localStorage.removeItem('token');
         },
         clearError: (state) => {
             state.error = null;
         },
     },
 });
-export const { setCredentials, authStart, authFailure, logout, clearError, } = authSlice.actions;
+export const { setUser, setCredentials, authStart, authFailure, logout, clearError, } = authSlice.actions;
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectCurrentToken = (state) => state.auth.token;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;

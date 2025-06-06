@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppSelector } from './app/hooks';
-import { selectIsAuthenticated } from './features/auth/authSlice';
+import { selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
 import { useGetProfileQuery } from './features/auth/authApi';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
@@ -58,11 +58,13 @@ const RoleBasedRoute = ({
 };
 
 function App() {
-  // This will automatically run on app load if there's a token
+  // Get user from Redux store
+  const user = useAppSelector(selectCurrentUser);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  
+  // Only fetch profile if authenticated but user data is not in store
   const { isLoading } = useGetProfileQuery(undefined, {
-    // Skip if we already have the user data in the store
-    skip: false,
-    // Don't refetch on mount if we already have data
+    skip: !!user || !isAuthenticated,
     refetchOnMountOrArgChange: false,
   });
   
@@ -83,35 +85,27 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         
         {/* Protected Student Routes */}
-        <Route
-          path="/student"
-          element={
-            <ProtectedRoute>
-              <RoleBasedRoute role="student">
-                <Layout><StudentDashboard /></Layout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<StudentDashboard />} />
-          <Route path="dashboard" element={<StudentDashboardPage />} />
+        <Route path="/student" element={
+          <ProtectedRoute>
+            <RoleBasedRoute role="student">
+              <Layout><StudentDashboard /></Layout>
+            </RoleBasedRoute>
+          </ProtectedRoute>
+        }>
+          <Route index element={<StudentDashboardPage />} />
           <Route path="math" element={<StudentDashboard><MathProblemSolver /></StudentDashboard>} />
           <Route path="chat" element={<StudentDashboard><ChatPage /></StudentDashboard>} />
         </Route>
         
         {/* Protected Teacher Routes */}
-        <Route
-          path="/teacher"
-          element={
-            <ProtectedRoute>
-              <RoleBasedRoute role="teacher">
-                <Layout><TeacherDashboard /></Layout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<TeacherDashboard />} />
-          <Route path="dashboard" element={<TeacherDashboardPage />} />
+        <Route path="/teacher" element={
+          <ProtectedRoute>
+            <RoleBasedRoute role="teacher">
+              <Layout><TeacherDashboard /></Layout>
+            </RoleBasedRoute>
+          </ProtectedRoute>
+        }>
+          <Route index element={<TeacherDashboardPage />} />
           <Route path="students" element={<TeacherDashboard><div>Students Management</div></TeacherDashboard>} />
           <Route path="students/:studentId" element={<TeacherDashboard><StudentProgress /></TeacherDashboard>} />
           <Route path="progress" element={<TeacherDashboard><div>Progress Overview</div></TeacherDashboard>} />

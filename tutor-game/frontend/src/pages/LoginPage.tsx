@@ -33,27 +33,32 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
-      // 1. Делаем запрос и ждем результат
-      const result = await login(data).unwrap();
+      // 1. Make the login request and unwrap the result
+      const res = await login(data).unwrap();
+      
+      // 2. Extract data from response
+      const { user, accessToken, refreshToken } = res.data;
+      
+      // 3. Save token to localStorage
+      window.localStorage.setItem('token', accessToken);
 
-      // 2. СОХРАНЯЕМ КЛЮЧ! Это самая важная строка, которая связывает все воедино.
-      window.localStorage.setItem('token', result.accessToken);
-
-      // 3. Сохраняем данные в состояние Redux (для текущей сессии)
+      // 4. Save data to Redux store
       dispatch(setCredentials({
-        user: result.user,
-        token: result.accessToken,
-        refreshToken: result.refreshToken
+        user,
+        token: accessToken,
+        refreshToken
       }));
       
       toast.success('Login successful!');
       
-      // 4. Перенаправляем на правильный дашборд
-      const userRole = result.user.role.toLowerCase();
-      if (userRole === 'student' || userRole === 'teacher') {
-        navigate(`/${userRole}-dashboard`);
+      // 5. Redirect based on user role
+      const userRole = user.role.toLowerCase();
+      if (userRole === 'student') {
+        navigate('/student');
+      } else if (userRole === 'teacher') {
+        navigate('/teacher');
       } else {
-        navigate('/game');
+        navigate('/');
       }
 
     } catch (err: any) {

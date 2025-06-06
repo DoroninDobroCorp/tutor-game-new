@@ -1,6 +1,6 @@
 import { RootState } from '../../app/store';
-type UserRole = 'student' | 'teacher';
-interface User {
+export type UserRole = 'student' | 'teacher';
+export interface User {
     id: string;
     email: string;
     firstName: string;
@@ -8,7 +8,7 @@ interface User {
     role: UserRole;
     avatar?: string;
 }
-interface AuthState {
+export interface AuthState {
     user: User | null;
     token: string | null;
     refreshToken: string | null;
@@ -16,7 +16,7 @@ interface AuthState {
     isLoading: boolean;
     error: string | null;
 }
-export declare const setCredentials: import("@reduxjs/toolkit").ActionCreatorWithPayload<{
+export declare const setUser: import("@reduxjs/toolkit").ActionCreatorWithPayload<User, "auth/setUser">, setCredentials: import("@reduxjs/toolkit").ActionCreatorWithPayload<{
     user: User;
     token: string;
     refreshToken?: string;

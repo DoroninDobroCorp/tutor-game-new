@@ -14,9 +14,28 @@ const StoryGenerator = () => {
         setIsLoading(true);
         setError('');
         try {
-            // TODO: Replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            setStory(`Once upon a time, in the land of ${topic}, there was a great adventure waiting to happen...`);
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) {
+                setError('Please log in to generate stories');
+                return;
+            }
+            const response = await fetch('/api/generate/story', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    prompt: topic,
+                    ageGroup: 'elementary', // Default age group
+                    subject: 'general'
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to generate story');
+            }
+            const data = await response.json();
+            setStory(data.story);
         }
         catch (err) {
             setError('Failed to generate story. Please try again.');

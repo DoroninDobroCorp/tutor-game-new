@@ -26,15 +26,18 @@ apiClient.interceptors.response.use((response) => response, async (error) => {
         try {
             // Try to refresh token
             const response = await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, {}, { withCredentials: true });
-            const { token } = response.data;
-            // Update the token in the store
+            const { accessToken, user } = response.data.data;
+            // Update the token and user in the store
             store.dispatch({
                 type: 'auth/setCredentials',
-                payload: { token },
+                payload: {
+                    user,
+                    token: accessToken
+                },
             });
             // Update the Authorization header
             if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
+                originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             }
             // Retry the original request
             return apiClient(originalRequest);

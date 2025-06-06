@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+// Импорты для работы с API и состоянием
 import { useLoginMutation } from '@/features/auth/authApi';
 import { useAppDispatch } from '@/app/hooks';
 import { setCredentials } from '@/features/auth/authSlice';
@@ -21,42 +22,35 @@ export default function LoginPage() {
         resolver: zodResolver(loginSchema),
     });
     const onSubmit = async (data) => {
-        console.log('Login form submitted with data:', data);
         try {
             setError('');
-            console.log('Calling login API...');
-            const result = await login(data).unwrap();
-            console.log('Login API response:', result);
-            
-            // Extract user data from the response
-            const { user, accessToken, refreshToken } = result.data || {};
-            
-            if (!user || !accessToken) {
-                throw new Error('Invalid response from server');
-            }
-            
+            // 1. Make the login request and unwrap the result
+            const res = await login(data).unwrap();
+            // 2. Extract data from response
+            const { user, accessToken, refreshToken } = res.data;
+            // 3. Save token to localStorage
+            window.localStorage.setItem('token', accessToken);
+            // 4. Save data to Redux store
             dispatch(setCredentials({
-                user: user,
+                user,
                 token: accessToken,
-                refreshToken: refreshToken
+                refreshToken
             }));
-            
-            console.log('Credentials set, navigating to dashboard...');
             toast.success('Login successful!');
-            
-            // Redirect based on user role
-            const userRole = (user.role || '').toLowerCase();
-            if (userRole) {
-                navigate(`/${userRole}`);
-            } else {
-                console.error('No role found in user data');
+            // 5. Redirect based on user role
+            const userRole = user.role.toLowerCase();
+            if (userRole === 'student') {
+                navigate('/student');
+            }
+            else if (userRole === 'teacher') {
+                navigate('/teacher');
+            }
+            else {
                 navigate('/');
             }
         }
         catch (err) {
-            console.error('Login error:', err);
-            const errorMessage = err?.data?.message || 'Login failed. Please try again.';
-            console.error('Error details:', errorMessage);
+            const errorMessage = err?.data?.message || 'Login failed. Please check your credentials.';
             setError(errorMessage);
             toast.error(errorMessage);
         }

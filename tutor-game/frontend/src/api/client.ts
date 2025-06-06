@@ -41,17 +41,20 @@ apiClient.interceptors.response.use(
           { withCredentials: true }
         );
         
-        const { token } = response.data;
+        const { accessToken, user } = response.data.data;
         
-        // Update the token in the store
+        // Update the token and user in the store
         store.dispatch({
           type: 'auth/setCredentials',
-          payload: { token },
+          payload: { 
+            user,
+            token: accessToken 
+          },
         });
         
         // Update the Authorization header
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         }
         
         // Retry the original request

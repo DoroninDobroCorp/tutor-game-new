@@ -1,0 +1,717 @@
+{handleLogout}
+                          className="mt-2 flex items-center gap-x-2 text-sm font-medium text-indigo-200 hover:text-white"
+                        >
+                          <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                          Sign out
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </Dialog>
+      </Transition.Root>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-4">
+          <div className="flex h-16 shrink-0 items-center">
+            <h1 className="text-2xl font-bold text-white">Tutor Game</h1>
+          </div>
+          <nav className="flex flex-1 flex-col">
+            <ul role="list" className="flex flex-1 flex-col gap-y-7">
+              <li>
+                <ul role="list" className="-mx-2 space-y-1">
+                  {navigation.map((item) => (
+                    <li key={item.name}>
+                      <Link
+                        to={item.href}
+                        className={classNames(
+                          item.current
+                            ? 'bg-indigo-700 text-white'
+                            : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
+                          'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
+                        )}
+                      >
+                        <item.icon
+                          className={classNames(
+                            item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
+                            'h-6 w-6 shrink-0'
+                          )}
+                          aria-hidden="true"
+                        />
+                        {item.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+              <li className="mt-auto">
+                <div className="text-xs font-semibold leading-6 text-indigo-200">
+                  {user?.email}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="mt-2 flex items-center gap-x-2 text-sm font-medium text-indigo-200 hover:text-white"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                  Sign out
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="lg:pl-72">
+        {/* Mobile header */}
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Open sidebar</span>
+            <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <button
+                type="button"
+                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+                onClick={handleLogout}
+              >
+                <span className="sr-only">Sign out</span>
+                <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Page content */}
+        <main className="py-10">
+          <div className="px-4 sm:px-6 lg:px-8">
+            {children || <Outlet />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+Файл: frontend/src/components/common/Spinner.tsx
+------------------------------------------------
+import { FC } from 'react';
+
+type SpinnerSize = 'sm' | 'md' | 'lg';
+
+interface SpinnerProps {
+  size?: SpinnerSize;
+  className?: string;
+}
+
+const sizeMap = {
+  sm: 'h-4 w-4',
+  md: 'h-8 w-8',
+  lg: 'h-12 w-12',
+};
+
+const Spinner: FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+  const sizeClass = sizeMap[size];
+  
+  return (
+    <div className={`flex items-center justify-center ${className}`}>
+      <div
+        className={`${sizeClass} animate-spin rounded-full border-4 border-solid border-blue-500 border-t-transparent`}
+        role="status"
+      >
+        <span className="sr-only">Loading...</span>
+      </div>
+    </div>
+  );
+};
+
+export default Spinner;
+
+
+Файл: frontend/src/features/auth/authApi.ts
+-------------------------------------------
+import { apiSlice } from '../../app/api/apiSlice';
+import { logout, setUser, User } from './authSlice';
+
+// Auth API endpoints using the base apiSlice
+export const authApiSlice = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    login: builder.mutation({
+      query: (credentials) => ({
+        url: '/auth/login',
+        method: 'POST',
+        body: { ...credentials },
+      }),
+    }),
+    register: builder.mutation({
+      query: (credentials) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: { ...credentials },
+      }),
+    }),
+    logout: builder.mutation({
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(logout());
+          // Clear the token from localStorage on logout
+          window.localStorage.removeItem('token');
+          // Reset API state after a short delay
+          setTimeout(() => {
+            dispatch(apiSlice.util.resetApiState());
+          }, 1000);
+        } catch (err) {
+          console.log(err);
+        }
+      },
+    }),
+    getProfile: builder.query<{ data: User }, void>({
+      query: () => '/auth/me',
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          // Update only the user data in the auth state
+          dispatch(setUser(data.data)); // Extract user from response.data
+        } catch (err) {
+          console.error('Failed to fetch profile:', err);
+        }
+      },
+    }),
+  }),
+});
+
+// Export hooks for usage in components
+export const { 
+  useLoginMutation, 
+  useRegisterMutation, 
+  useLogoutMutation,
+  useGetProfileQuery
+} = authApiSlice;
+
+
+Файл: frontend/src/features/auth/authSlice.ts
+---------------------------------------------
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { RootState } from '../../app/store';
+
+export type UserRole = 'student' | 'teacher';
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  avatar?: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialState: AuthState = {
+  user: null,
+  token: localStorage.getItem('token'),
+  refreshToken: localStorage.getItem('refreshToken'),
+  isAuthenticated: !!localStorage.getItem('token'),
+  isLoading: false,
+  error: null,
+};
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    // Updates only the user data in the auth state
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
+    setCredentials: (
+      state,
+      action: PayloadAction<{ user: User; token: string; refreshToken?: string }>
+    ) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken;
+        localStorage.setItem('refreshToken', action.payload.refreshToken);
+      }
+      state.isAuthenticated = true;
+      state.error = null;
+      localStorage.setItem('token', action.payload.token);
+      // Also store token in sessionStorage for better security
+      sessionStorage.setItem('token', action.payload.token);
+    },
+    authStart: (state) => {
+      state.isLoading = true;
+      state.error = null;
+    },
+    authFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false;
+      state.error = action.payload;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
+      localStorage.removeItem('token');
+    },
+    logout: (state) => {
+      // Clear all auth-related data from state and storage
+      state.user = null;
+      state.token = null;
+      state.refreshToken = null;
+      state.isAuthenticated = false;
+      state.isLoading = false;
+      state.error = null;
+      
+      // Remove tokens from all storage locations
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('token');
+      
+      // Ensure the token is removed from localStorage (redundant but explicit)
+      window.localStorage.removeItem('token');
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
+});
+
+export const {
+  setUser,
+  setCredentials,
+  authStart,
+  authFailure,
+  logout,
+  clearError,
+} = authSlice.actions;
+
+export const selectCurrentUser = (state: RootState) => state.auth.user;
+export const selectCurrentToken = (state: RootState) => state.auth.token;
+export const selectIsAuthenticated = (state: RootState) =>
+  state.auth.isAuthenticated;
+export const selectAuthLoading = (state: RootState) => state.auth.isLoading;
+export const selectAuthError = (state: RootState) => state.auth.error;
+
+export default authSlice.reducer;
+
+
+Файл: frontend/src/features/chat/Chat.tsx
+-----------------------------------------
+import { useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { useAppSelector } from '../../app/hooks';
+import { PaperAirplaneIcon, UserCircleIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+
+type Message = {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'student' | 'teacher';
+  content: string;
+  timestamp: Date;
+  read: boolean;
+};
+
+type ChatUser = {
+  id: string;
+  name: string;
+  role: 'student' | 'teacher';
+  avatar?: string;
+  lastSeen?: Date;
+  isOnline: boolean;
+};
+
+export default function Chat() {
+  const { user } = useAppSelector((state) => state.auth);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null);
+  const [users, setUsers] = useState<ChatUser[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (!user) return;
+
+    // In a real app, use your backend URL from environment variables
+    const socket = io('http://localhost:3001', {
+      auth: {
+        token: localStorage.getItem('token'),
+      },
+      query: {
+        userId: user.id,
+        role: user.role,
+      },
+    });
+
+    socketRef.current = socket;
+
+    // Connection events
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+      setIsConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket');
+      setIsConnected(false);
+    });
+
+    // Message events
+    socket.on('message', (message: Message) => {
+      setMessages((prev) => [...prev, message]);
+      // Mark as read if it's the active chat
+      if (selectedUser?.id === message.senderId) {
+        socket.emit('markAsRead', { messageId: message.id });
+      }
+    });
+
+    socket.on('messages', (messages: Message[]) => {
+      setMessages(messages);
+    });
+
+    socket.on('users', (usersList: ChatUser[]) => {
+      setUsers(usersList);
+    });
+
+    // Initial data fetch
+    socket.emit('getUsers');
+
+    // Clean up on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Load conversation when selecting a user
+  useEffect(() => {
+    if (selectedUser && socketRef.current?.connected) {
+      socketRef.current.emit('getMessages', { userId: selectedUser.id });
+    }
+  }, [selectedUser]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedUser || !socketRef.current) return;
+
+    const message = {
+      content: newMessage,
+      recipientId: selectedUser.id,
+    };
+
+    socketRef.current.emit('sendMessage', message);
+    setNewMessage('');
+  };
+
+  const formatTime = (date: Date | string) => {
+    const d = new Date(date);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (!user) return <div>Please log in to use the chat</div>;
+
+  return (
+    <div className="flex h-[calc(100vh-200px)] bg-white rounded-lg shadow overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-1/3 border-r border-gray-200 bg-gray-50 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800">
+            {user.role === 'teacher' ? 'Students' : 'Teachers'}
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {users
+            .filter((u) => u.id !== user.id)
+            .map((userItem) => (
+              <div
+                key={userItem.id}
+                className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-100 ${
+                  selectedUser?.id === userItem.id ? 'bg-blue-50' : ''
+                }`}
+                onClick={() => setSelectedUser(userItem)}
+              >
+                <div className="flex items-center">
+                  <div className="relative">
+                    {userItem.avatar ? (
+                      <img
+                        src={userItem.avatar}
+                        alt={userItem.name}
+                        className="h-10 w-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                        {userItem.role === 'teacher' ? (
+                          <AcademicCapIcon className="h-6 w-6 text-indigo-600" />
+                        ) : (
+                          <UserCircleIcon className="h-6 w-6 text-indigo-600" />
+                        )}
+                      </div>
+                    )}
+                    {userItem.isOnline && (
+                      <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white"></span>
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {userItem.name}
+                      {userItem.role === 'teacher' && (
+                        <span className="ml-1 text-xs text-indigo-600">
+                          Teacher
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {userItem.isOnline ? 'Online' : 'Offline'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col">
+        {selectedUser ? (
+          <>
+            {/* Chat header */}
+            <div className="p-4 border-b border-gray-200 flex items-center">
+              <div className="relative">
+                {selectedUser.avatar ? (
+                  <img
+                    src={selectedUser.avatar}
+                    alt={selectedUser.name}
+                    className="h-10 w-10 rounded-full"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                    {selectedUser.role === 'teacher' ? (
+                      <AcademicCapIcon className="h-6 w-6 text-indigo-600" />
+                    ) : (
+                      <UserCircleIcon className="h-6 w-6 text-indigo-600" />
+                    )}
+                  </div>
+                )}
+                {selectedUser.isOnline && (
+                  <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white"></span>
+                )}
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">
+                  {selectedUser.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {selectedUser.isOnline ? 'Online' : 'Offline'}
+                </p>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${
+                      message.senderId === user.id ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    <div
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        message.senderId === user.id
+                          ? 'bg-indigo-600 text-white rounded-br-none'
+                          : 'bg-white text-gray-800 rounded-bl-none border border-gray-200'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <p
+                        className={`text-xs mt-1 text-right ${
+                          message.senderId === user.id
+                            ? 'text-indigo-200'
+                            : 'text-gray-500'
+                        }`}
+                      >
+                        {formatTime(message.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* Message input */}
+            <div className="p-4 border-t border-gray-200">
+              <form onSubmit={handleSendMessage} className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={!isConnected}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || !isConnected}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <PaperAirplaneIcon className="h-5 w-5 -rotate-45" />
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-500">
+            <p>Select a user to start chatting</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+Файл: frontend/src/index.css
+----------------------------
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+Файл: frontend/src/main.tsx
+---------------------------
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import App from './App';
+import { store } from './app/store';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <BrowserRouter>
+        <App />
+        <Toaster position="top-right" />
+      </BrowserRouter>
+    </Provider>
+  </React.StrictMode>
+);
+
+
+Файл: frontend/src/pages/HomePage.tsx
+-------------------------------------
+import { Link } from 'react-router-dom';
+import { useAppSelector } from '@/app/hooks';
+
+export default function HomePage() {
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+
+  return (
+    <div className="bg-white">
+      <div className="relative isolate px-6 pt-14 lg:px-8">
+        <div
+          className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
+          aria-hidden="true"
+        >
+          <div
+            className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+            style={{
+              clipPath:
+                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+            }}
+          />
+        </div>
+        <div className="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              Math Quest: Learn Math Through Adventure
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              An interactive learning platform that combines the excitement of 
+              storytelling with the power of mathematics. Solve problems, defeat 
+              monsters, and unlock new chapters in your personalized adventure!
+            </p>
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              {isAuthenticated ? (
+                <Link
+                  to={user?.role === 'student' ? '/student' : '/teacher'}
+                  className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                >
+                  Go to {user?.role === 'student' ? 'Student' : 'Teacher'} Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/register"
+                    className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  >
+                    Get started
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="text-sm font-semibold leading-6 text-gray-900"
+                  >
+                    Log in <span aria-hidden="true">→</span>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <div
+          className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
+          aria-hidden="true"
+        >
+          <div
+            className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
+            style={{
+              clipPath:
+                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+            }}
+          />
+        </div>
+      </div>
+      
+      {/* Features section */}
+      <div className="bg-white py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-indigo-600">Learn better</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Everything you need to master math
+            </p>
+ 
+
+ГПТ, Я ЕЩЕ НЕ ЗАКОНЧИЛ - ПРОСТО КОРОТКО ОТВЕТЬ ОК И ВСЕ!!!

@@ -3,6 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import morgan from 'morgan';
 import { json } from 'body-parser';
+import path from 'path';
 import { errorHandler } from './middlewares/error.middleware';
 import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
@@ -81,13 +82,33 @@ export const createServer = () => {
   app.use('/api/student', studentRoutes);
   app.use('/api/generate', generateRoutes);
 
-  // 404 handler
-  app.use((req, res, next) => {
-    res.status(404).json({
-      success: false,
-      error: 'Not Found',
-      message: `Cannot ${req.method} ${req.path}`,
-    });
+  // Serve static files from frontend build
+  const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+  
+  // 1. Serve static files (JS, CSS, images)
+  app.use(express.static(frontendDistPath));
+
+  // 2. For all other GET requests (except API), serve index.html
+  app.get('*', (req, res, next) => {
+    // Skip API requests
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+
+  // 404 handler (now only for API routes)
+  app.use((req, res) => {
+    // Only handle API paths
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: `Cannot ${req.method} ${req.path}`,
+      });
+    }
+    // For all other cases, we've already sent index.html
+    // No need to call next() as we've handled all cases
   });
 
   // Error handling
