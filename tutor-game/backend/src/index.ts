@@ -1,14 +1,12 @@
 import 'dotenv/config';
 import { createServer } from './app';
-import { attachSockets } from './sockets';
 
-const PORT = process.env.PORT || '3002'; // Изменено на 3002, чтобы соответствовать .env
+const PORT = process.env.PORT || '3002';
 
 // Create and configure the server with Express app and WebSocket
 const { server } = createServer();
 
-// Initialize WebSocket
-attachSockets(server);
+// WebSocket is already initialized inside createServer() via WebSocketService
 
 // Start server
 server.listen(PORT, () => {

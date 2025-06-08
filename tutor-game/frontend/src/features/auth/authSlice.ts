@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
+import { authApiSlice } from './authApi';
 
 export type UserRole = 'student' | 'teacher';
 
@@ -15,94 +16,77 @@ export interface User {
 export interface AuthState {
   user: User | null;
   token: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
 }
 
+// ✅ Начальное состояние теперь ЕДИНСТВЕННЫЙ источник правды при запуске.
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('token'),
-  refreshToken: localStorage.getItem('refreshToken'),
-  isAuthenticated: !!localStorage.getItem('token'),
-  isLoading: false,
-  error: null,
+  token: localStorage.getItem('token'), // Пытаемся взять токен из localStorage
+  isAuthenticated: !!localStorage.getItem('token'), // Начальный статус зависит от наличия токена
 };
 
-const authSlice = createSlice({
+export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Updates only the user data in the auth state
+    // ✅ Редьюсер для выхода
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    },
+    // ✅ Редьюсер для установки пользователя, будет вызван из AuthInitializer
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
-    },
-    setCredentials: (
-      state,
-      action: PayloadAction<{ user: User; token: string; refreshToken?: string }>
-    ) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      if (action.payload.refreshToken) {
-        state.refreshToken = action.payload.refreshToken;
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
-      }
       state.isAuthenticated = true;
-      state.error = null;
-      localStorage.setItem('token', action.payload.token);
-      // Also store token in sessionStorage for better security
-      sessionStorage.setItem('token', action.payload.token);
     },
-    authStart: (state) => {
-      state.isLoading = true;
-      state.error = null;
-    },
-    authFailure: (state, action: PayloadAction<string>) => {
-      state.isLoading = false;
-      state.error = action.payload;
-      state.isAuthenticated = false;
-      state.user = null;
-      state.token = null;
-      localStorage.removeItem('token');
-    },
-    logout: (state) => {
-      // Clear all auth-related data from state and storage
-      state.user = null;
-      state.token = null;
-      state.refreshToken = null;
-      state.isAuthenticated = false;
-      state.isLoading = false;
-      state.error = null;
-      
-      // Remove tokens from all storage locations
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      sessionStorage.removeItem('token');
-      
-      // Ensure the token is removed from localStorage (redundant but explicit)
-      window.localStorage.removeItem('token');
-    },
-    clearError: (state) => {
-      state.error = null;
-    },
+  },
+  // ✅ Автоматически обновляем стейт после запросов
+  extraReducers: (builder) => {
+    // Когда мутации login или register успешно завершены, выполняем этот код
+    builder.addMatcher(
+      authApiSlice.endpoints.login.matchFulfilled,
+      (state, action) => {
+        const { user, accessToken } = action.payload.data;
+        state.token = accessToken;
+        state.isAuthenticated = true;
+        state.user = user;
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    );
+    builder.addMatcher(
+      authApiSlice.endpoints.register.matchFulfilled,
+      (state, action) => {
+        const { user, accessToken } = action.payload.data;
+        state.token = accessToken;
+        state.isAuthenticated = true;
+        state.user = user;
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    );
+    builder.addMatcher(
+      authApiSlice.endpoints.refreshToken.matchFulfilled,
+      (state, action) => {
+        const { user, accessToken } = action.payload.data;
+        state.token = accessToken;
+        state.isAuthenticated = true;
+        state.user = user;
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    );
   },
 });
 
-export const {
-  setUser,
-  setCredentials,
-  authStart,
-  authFailure,
-  logout,
-  clearError,
-} = authSlice.actions;
+export const { logout, setUser } = authSlice.actions;
 
 export const selectCurrentUser = (state: RootState) => state.auth.user;
 export const selectCurrentToken = (state: RootState) => state.auth.token;
-export const selectIsAuthenticated = (state: RootState) =>
-  state.auth.isAuthenticated;
-export const selectAuthLoading = (state: RootState) => state.auth.isLoading;
-export const selectAuthError = (state: RootState) => state.auth.error;
+export const selectIsAuthenticated = (state: RootState) => state.auth.isAuthenticated;
 
 export default authSlice.reducer;

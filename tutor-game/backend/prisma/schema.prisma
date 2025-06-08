@@ -35,7 +35,8 @@ model Student {
   user      User     @relation(fields: [userId], references: [id])
   teacherId String?
   teacher   Teacher? @relation("TeacherToStudents", fields: [teacherId], references: [userId])
-  goal        Goal?
+  goals       Goal[]
+  bossBattles BossBattle[]
   roadmaps    RoadmapEntry[]
   badges      Badge[]
   stories     Story[]
@@ -52,7 +53,7 @@ enum Role {
 model Goal {
   id        String   @id @default(uuid())
   student   Student  @relation(fields: [studentId], references: [userId])
-  studentId String   @unique
+  studentId String
   title     String
   createdAt DateTime @default(now())
 }
@@ -76,32 +77,36 @@ model Badge {
 }
 
 model Story {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   studentId   String
-  student     Student  @relation(fields: [studentId], references: [userId])
+  student     Student          @relation(fields: [studentId], references: [userId])
   chapter     Int
   text        String
   prompt      String
-  createdAt   DateTime @default(now())
+  images      GeneratedImage[]  @relation("StoryImages")
+  createdAt   DateTime         @default(now())
 }
 
 model GeneratedImage {
-  id          String   @id
+  id          String    @id @default(uuid())
   studentId   String
-  student     Student  @relation(fields: [studentId], references: [userId])
+  student     Student   @relation(fields: [studentId], references: [userId])
   storyId     String?
+  story       Story?    @relation("StoryImages", fields: [storyId], references: [id])
   url         String
   prompt      String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 }
 
 model BossBattle {
-  id            String  @id @default(uuid())
-  studentId     String  @unique
+  id            String   @id @default(uuid())
+  student       Student  @relation(fields: [studentId], references: [userId])
+  studentId     String
   lives         Int
   timeLimitSec  Int
   difficulty    Int
   prompt        String
+  createdAt     DateTime @default(now())
 }
 
 enum BadgeStatus {

@@ -58,7 +58,16 @@ export const registerHandler = async (req: Request, res: Response) => {
     const { user, accessToken, refreshToken } = await register(email, password, role as 'TEACHER' | 'STUDENT', name);
     console.log('User registered successfully:', user.id);
 
-    // Format response to match frontend expectations
+    // Set refresh token in HTTP-only cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/api/auth/refresh',
+    });
+
+    // Format response to match frontend expectations (without refresh token)
     const response = {
       success: true,
       data: {
@@ -71,22 +80,25 @@ export const registerHandler = async (req: Request, res: Response) => {
           avatar: undefined,
         },
         accessToken,
-        refreshToken,
       },
     };
 
-    console.log('Sending response:', JSON.stringify(response, null, 2));
-    res.status(201).json(response);
+    console.log('Sending registration response (without refresh token in body)');
+    return res.status(201).json(response);
   } catch (error) {
     console.error('Registration error:', error);
-    throw error; // Let the error middleware handle it
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during registration',
+    });
   }
 };
-
-// Rate limiting store for login attempts
-const loginAttempts = new Map<string, { count: number; lastAttempt: Date }>();
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_TIMEOUT_MINUTES = 15;
 
 export const loginHandler = async (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
@@ -98,29 +110,9 @@ export const loginHandler = async (req: Request, res: Response) => {
     throw new AppError('Please provide email and password', 400);
   }
 
-  // Check rate limiting
-  const attempt = loginAttempts.get(ip);
-  if (attempt && attempt.count >= MAX_LOGIN_ATTEMPTS) {
-    const timeLeft = Math.ceil(
-      (new Date().getTime() - attempt.lastAttempt.getTime()) / (1000 * 60)
-    );
-    
-    if (timeLeft < LOGIN_TIMEOUT_MINUTES) {
-      throw new AppError(
-        `Too many login attempts. Please try again in ${LOGIN_TIMEOUT_MINUTES - timeLeft} minutes.`,
-        429
-      );
-    } else {
-      loginAttempts.delete(ip);
-    }
-  }
-
   try {
     console.log(`Attempting to log in user: ${email}`);
     const { user, accessToken, refreshToken } = await login(email, password, ip);
-    
-    // Reset login attempts on successful login
-    loginAttempts.delete(ip);
     
     // Set secure HTTP-only cookie for refresh token
     res.cookie('refreshToken', refreshToken, {
@@ -147,33 +139,30 @@ export const loginHandler = async (req: Request, res: Response) => {
       role: user.role.toLowerCase(),
     };
 
-    // Include refreshToken in the response body for the frontend
+    // Set refresh token in HTTP-only cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/api/auth/refresh',
+    });
+
+    // Prepare response with only the access token
     const response = {
       success: true,
       data: {
         user: userData,
         accessToken,
-        refreshToken, // Include refresh token in the response
       },
     };
 
-    console.log('Sending login response:', JSON.stringify(response, null, 2));
+    console.log('Sending login response (without refresh token in body)');
     res.json(response);
   } catch (error: any) {
-    // Increment failed login attempts
-    const attempts = (loginAttempts.get(ip)?.count || 0) + 1;
-    loginAttempts.set(ip, { count: attempts, lastAttempt: new Date() });
-    
     console.error(`Login failed for IP ${ip}:`, error.message);
-    
-    if (attempts >= MAX_LOGIN_ATTEMPTS) {
-      throw new AppError(
-        `Too many failed attempts. Please try again in ${LOGIN_TIMEOUT_MINUTES} minutes.`,
-        429
-      );
-    }
-    
-    throw new AppError('Invalid email or password', 401);
+    // Let the error handling middleware handle the error
+    throw error;
   }
 };
 
@@ -188,9 +177,18 @@ export const getMeHandler = async (req: Request, res: Response) => {
     throw new AppError('User not found', 404);
   }
 
+  // Create standardized user object with lowercase role
+  const userData = {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role.toLowerCase(),
+  };
+
   res.json({
     success: true,
-    data: user,
+    data: userData,
   });
 };
 
@@ -200,15 +198,29 @@ export const logoutHandler = async (
   next: NextFunction
 ) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    // Get the refresh token from cookies
+    const refreshToken = req.cookies?.refreshToken;
     
-    // Add the current access token to blacklist
-    if (token) {
+    // Add the refresh token to blacklist if it exists
+    if (refreshToken) {
       try {
-        const decoded = jwt.verify(token, config.jwtSecret) as { exp: number };
-        await blacklistToken(token, new Date(decoded.exp * 1000));
+        const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret) as { exp: number };
+        await blacklistToken(refreshToken, new Date(decoded.exp * 1000));
       } catch (error) {
-        console.error('Error blacklisting token:', error);
+        console.error('Error blacklisting refresh token:', error);
+      }
+    }
+
+    // Get the access token from the authorization header
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    
+    // Add the access token to blacklist if it exists
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, config.jwtSecret) as { exp: number };
+        await blacklistToken(accessToken, new Date(decoded.exp * 1000));
+      } catch (error) {
+        console.error('Error blacklisting access token:', error);
       }
     }
     
@@ -241,15 +253,34 @@ export const refreshTokenHandler = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Try to get refresh token from cookies first, then from body
-  const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+  // Try to get refresh token from cookies first
+  const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
     throw new AppError('Refresh token is required', 400);
   }
 
   try {
+    // Get the old refresh token's expiration before it's blacklisted
+    let oldTokenExp;
+    try {
+      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret) as { exp: number };
+      oldTokenExp = new Date(decoded.exp * 1000);
+    } catch (error) {
+      console.error('Error decoding refresh token:', error);
+      throw new AppError('Invalid refresh token', 401);
+    }
+
+    // Get new tokens
     const { accessToken, refreshToken: newRefreshToken } = await refreshTokens(refreshToken);
+    
+    // Blacklist the old refresh token
+    try {
+      await blacklistToken(refreshToken, oldTokenExp);
+    } catch (error) {
+      console.error('Error blacklisting old refresh token:', error);
+      // Don't fail the request if blacklisting fails
+    }
     
     // Set new refresh token in HTTP-only cookie
     res.cookie('refreshToken', newRefreshToken, {
@@ -264,6 +295,7 @@ export const refreshTokenHandler = async (
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     
     res.json({
       success: true,
@@ -275,6 +307,9 @@ export const refreshTokenHandler = async (
   } catch (error) {
     // Clear the invalid refresh token cookie
     res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       path: '/api/auth/refresh',
     });
     

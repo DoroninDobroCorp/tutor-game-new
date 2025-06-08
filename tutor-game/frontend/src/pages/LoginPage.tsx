@@ -3,10 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// Импорты для работы с API и состоянием
 import { useLoginMutation } from '@/features/auth/authApi'; 
-import { useAppDispatch } from '@/app/hooks';
-import { setCredentials } from '@/features/auth/authSlice';
 import { toast } from 'react-hot-toast';
 
 const loginSchema = z.object({
@@ -18,7 +15,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [login, { isLoading }] = useLoginMutation();
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   
@@ -33,36 +29,35 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
-      // 1. Make the login request and unwrap the result
-      const res = await login(data).unwrap();
+      // Call the API - the auth state will be updated by the extraReducers in authSlice
+      const result = await login(data).unwrap();
       
-      // 2. Extract data from response
-      const { user, accessToken, refreshToken } = res.data;
-      
-      // 3. Save token to localStorage
-      window.localStorage.setItem('token', accessToken);
-
-      // 4. Save data to Redux store
-      dispatch(setCredentials({
-        user,
-        token: accessToken,
-        refreshToken
-      }));
-      
-      toast.success('Login successful!');
-      
-      // 5. Redirect based on user role
-      const userRole = user.role.toLowerCase();
-      if (userRole === 'student') {
-        navigate('/student');
-      } else if (userRole === 'teacher') {
-        navigate('/teacher');
-      } else {
-        navigate('/');
+      // With our API setup, we should always have data if we get here
+      if (!result.data) {
+        throw new Error('Login failed: No user data received');
       }
 
-    } catch (err: any) {
-      const errorMessage = err?.data?.message || 'Login failed. Please check your credentials.';
+      const { user } = result.data;
+      
+      // Navigate to the appropriate dashboard based on user role
+      const targetPath = user.role === 'teacher' ? '/teacher' : '/student';
+      navigate(targetPath);
+      
+      toast.success('Login successful!');
+
+    } catch (error: unknown) {
+      let errorMessage = 'Login failed. Please check your credentials.';
+      
+      if (error && typeof error === 'object') {
+        // Handle RTK Query error
+        if ('status' in error && 'data' in error) {
+          const data = error.data as { message?: string };
+          errorMessage = data?.message || errorMessage;
+        } else if ('message' in error) {
+          errorMessage = String(error.message);
+        }
+      }
+      
       setError(errorMessage);
       toast.error(errorMessage);
     }

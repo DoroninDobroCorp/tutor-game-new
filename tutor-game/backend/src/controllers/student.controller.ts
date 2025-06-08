@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../middlewares/error.middleware';
 import { generateMathProblem } from '../services/openai.service';
-
-const prisma = new PrismaClient();
+import prisma from '../db';
 
 export const getStudentProfile = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -11,9 +9,9 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   }
 
   const student = await prisma.student.findUnique({
-    where: { id: req.user.userId },
+    where: { userId: req.user.userId },
     include: {
-      goal: true,
+      goals: true,
       roadmaps: {
         orderBy: { order: 'asc' },
       },
@@ -46,16 +44,32 @@ export const setStudentGoal = async (req: Request, res: Response) => {
     throw new AppError('Please provide a goal title', 400);
   }
 
-  const goal = await prisma.goal.upsert({
-    where: { studentId: req.user.userId },
-    update: { title },
-    create: {
-      title,
-      student: {
-        connect: { id: req.user.userId },
-      },
-    },
+  // First try to find if a goal with this title already exists for the student
+  const existingGoal = await prisma.goal.findFirst({
+    where: {
+      studentId: req.user.userId,
+      title: title
+    }
   });
+
+  let goal;
+  if (existingGoal) {
+    // Update existing goal
+    goal = await prisma.goal.update({
+      where: { id: existingGoal.id },
+      data: { title }
+    });
+  } else {
+    // Create new goal
+    goal = await prisma.goal.create({
+      data: {
+        title,
+        student: {
+          connect: { userId: req.user.userId }
+        }
+      }
+    });
+  }
 
   res.json({
     success: true,

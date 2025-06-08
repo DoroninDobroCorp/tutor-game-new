@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../middlewares/error.middleware';
 import { generateStory } from '../services/openai.service';
 import { generateStoryImage } from '../services/leonardo.service';
-
-const prisma = new PrismaClient();
+import prisma from '../db';
 
 export const generateNewStory = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -19,7 +17,7 @@ export const generateNewStory = async (req: Request, res: Response) => {
 
   // Get student's level (simplified - in a real app, this would be calculated based on progress)
   const student = await prisma.student.findUnique({
-    where: { id: req.user.userId },
+    where: { userId: req.user.userId },
   });
 
   if (!student) {
@@ -38,7 +36,7 @@ export const generateNewStory = async (req: Request, res: Response) => {
       text: storyText,
       prompt,
       student: {
-        connect: { id: req.user.userId },
+        connect: { userId: req.user.userId },
       },
     },
   });
@@ -53,15 +51,14 @@ export const generateNewStory = async (req: Request, res: Response) => {
       url: image.url,
       prompt: `Illustration for story: ${prompt.substring(0, 200)}`,
       storyId: story.id,
-      student: {
-        connect: { id: req.user.userId },
-      },
+      studentId: req.user.userId,
     },
   });
 
   // Update story with the first image
   const updatedStory = await prisma.story.update({
     where: { id: story.id },
+    data: {}, // Add empty data object since it's required
     include: {
       images: true,
     },
@@ -110,7 +107,7 @@ export const continueStory = async (req: Request, res: Response) => {
       text: continuation,
       prompt: `Continuation of chapter ${existingStory.chapter} based on: ${userInput}`,
       student: {
-        connect: { id: req.user.userId },
+        connect: { userId: req.user.userId },
       },
     },
   });
@@ -125,9 +122,7 @@ export const continueStory = async (req: Request, res: Response) => {
       url: image.url,
       prompt: `Illustration for chapter ${newChapter.chapter}`,
       storyId: newChapter.id,
-      student: {
-        connect: { id: req.user.userId },
-      },
+      studentId: req.user.userId,
     },
   });
 
@@ -180,9 +175,7 @@ export const generateImageForStory = async (req: Request, res: Response) => {
       url: image.url,
       prompt: `Custom illustration for story: ${prompt.substring(0, 200)}`,
       storyId: story.id,
-      student: {
-        connect: { id: req.user.userId },
-      },
+      studentId: req.user.userId,
     },
   });
 

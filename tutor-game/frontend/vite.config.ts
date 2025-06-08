@@ -24,15 +24,15 @@ export default defineConfig({
       overlay: false
     },
     proxy: {
-      '^/api': {
+      '/api': {
         target: 'http://localhost:3002',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        secure: false
       },
       '/socket.io': {
         target: 'ws://localhost:3002',
         ws: true,
+        changeOrigin: true
       }
     },
     // This is the key part for SPA fallback

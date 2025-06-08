@@ -23,7 +23,7 @@ type ChatUser = {
 };
 
 export default function Chat() {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, token } = useAppSelector((state) => state.auth);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null);
@@ -36,10 +36,12 @@ export default function Chat() {
   useEffect(() => {
     if (!user) return;
 
-    // In a real app, use your backend URL from environment variables
-    const socket = io('http://localhost:3001', {
+    // Use relative URL which will be proxied by Vite to the backend
+    if (!token) return;
+
+    const socket = io({
       auth: {
-        token: localStorage.getItem('token'),
+        token: token,
       },
       query: {
         userId: user.id,
@@ -84,7 +86,7 @@ export default function Chat() {
     return () => {
       socket.disconnect();
     };
-  }, [user]);
+  }, [user, token]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

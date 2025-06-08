@@ -2,7 +2,7 @@
 import os
 
 # --- Настройки ---
-MAX_CHARS = 25000  # можно менять
+MAX_CHARS = 250000  # можно менять
 OUTPUT_PREFIX = "message_"
 FINISH_INSTRUCTION = "ГПТ, Я ЕЩЕ НЕ ЗАКОНЧИЛ - ПРОСТО КОРОТКО ОТВЕТЬ ОК И ВСЕ!!!"
 BASE_DIR = os.getcwd()  # корневая папка — та, где запущен скрипт
@@ -25,7 +25,7 @@ USER_IGNORE_FILES = (
     # Common
     ".DS_Store, .gitignore, README.md, "
     # Specific user files
-    "analyzer_wide, tsconfig.tsbuildinfo, chat_sender.py"
+    "analyzer_wide, tsconfig.tsbuildinfo, chat_sender.py, chat_sender_g.py"
 )
 
 # Список папок для игнорирования (через запятую).

@@ -1,25 +1,68 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-
-// This function MUST be here, in the "heart" of the API,
-// so it applies to ALL requests
-const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:3002/api',
-  prepareHeaders: (headers) => {
-    // Get token from localStorage (the one we saved during login)
-    const token = window.localStorage.getItem('token'); 
-    if (token) {
-      // If token exists, add it to headers for EVERY request
-      headers.set('authorization', `Bearer ${token}`);
-    }
-    return headers;
-  },
-});
+import { RootState } from '../../app/store';
 
 export const apiSlice = createApi({
   reducerPath: 'api',
-  baseQuery: baseQuery, // Use our new configuration with headers
-  tagTypes: ['User', 'Game'],
-  endpoints: () => ({}),
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/api',
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).auth.token || localStorage.getItem('token');
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: ['User', 'Student', 'Teacher', 'Story', 'MathProblem'],
+  endpoints: (builder) => ({
+    // Generate endpoints
+    generateStory: builder.mutation<{ story: string }, { prompt: string; ageGroup?: string; subject?: string }>({
+      query: (body) => ({
+        url: '/generate/story',
+        method: 'POST',
+        body,
+      }),
+    }),
+    continueStory: builder.mutation<{ story: string }, { storyId: string; continuation: string }>({
+      query: (body) => ({
+        url: '/generate/continue',
+        method: 'POST',
+        body,
+      }),
+    }),
+    
+    // Math endpoints
+    getMathProblem: builder.query<MathProblem, { difficulty?: string; topic?: string }>({
+      query: (params) => ({
+        url: '/math/problem',
+        params,
+      }),
+    }),
+    submitAnswer: builder.mutation<{ correct: boolean; correctAnswer?: number }, { problemId: string; answer: number }>({
+      query: (body) => ({
+        url: '/math/answer',
+        method: 'POST',
+        body,
+      }),
+    }),
+  }),
 });
+
+export const {
+  useGenerateStoryMutation,
+  useContinueStoryMutation,
+  useGetMathProblemQuery,
+  useLazyGetMathProblemQuery,
+  useSubmitAnswerMutation,
+} = apiSlice;
+
+export interface MathProblem {
+  id: string;
+  question: string;
+  answer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  topic: string;
+  explanation?: string;
+}
 
 export default apiSlice;

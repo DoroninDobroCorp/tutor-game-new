@@ -263,18 +263,16 @@ export const generateTokens = async (user: User): Promise<AuthResponse> => {
 };
 
 export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
-  const hashedToken = await bcrypt.hash(token, 10);
   const blacklistedToken = await prisma.tokenBlacklist.findUnique({
-    where: { token: hashedToken },
+    where: { token },
   } as any);
   return !!blacklistedToken;
 };
 
 export const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
-  const hashedToken = await bcrypt.hash(token, 10);
   await prisma.tokenBlacklist.create({
     data: {
-      token: hashedToken,
+      token,
       expiresAt,
     },
   } as any);

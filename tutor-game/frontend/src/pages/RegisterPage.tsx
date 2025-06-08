@@ -46,38 +46,33 @@ export default function RegisterPage() {
       const registrationData = {
         email: formData.email,
         password: formData.password,
-        role: formData.role.toUpperCase() as 'STUDENT' | 'TEACHER',
+        role: formData.role,
         firstName: formData.firstName,
         lastName: formData.lastName,
       };
 
-      const result = await registerUser(registrationData).unwrap();
-
-      // --- ДОБАВЛЕНА ОТЛАДОЧНАЯ СТРОКА ---
-      console.log('API Response:', result);
-      // --- КОНЕЦ ОТЛАДОЧНОЙ СТРОКИ ---
-
-      // Проверяем, что структура ответа правильная, прежде чем использовать
-      if (result && result.data && result.data.user && result.data.user.role) {
-        const userRole = result.data.user.role.toLowerCase();
-
-        toast.success('Registration successful! Redirecting...');
-
-        if (userRole === 'student') {
-          navigate('/student');
-        } else if (userRole === 'teacher') {
-          navigate('/teacher');
-        } else {
-          navigate('/');
+      await registerUser(registrationData).unwrap();
+      
+      // The auth state will be updated by the extraReducers in authSlice
+      // Navigate to the appropriate dashboard based on user role
+      const targetPath = registrationData.role === 'teacher' ? '/teacher' : '/student';
+      navigate(targetPath);
+      
+      toast.success('Registration successful! Welcome!');
+    } catch (error: unknown) {
+      console.error('Registration error:', error);
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error && typeof error === 'object') {
+        // Handle RTK Query error
+        if ('status' in error && 'data' in error) {
+          const data = error.data as { message?: string };
+          errorMessage = data?.message || errorMessage;
+        } else if ('message' in error) {
+          errorMessage = String(error.message);
         }
-      } else {
-        // Если структура ответа неверна, выводим ошибку
-        throw new Error('Invalid response structure from server.');
       }
-
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      const errorMessage = err.data?.message || err.message || 'Registration failed. Please try again.';
+      
       setError(errorMessage);
       toast.error(errorMessage);
     }

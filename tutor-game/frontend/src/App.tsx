@@ -1,8 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useAppSelector } from './app/hooks';
-import { selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
-import { useGetProfileQuery } from './features/auth/authApi';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -14,68 +11,11 @@ import { TeacherDashboardPage } from './pages/TeacherDashboardPage';
 import MathProblemSolver from './pages/student/MathProblemSolver';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
+import StoryGenerator from './pages/student/StoryGenerator';
 import NotFoundPage from './pages/NotFoundPage';
-import Spinner from '@/components/common/Spinner';
-
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const { isLoading } = useGetProfileQuery(undefined, {
-    // Skip the query if we already have the user data
-    skip: isAuthenticated,
-  });
-  
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return children;
-};
-
-// Role-based Route Component
-const RoleBasedRoute = ({
-  role,
-  children,
-}: {
-  role: 'student' | 'teacher';
-  children: JSX.Element;
-}) => {
-  const { user } = useAppSelector((state) => state.auth);
-  
-  if (!user || user.role.toLowerCase() !== role.toLowerCase()) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-};
+import { ProtectedRoute, RoleBasedRoute } from './AuthRoutes';
 
 function App() {
-  // Get user from Redux store
-  const user = useAppSelector(selectCurrentUser);
-  const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  
-  // Only fetch profile if authenticated but user data is not in store
-  const { isLoading } = useGetProfileQuery(undefined, {
-    skip: !!user || !isAuthenticated,
-    refetchOnMountOrArgChange: false,
-  });
-  
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
   return (
     <div className="min-h-screen bg-gray-50">
       <Routes>
@@ -85,37 +25,43 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         
         {/* Protected Student Routes */}
-        <Route path="/student" element={
-          <ProtectedRoute>
-            <RoleBasedRoute role="student">
-              <Layout><StudentDashboard /></Layout>
-            </RoleBasedRoute>
-          </ProtectedRoute>
-        }>
+        <Route 
+          path="/student" 
+          element={
+            <ProtectedRoute>
+              <RoleBasedRoute role="student">
+                <Layout><StudentDashboard /></Layout>
+              </RoleBasedRoute>
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<StudentDashboardPage />} />
-          <Route path="math" element={<StudentDashboard><MathProblemSolver /></StudentDashboard>} />
-          <Route path="chat" element={<StudentDashboard><ChatPage /></StudentDashboard>} />
+          <Route path="math" element={<MathProblemSolver />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="story" element={<StoryGenerator />} />
         </Route>
         
         {/* Protected Teacher Routes */}
-        <Route path="/teacher" element={
-          <ProtectedRoute>
-            <RoleBasedRoute role="teacher">
-              <Layout><TeacherDashboard /></Layout>
-            </RoleBasedRoute>
-          </ProtectedRoute>
-        }>
+        <Route 
+          path="/teacher" 
+          element={
+            <ProtectedRoute>
+              <RoleBasedRoute role="teacher">
+                <Layout><TeacherDashboard /></Layout>
+              </RoleBasedRoute>
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<TeacherDashboardPage />} />
-          <Route path="students" element={<TeacherDashboard><div>Students Management</div></TeacherDashboard>} />
-          <Route path="students/:studentId" element={<TeacherDashboard><StudentProgress /></TeacherDashboard>} />
-          <Route path="progress" element={<TeacherDashboard><div>Progress Overview</div></TeacherDashboard>} />
-          <Route path="chat" element={<TeacherDashboard><ChatPage /></TeacherDashboard>} />
+          <Route path="students" element={<div>Students Management</div>} />
+          <Route path="students/:studentId" element={<StudentProgress />} />
+          <Route path="progress" element={<div>Progress Overview</div>} />
+          <Route path="chat" element={<ChatPage />} />
         </Route>
         
         {/* 404 Route */}
         <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
       </Routes>
-      
       <Toaster position="top-right" />
     </div>
   );
