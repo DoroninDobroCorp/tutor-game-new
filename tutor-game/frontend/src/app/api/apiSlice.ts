@@ -13,7 +13,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ['User', 'Student', 'Teacher', 'Story', 'MathProblem'],
+  tagTypes: ['User', 'Student', 'Teacher', 'Story'],
   endpoints: (builder) => ({
     // Generate endpoints
     generateStory: builder.mutation<{ story: string }, { prompt: string; ageGroup?: string; subject?: string }>({
@@ -34,13 +34,13 @@ export const apiSlice = createApi({
     // Math endpoints
     getMathProblem: builder.query<MathProblem, { difficulty?: string; topic?: string }>({
       query: (params) => ({
-        url: '/math/problem',
+        url: '/student/math-problem',
         params,
       }),
     }),
     submitAnswer: builder.mutation<{ correct: boolean; correctAnswer?: number }, { problemId: string; answer: number }>({
       query: (body) => ({
-        url: '/math/answer',
+        url: '/student/math-answer',
         method: 'POST',
         body,
       }),

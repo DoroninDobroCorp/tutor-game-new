@@ -19,7 +19,7 @@ interface GenerateImageParams {
 export const generateImage = async (params: GenerateImageParams) => {
   try {
     // Check if API key is available
-    if (!config.leonardo.apiKey) {
+    if (!config.leonardoApiKey) {
       throw new Error('Leonardo API key is not configured');
     }
 
@@ -28,7 +28,7 @@ export const generateImage = async (params: GenerateImageParams) => {
       negativePrompt = '',
       width = 512,
       height = 512,
-      modelId = config.leonardo.modelId,
+      modelId = config.leonardoModelId,
       numImages = 1,
       guidanceScale = 7,
       scheduler = 'LEONARDO',
@@ -56,7 +56,7 @@ export const generateImage = async (params: GenerateImageParams) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.leonardo.apiKey}`,
+          'Authorization': `Bearer ${config.leonardoApiKey}`,
         },
       }
     );
@@ -78,7 +78,7 @@ export const generateImage = async (params: GenerateImageParams) => {
         `${LEONARDO_API_URL}/generations/${generationId}`,
         {
           headers: {
-            'Authorization': `Bearer ${config.leonardo.apiKey}`,
+            'Authorization': `Bearer ${config.leonardoApiKey}`,
           },
         }
       );

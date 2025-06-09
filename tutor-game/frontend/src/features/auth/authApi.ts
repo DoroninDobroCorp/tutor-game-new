@@ -51,10 +51,10 @@ export const authApiSlice = apiSlice.injectEndpoints({
     }),
     register: builder.mutation<ApiResponse<AuthResponse>, RegisterCredentials>({
       query: (credentials) => {
-        // Ensure role is in the correct case (should already be from the form)
         const payload = {
           ...credentials,
-          role: credentials.role.toLowerCase() as UserRole
+          // Send role in UPPERCASE to match backend expectations
+          role: credentials.role.toUpperCase() as 'STUDENT' | 'TEACHER'
         };
         
         return {

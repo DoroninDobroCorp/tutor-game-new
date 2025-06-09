@@ -2,7 +2,7 @@
 import os
 
 # --- Настройки ---
-MAX_CHARS = 250000  # можно менять
+MAX_CHARS = 750000  # можно менять
 OUTPUT_PREFIX = "message_"
 FINISH_INSTRUCTION = "ГПТ, Я ЕЩЕ НЕ ЗАКОНЧИЛ - ПРОСТО КОРОТКО ОТВЕТЬ ОК И ВСЕ!!!"
 BASE_DIR = os.getcwd()  # корневая папка — та, где запущен скрипт
@@ -11,7 +11,7 @@ TOP_N_FILES = 3    # НОВОЕ: сколько самых больших фай
 # --- Списки игнорирования ---
 
 # Список расширений файлов для игнорирования (через запятую).
-USER_IGNORE_EXTENSIONS = ".js, .d.ts"
+USER_IGNORE_EXTENSIONS = ""
 
 # Список файлов-исключений, которые НУЖНО включить, даже если их расширение в списке игнорирования.
 USER_INCLUDE_FILES = "" # "important-script.js, special-types.d.ts"

@@ -188,7 +188,7 @@ export const getMeHandler = async (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    data: userData,
+    data: { user: userData },
   });
 };
 

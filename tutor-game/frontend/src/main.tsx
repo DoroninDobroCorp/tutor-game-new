@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { store } from './app/store';
 import AuthInitializer from './AuthInitializer';
@@ -13,10 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <BrowserRouter>
         <AuthInitializer>
-          <>
-            <App />
-            <Toaster position="top-right" />
-          </>
+          <App />
         </AuthInitializer>
       </BrowserRouter>
     </Provider>

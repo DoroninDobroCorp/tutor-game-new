@@ -34,12 +34,13 @@ export default function Chat() {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    if (!user) return;
+    if (!user || !token) {
+      // Don't attempt to connect if user is not authenticated or token is missing
+      return;
+    }
 
-    // Use relative URL which will be proxied by Vite to the backend
-    if (!token) return;
-
-    const socket = io({
+    // Only initialize socket if we have a valid user and token
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3002', {
       auth: {
         token: token,
       },
@@ -93,12 +94,12 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load conversation when selecting a user
+  // Load conversation when selecting a user or when connection is re-established
   useEffect(() => {
-    if (selectedUser && socketRef.current?.connected) {
-      socketRef.current.emit('getMessages', { userId: selectedUser.id });
+    if (selectedUser && isConnected) {
+      socketRef.current?.emit('getMessages', { userId: selectedUser.id });
     }
-  }, [selectedUser]);
+  }, [selectedUser, isConnected]); // Reload messages when selected user changes or connection is re-established
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
