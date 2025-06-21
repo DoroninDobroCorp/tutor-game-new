@@ -70,7 +70,8 @@ export const register = async (
   email: string,
   password: string,
   role: Role,
-  name: string,
+  firstName: string,
+  lastName: string,
 ): Promise<AuthResponse> => {
   logger.info(`Registration attempt for email: ${email}, role: ${role}`);
   
@@ -103,9 +104,6 @@ export const register = async (
     
     // Start transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user data with all required fields
-      const [firstName, ...lastNameParts] = name.split(' ');
-      
       // Create user
       const user = await tx.user.create({
         data: {
@@ -113,7 +111,7 @@ export const register = async (
           password: hashedPassword,
           role,
           firstName,
-          lastName: lastNameParts.length > 0 ? lastNameParts.join(' ') : null,
+          lastName: lastName || null,
           lastActive: new Date()
         },
       });

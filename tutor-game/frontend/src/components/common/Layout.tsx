@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import {
   Bars3Icon,
@@ -13,26 +13,40 @@ import {
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
 import { logout } from '../../features/auth/authSlice';
+import { selectTotalUnreadCount } from '../../features/chat/chatSlice';
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: React.ElementType;
   current: boolean;
+  showBadge?: boolean;
 }
 
 const studentNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
   { name: 'Story Mode', href: '/student/story', icon: BookOpenIcon, current: false },
   { name: 'Math Problems', href: '/student/math', icon: CalculatorIcon, current: false },
-  { name: 'Chat', href: '/student/chat', icon: UserGroupIcon, current: false },
+  {
+    name: 'Chat',
+    href: '/student/chat',
+    icon: UserGroupIcon,
+    current: false,
+    showBadge: true,
+  },
 ];
 
 const teacherNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
   { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
   { name: 'Progress', href: '/teacher/progress', icon: ChartBarIcon, current: false },
-  { name: 'Chat', href: '/teacher/chat', icon: UserGroupIcon, current: false },
+  {
+    name: 'Chat',
+    href: '/teacher/chat',
+    icon: UserGroupIcon,
+    current: false,
+    showBadge: true,
+  },
 ];
 
 function classNames(...classes: (string | boolean | undefined)[]): string {
@@ -45,7 +59,20 @@ export default function Layout() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
   const [logoutUser] = useLogoutMutation();
+
+  // Update document title with unread count
+  useEffect(() => {
+    if (totalUnreadCount > 0) {
+      document.title = `(${totalUnreadCount}) Math Quest`;
+    } else {
+      document.title = 'Math Quest';
+    }
+    return () => {
+      document.title = 'Math Quest';
+    };
+  }, [totalUnreadCount]);
 
   const getNavItems = () => {
     if (!isAuthenticated) return []; // Не создаем навигацию для анонимных пользователей
@@ -112,28 +139,38 @@ export default function Layout() {
                           <li>
                             <ul role="list" className="-mx-2 space-y-1">
                               {navigation.map((item) => (
-                                <li key={item.name}>
-                                  <Link
-                                    to={item.href}
-                                    className={classNames(
-                                      item.current
-                                        ? 'bg-indigo-700 text-white'
-                                        : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
-                                      'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
-                                    )}
-                                    onClick={() => setSidebarOpen(false)}
-                                  >
-                                    <item.icon
-                                      className={classNames(
-                                        item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
-                                        'h-6 w-6 shrink-0'
-                                      )}
-                                      aria-hidden="true"
-                                    />
-                                    {item.name}
-                                  </Link>
-                                </li>
-                              ))}
+                        <li key={item.name}>
+                          <Link
+                            to={item.href}
+                            className={classNames(
+                              item.current
+                                ? 'bg-indigo-700 text-white'
+                                : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
+                              'group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6'
+                            )}
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            {/* Block 1: Icon and Name */}
+                            <div className="flex items-center gap-x-3">
+                              <item.icon
+                                className={classNames(
+                                  item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
+                                  'h-6 w-6 shrink-0'
+                                )}
+                                aria-hidden="true"
+                              />
+                              {item.name}
+                            </div>
+
+                            {/* Block 2: Notification Badge */}
+                            {item.showBadge && totalUnreadCount > 0 && (
+                              <span className="inline-block rounded-full bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white">
+                                {totalUnreadCount}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      ))}
                             </ul>
                           </li>
                           <li className="mt-auto">
@@ -175,17 +212,27 @@ export default function Layout() {
                               item.current
                                 ? 'bg-indigo-700 text-white'
                                 : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
-                              'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
+                              'group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6'
                             )}
                           >
-                            <item.icon
-                              className={classNames(
-                                item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
-                                'h-6 w-6 shrink-0'
-                              )}
-                              aria-hidden="true"
-                            />
-                            {item.name}
+                            {/* Block 1: Icon and Name */}
+                            <div className="flex items-center gap-x-3">
+                              <item.icon
+                                className={classNames(
+                                  item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
+                                  'h-6 w-6 shrink-0'
+                                )}
+                                aria-hidden="true"
+                              />
+                              {item.name}
+                            </div>
+
+                            {/* Block 2: Notification Badge */}
+                            {item.showBadge && totalUnreadCount > 0 && (
+                              <span className="inline-block rounded-full bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white">
+                                {totalUnreadCount}
+                              </span>
+                            )}
                           </Link>
                         </li>
                       ))}

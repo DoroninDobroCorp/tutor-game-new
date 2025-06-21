@@ -4,6 +4,8 @@ import {
   getStudentProgress,
   updateStudentRoadmap,
   assignBadge,
+  connectStudentHandler,
+  getMyStudents,
 } from '../controllers/teacher.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { checkStudentAccess } from '../middlewares/teacher.middleware';
@@ -16,6 +18,12 @@ router.use(authorize('TEACHER'));
 
 // Teacher dashboard
 router.get('/dashboard', getTeacherDashboard);
+
+// Get all students for the teacher
+router.get('/students', getMyStudents);
+
+// Connect student to teacher
+router.post('/students/connect', connectStudentHandler);
 
 // Student management
 router.get('/students/:studentId', checkStudentAccess, getStudentProgress);

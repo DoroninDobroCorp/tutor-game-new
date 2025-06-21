@@ -1,6 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 
-// Create a single PrismaClient instance that will be shared across the application
-const prisma = new PrismaClient();
+// Включаем подробное логирование всех событий, включая SQL-запросы
+const prisma = new PrismaClient({
+  log: [
+    {
+      emit: 'stdout',
+      level: 'query',
+    },
+    {
+      emit: 'stdout',
+      level: 'info',
+    },
+    {
+      emit: 'stdout',
+      level: 'warn',
+    },
+    {
+      emit: 'stdout',
+      level: 'error',
+    },
+  ],
+});
 
 export default prisma;

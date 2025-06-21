@@ -27,11 +27,13 @@ export const checkStudentAccess = async (req: Request, res: Response, next: Next
   }
 
   const student = await prisma.student.findFirst({
-    where: { 
-      userId: studentId, 
-      teacher: {
-        userId: teacherId
-      } 
+    where: {
+      userId: studentId,
+      teachers: {
+        some: {
+          userId: teacherId,
+        },
+      },
     },
   });
 

@@ -46,7 +46,7 @@ export const authSlice = createSlice({
   },
   // ✅ Автоматически обновляем стейт после запросов
   extraReducers: (builder) => {
-    // Когда мутации login или register успешно завершены, выполняем этот код
+    // Когда мутации login, register или refreshToken успешно завершены, выполняем этот код
     builder.addMatcher(
       authApiSlice.endpoints.login.matchFulfilled,
       (state, action) => {
@@ -69,17 +69,22 @@ export const authSlice = createSlice({
         localStorage.setItem('user', JSON.stringify(user));
       }
     );
+    // ВОТ ЭТА ЧАСТЬ - ИСПРАВЛЕНИЕ
     builder.addMatcher(
       authApiSlice.endpoints.refreshToken.matchFulfilled,
       (state, action) => {
-        const { user, accessToken } = action.payload.data;
+        // Мы не всегда получаем юзера в ответе на рефреш, но токен - всегда
+        const { accessToken } = action.payload.data;
         state.token = accessToken;
         state.isAuthenticated = true;
-        state.user = user;
         localStorage.setItem('token', accessToken);
-        localStorage.setItem('user', JSON.stringify(user));
+        // Если в ответе пришел обновленный пользователь, тоже сохраним его
+        if (action.payload.data.user) {
+            state.user = action.payload.data.user;
+            localStorage.setItem('user', JSON.stringify(action.payload.data.user));
+        }
       }
-    );
+    )
   },
 });
 

@@ -14,6 +14,8 @@ async function createTestUsers() {
       create: {
         email: 'testteacher@example.com',
         password: hashedTeacherPassword,
+        firstName: 'Test',
+        lastName: 'Teacher',
         role: Role.TEACHER,
         teacher: {
           create: {}
@@ -31,32 +33,76 @@ async function createTestUsers() {
     // Create test student
     console.log('\nCreating test student...');
     const hashedStudentPassword = await bcrypt.hash('teststudent123', 10);
+    
+    // First, create the student user
     const student = await prisma.user.upsert({
       where: { email: 'teststudent@example.com' },
       update: {},
       create: {
         email: 'teststudent@example.com',
         password: hashedStudentPassword,
+        firstName: 'Test',
+        lastName: 'Student',
         role: Role.STUDENT,
         student: {
-          create: {
-            teacherId: teacher.teacher.userId
-          }
+          create: {}
         }
       },
       include: { student: true }
     });
 
+    // Then connect the student to the teacher using the many-to-many relation
+    if (student.student) {
+      await prisma.teacher.update({
+        where: { userId: teacher.id },
+        data: {
+          students: {
+            connect: {
+              userId: student.id  // Connect using the userId field
+            }
+          }
+        }
+      });
+      console.log(`✅ Student connected to teacher: ${student.email}`);
+    }
+
     if (!student || !student.student) {
       throw new Error('❌ Failed to create student.');
     }
 
-    console.log('Test users created successfully:');
+    // Fetch the teacher with students to verify the connection
+    const updatedTeacher = await prisma.teacher.findUnique({
+      where: { userId: teacher.id },
+      include: {
+        students: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    console.log('\n✅ Test users created successfully:');
     console.log(`Teacher: ${teacher.email} (ID: ${teacher.id})`);
     console.log(`Student: ${student.email} (ID: ${student.id})`);
-    console.log('\nYou can now log in with these credentials:');
-    console.log('Teacher: testteacher@example.com / testteacher123');
-    console.log('Student: teststudent@example.com / teststudent123');
+    
+    if (updatedTeacher && updatedTeacher.students.length > 0) {
+      console.log('\n📚 Teacher-Student Connections:');
+      updatedTeacher.students.forEach(s => {
+        console.log(`   - ${s.user.firstName} ${s.user.lastName} (${s.user.email})`);
+      });
+    }
+
+    console.log('\n🔑 You can now log in with these credentials:');
+    console.log('   Teacher: testteacher@example.com / testteacher123');
+    console.log('   Student: teststudent@example.com / teststudent123');
   } catch (error) {
     console.error('Error creating test users:', error);
   } finally {

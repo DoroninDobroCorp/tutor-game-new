@@ -10,19 +10,18 @@ import teacherRoutes from './routes/teacher.routes';
 import studentRoutes from './routes/student.routes';
 import generateRoutes from './routes/generate.routes';
 import { config } from './config/env';
-import WebSocketService from './services/websocket.service';
+import { WebSocketService } from './services/websocket.service';
 
 interface ServerWithWebSocket extends http.Server {
-  wsService?: WebSocketService;
+  wsService: WebSocketService;
 }
 
 export const createServer = () => {
   const app = express();
   const server = http.createServer(app) as ServerWithWebSocket;
   
-  // Initialize WebSocket service
-  const wsService = new WebSocketService(server);
-  server.wsService = wsService; // Attach WebSocket service to server instance
+  // Initialize WebSocket service with the server instance
+  server.wsService = new WebSocketService(server);
   
   // Enhanced CORS configuration
   const corsOptions = {
@@ -72,7 +71,7 @@ export const createServer = () => {
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: config.env,
-      websockets: wsService ? 'active' : 'inactive',
+      websockets: server.wsService ? 'active' : 'inactive',
     });
   });
 

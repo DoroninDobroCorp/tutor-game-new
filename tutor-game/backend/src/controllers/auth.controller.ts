@@ -38,8 +38,7 @@ export const registerHandler = async (req: Request, res: Response) => {
       throw new AppError('Email, password, and role are required', 400);
     }
     
-    const name = `${firstName} ${lastName}`.trim();
-    console.log('Processing registration for:', { email, role, name, firstName, lastName });
+    console.log('Processing registration for:', { email, role, firstName, lastName });
 
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -54,8 +53,14 @@ export const registerHandler = async (req: Request, res: Response) => {
     // Validate password
     validatePassword(password);
 
-    console.log('Attempting to register user:', { email, role, name });
-    const { user, accessToken, refreshToken } = await register(email, password, role as 'TEACHER' | 'STUDENT', name);
+    console.log('Attempting to register user:', { email, role, firstName, lastName });
+    const { user, accessToken, refreshToken } = await register(
+      email, 
+      password, 
+      role as 'TEACHER' | 'STUDENT', 
+      firstName, 
+      lastName
+    );
     console.log('User registered successfully:', user.id);
 
     // Set refresh token in HTTP-only cookie

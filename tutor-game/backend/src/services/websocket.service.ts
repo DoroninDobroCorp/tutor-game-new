@@ -1,28 +1,34 @@
+// tutor-game/backend/src/services/websocket.service.ts (НОВАЯ ВЕРСИЯ)
+
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { verifyToken as authVerifyToken } from './auth.service';
-import { JwtPayload } from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role } from '@prisma/client';
+import { config } from '../config/env';
+import prisma from '../db';
 
 interface AuthenticatedSocket extends Socket {
   user?: {
     userId: string;
-    role: 'STUDENT' | 'TEACHER';
+    role: Role;
   };
 }
 
-class WebSocketService {
+export class WebSocketService {
   private io: Server;
   private connectedUsers: Map<string, string> = new Map(); // userId -> socketId
 
+  // Конструктор теперь публичный и принимает сервер
   constructor(server: HttpServer) {
+    console.log('✅ Initializing new WebSocketService instance...');
+
     this.io = new Server(server, {
       cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: config.corsOrigin,
         methods: ['GET', 'POST'],
+        credentials: true,
       },
+      path: '/socket.io/',
     });
 
     this.initializeMiddleware();
@@ -33,29 +39,16 @@ class WebSocketService {
     this.io.use(async (socket: AuthenticatedSocket, next) => {
       try {
         const token = socket.handshake.auth.token;
-        if (!token) {
-          return next(new Error('Authentication error'));
-        }
+        if (!token) return next(new Error('Authentication error'));
 
-        // Properly await the async verifyToken function
         const decoded = await authVerifyToken(token);
         if (!decoded || !decoded.userId || !decoded.role) {
           return next(new Error('Invalid token'));
         }
 
-        // Type check to ensure we have the correct role type
-        if (decoded.role !== 'STUDENT' && decoded.role !== 'TEACHER') {
-          return next(new Error('Invalid user role'));
-        }
-
-        // Attach user to socket for later use
-        socket.user = {
-          userId: decoded.userId,
-          role: decoded.role
-        };
+        socket.user = { userId: decoded.userId, role: decoded.role };
         next();
       } catch (error) {
-        console.error('WebSocket authentication error:', error);
         next(new Error('Authentication error'));
       }
     });
@@ -63,214 +56,178 @@ class WebSocketService {
 
   private initializeConnection() {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
-      if (!socket.user) return;
+        if (!socket.user) return;
+      
+        const { userId, role } = socket.user;
+        console.log(`[WebSocket Server] User connected: ${userId} (${role})`);
+        this.connectedUsers.set(userId, socket.id);
 
-      const { userId, role } = socket.user;
-      console.log(`User connected: ${userId} (${role})`);
+        this.io.emit('user_status_change', { userId, status: 'online' });
 
-      // Store the socket ID for this user
-      this.connectedUsers.set(userId, socket.id);
+        // ----- ОБРАБОТЧИКИ СОБЫТИЙ -----
 
-      // Notify all clients about the updated user list
-      this.broadcastUserList();
+        socket.on('getUsers', async () => {
+            try {
+                if (!socket.user) return;
+                console.log(`[WebSocket Server] Received "getUsers" for ${socket.user.role} ID: ${socket.user.userId}`);
+                
+                const userSelection = { id: true, email: true, firstName: true, lastName: true, role: true, lastActive: true };
+                let usersFromDb: any[] = [];
 
-      // Handle private messages
-      socket.on('sendMessage', async (data: { recipientId: string; content: string }) => {
-        try {
-          const { recipientId, content } = data;
-          const senderId = socket.user?.userId;
+                if (socket.user.role === 'TEACHER') {
+                    const students = await prisma.student.findMany({
+                        where: { teachers: { some: { userId: socket.user.userId } } },
+                        select: { user: { select: userSelection } },
+                    });
+                    usersFromDb = students.map((s) => s.user);
+                } else { // STUDENT
+                    const teachers = await prisma.teacher.findMany({
+                        where: { students: { some: { userId: socket.user.userId } } },
+                        select: { user: { select: userSelection } },
+                    });
+                    usersFromDb = teachers.map((t) => t.user);
+                }
+                
+                const usersWithStatus = usersFromDb.map((user) => ({
+                    id: user.id,
+                    name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                    role: user.role.toLowerCase(),
+                    isOnline: this.connectedUsers.has(user.id),
+                    lastSeen: user.lastActive,
+                }));
+                
+                console.log(`[WebSocket Server] Emitting "users" with ${usersWithStatus.length} users.`);
+                socket.emit('users', usersWithStatus);
+            } catch (error) {
+                console.error('[WebSocket Server] CRITICAL ERROR in "getUsers":', error);
+            }
+        });
 
-          if (!senderId || !recipientId || !content) return;
+        // ==========================================================
+        // ВОТ КОД, КОТОРЫЙ МЫ ДОБАВЛЯЕМ
+        // ==========================================================
+        
+        socket.on('getMessages', async (data: { userId: string }) => {
+            try {
+                const currentUserId = socket.user?.userId;
+                const otherUserId = data.userId;
+                if (!currentUserId || !otherUserId) return;
 
-          // Save message to database
-          const message = await prisma.message.create({
-            data: {
-              content,
-              sender: { connect: { id: senderId } },
-              recipient: { connect: { id: recipientId } },
-              read: false,
-            },
-            include: {
-              sender: {
-                select: { id: true, firstName: true, lastName: true, role: true },
-              },
-            },
-          });
+                console.log(`[WebSocket Server] Received "getMessages" between ${currentUserId} and ${otherUserId}`);
 
-          // Emit to recipient if online
-          const recipientSocketId = this.connectedUsers.get(recipientId);
-          if (recipientSocketId) {
-            this.io.to(recipientSocketId).emit('message', {
-              id: message.id,
-              senderId: message.senderId,
-              senderName: `${message.sender.firstName} ${message.sender.lastName}`,
-              senderRole: message.sender.role,
-              content: message.content,
-              timestamp: message.createdAt,
-              read: message.read,
-            });
-          }
+                const messages = await prisma.message.findMany({
+                    where: {
+                        OR: [
+                            { senderId: currentUserId, recipientId: otherUserId },
+                            { senderId: otherUserId, recipientId: currentUserId },
+                        ],
+                    },
+                    orderBy: { createdAt: 'asc' },
+                    include: { sender: { select: { id: true, firstName: true, lastName: true, role: true } } },
+                });
 
-          // Also emit back to sender for UI update
-          socket.emit('message', {
-            id: message.id,
-            senderId: message.senderId,
-            senderName: `${message.sender.firstName} ${message.sender.lastName}`,
-            senderRole: message.sender.role,
-            content: message.content,
-            timestamp: message.createdAt,
-            read: message.read,
-          });
-        } catch (error) {
-          console.error('Error sending message:', error);
-        }
-      });
+                // Помечаем сообщения как прочитанные
+                await prisma.message.updateMany({
+                    where: { senderId: otherUserId, recipientId: currentUserId, read: false },
+                    data: { read: true, readAt: new Date() },
+                });
 
-      // Handle message read receipts
-      socket.on('markAsRead', async (data: { messageId: string }) => {
-        try {
-          const { messageId } = data;
-          const userId = socket.user?.userId;
+                const formattedMessages = messages.map(msg => ({
+                    id: msg.id,
+                    senderId: msg.senderId,
+                    senderName: `${msg.sender.firstName} ${msg.sender.lastName}`,
+                    senderRole: msg.sender.role,
+                    content: msg.content,
+                    timestamp: msg.createdAt,
+                    read: msg.read,
+                }));
 
-          if (!userId) return;
+                socket.emit('messages', formattedMessages);
+            } catch (error) {
+                console.error('[WebSocket Server] CRITICAL ERROR in "getMessages":', error);
+            }
+        });
 
-          // Update message as read in the database
-          await prisma.message.updateMany({
-            where: {
-              id: messageId,
-              recipientId: userId,
-              read: false,
-            },
-            data: {
-              read: true,
-              readAt: new Date(),
-            },
-          });
-        } catch (error) {
-          console.error('Error marking message as read:', error);
-        }
-      });
+        socket.on('sendMessage', async (data: { recipientId: string; content: string }) => {
+            const senderId = socket.user?.userId;
+            const { recipientId, content } = data;
 
-      // Handle get messages request
-      socket.on('getMessages', async (data: { userId: string }) => {
-        try {
-          const { userId } = data;
-          const currentUserId = socket.user?.userId;
+            if (!senderId || !recipientId || !content) {
+                console.error('[WebSocket Server] "sendMessage" aborted: Missing data.');
+                return;
+            }
 
-          if (!currentUserId) return;
+            try {
+                console.log(`[WebSocket Server] Starting transaction to send message from ${senderId} to ${recipientId}`);
 
-          // Get conversation between the two users
-          const messages = await prisma.message.findMany({
-            where: {
-              OR: [
-                { senderId: currentUserId, recipientId: userId },
-                { senderId: userId, recipientId: currentUserId },
-              ],
-            },
-            orderBy: { createdAt: 'asc' },
-            include: {
-              sender: {
-                select: { id: true, firstName: true, lastName: true, role: true },
-              },
-            },
-          });
+                // ШАГ 1: Выполняем запись и чтение в ОДНОЙ АТОМАРНОЙ ТРАНЗАКЦИИ
+                const messageWithSender = await prisma.$transaction(async (tx) => {
+                    // Внутри этой функции все команды - это часть одной транзакции
+                    
+                    // 1. Создаем сообщение
+                    const newMessage = await tx.message.create({
+                        data: {
+                            content,
+                            senderId: senderId,
+                            recipientId: recipientId,
+                        },
+                    });
 
-          // Mark messages as read when they are loaded
-          await prisma.message.updateMany({
-            where: {
-              senderId: userId,
-              recipientId: currentUserId,
-              read: false,
-            },
-            data: {
-              read: true,
-              readAt: new Date(),
-            },
-          });
+                    // 2. Сразу же находим его вместе с данными отправителя
+                    const foundMessage = await tx.message.findUnique({
+                        where: { id: newMessage.id },
+                        include: { sender: { select: { id: true, firstName: true, lastName: true, role: true } } },
+                    });
+                    
+                    if (!foundMessage) {
+                        // Если мы не нашли сообщение, которое только что создали,
+                        // транзакция автоматически откатится.
+                        throw new Error(`Transaction failed: Could not find message ${newMessage.id}`);
+                    }
 
-          // Format and send messages to the client
-          const formattedMessages = messages.map((msg: {
-            id: string;
-            senderId: string;
-            sender: { firstName: string; lastName: string; role: string };
-            content: string;
-            createdAt: Date;
-            read: boolean;
-          }) => ({
-            id: msg.id,
-            senderId: msg.senderId,
-            senderName: `${msg.sender.firstName} ${msg.sender.lastName}`,
-            senderRole: msg.sender.role,
-            content: msg.content,
-            timestamp: msg.createdAt,
-            read: msg.read,
-          }));
+                    // 3. Возвращаем результат из транзакции
+                    return foundMessage;
+                });
+                
+                // Если мы дошли до сюда, значит транзакция УСПЕШНО ЗАВЕРШЕНА И ЗАФИКСИРОВАНА (COMMIT)
+                console.log(`[WebSocket Server] Transaction successful. Message ${messageWithSender.id} is permanently saved.`);
 
-          socket.emit('messages', formattedMessages);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-        }
-      });
+                // ШАГ 2: Форматируем и отправляем клиентам
+                const formattedMessage = {
+                    id: messageWithSender.id,
+                    senderId: messageWithSender.senderId,
+                    senderName: `${messageWithSender.sender.firstName} ${messageWithSender.sender.lastName}`,
+                    senderRole: messageWithSender.sender.role.toLowerCase(),
+                    content: messageWithSender.content,
+                    timestamp: messageWithSender.createdAt,
+                    read: messageWithSender.read,
+                };
 
-      // Handle get users request
-      socket.on('getUsers', async () => {
-        try {
-          const currentUser = socket.user;
-          if (!currentUser) return;
+                const recipientSocketId = this.connectedUsers.get(recipientId);
+                if (recipientSocketId) {
+                    this.io.to(recipientSocketId).emit('message', formattedMessage);
+                }
+                socket.emit('message', formattedMessage);
+                console.log(`[WebSocket Server] Message ${messageWithSender.id} sent to clients.`);
 
-          // Get all users except the current user
-          const users = await prisma.user.findMany({
-            where: {
-              id: { not: currentUser.userId },
-              // If teacher, show only students, if student, show only teachers
-              ...(currentUser.role === 'TEACHER' 
-                ? { role: 'STUDENT' } 
-                : { role: 'TEACHER' }),
-            },
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              lastActive: true,
-            },
-          });
+            } catch (error) {
+                // Если транзакция провалилась, мы поймаем ошибку здесь
+                console.error('[WebSocket Server] CRITICAL ERROR: Transaction failed and was rolled back.', error);
+            }
+        });
 
-          // Format users with online status
-          const usersWithStatus = users.map((user: { id: string; firstName: string; lastName: string; role: string; lastActive: Date | null }) => ({
-            id: user.id,
-            name: `${user.firstName} ${user.lastName}`,
-            role: user.role,
-            isOnline: this.connectedUsers.has(user.id),
-            lastSeen: user.lastActive,
-          }));
-
-          socket.emit('users', usersWithStatus);
-        } catch (error) {
-          console.error('Error fetching users:', error);
-        }
-      });
-
-      // Handle disconnection
-      socket.on('disconnect', () => {
-        if (socket.user) {
-          console.log(`User disconnected: ${socket.user.userId}`);
-          this.connectedUsers.delete(socket.user.userId);
-          this.broadcastUserList();
-        }
-      });
+        // ==========================================================
+        // КОНЕЦ ДОБАВЛЕННОГО КОДА
+        // ==========================================================
+        
+        socket.on('disconnect', () => {
+            if (socket.user) {
+                console.log(`[WebSocket Server] User disconnected: ${socket.user.userId}`);
+                this.connectedUsers.delete(socket.user.userId);
+                this.io.emit('user_status_change', { userId: socket.user.userId, status: 'offline' });
+            }
+        });
     });
-  }
-
-  private broadcastUserList() {
-    // Broadcast updated user list to all connected clients
-    const users = Array.from(this.connectedUsers.entries()).map(([userId, socketId]) => ({
-      userId,
-      socketId,
-      isOnline: true,
-    }));
-
-    this.io.emit('userList', users);
   }
 
   public getIO(): Server {

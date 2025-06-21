@@ -26,21 +26,20 @@ model User {
 model Teacher {
   userId   String   @id
   user     User     @relation(fields: [userId], references: [id])
-  students Student[] @relation("TeacherToStudents")
+  students Student[] @relation("TeachersAndStudents")
   // другие поля учителя
 }
 
 model Student {
-  userId    String   @id
-  user      User     @relation(fields: [userId], references: [id])
-  teacherId String?
-  teacher   Teacher? @relation("TeacherToStudents", fields: [teacherId], references: [userId])
-  goals       Goal[]
+  userId    String    @id
+  user      User      @relation(fields: [userId], references: [id])
+  teachers  Teacher[] @relation("TeachersAndStudents")
+  goals     Goal[]
   bossBattles BossBattle[]
-  roadmaps    RoadmapEntry[]
-  badges      Badge[]
-  stories     Story[]
-  images      GeneratedImage[]
+  roadmaps  RoadmapEntry[]
+  badges    Badge[]
+  stories   Story[]
+  images    GeneratedImage[]
 }
 
 
