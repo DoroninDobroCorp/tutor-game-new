@@ -33,7 +33,7 @@ setInterval(async () => {
         logger_1.logger.error('Error cleaning up expired blacklisted tokens:', error);
     }
 }, 3600000); // Run every hour
-const register = async (email, password, role, name) => {
+const register = async (email, password, role, firstName, lastName) => {
     logger_1.logger.info(`Registration attempt for email: ${email}, role: ${role}`);
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -59,8 +59,6 @@ const register = async (email, password, role, name) => {
         const hashedPassword = await bcryptjs_1.default.hash(password, 12);
         // Start transaction
         const result = await prisma.$transaction(async (tx) => {
-            // Create user data with all required fields
-            const [firstName, ...lastNameParts] = name.split(' ');
             // Create user
             const user = await tx.user.create({
                 data: {
@@ -68,7 +66,7 @@ const register = async (email, password, role, name) => {
                     password: hashedPassword,
                     role,
                     firstName,
-                    lastName: lastNameParts.length > 0 ? lastNameParts.join(' ') : null,
+                    lastName: lastName || null,
                     lastActive: new Date()
                 },
             });
@@ -191,18 +189,16 @@ const generateTokens = async (user) => {
 };
 exports.generateTokens = generateTokens;
 const isTokenBlacklisted = async (token) => {
-    const hashedToken = await bcryptjs_1.default.hash(token, 10);
     const blacklistedToken = await prisma.tokenBlacklist.findUnique({
-        where: { token: hashedToken },
+        where: { token },
     });
     return !!blacklistedToken;
 };
 exports.isTokenBlacklisted = isTokenBlacklisted;
 const blacklistToken = async (token, expiresAt) => {
-    const hashedToken = await bcryptjs_1.default.hash(token, 10);
     await prisma.tokenBlacklist.create({
         data: {
-            token: hashedToken,
+            token,
             expiresAt,
         },
     });

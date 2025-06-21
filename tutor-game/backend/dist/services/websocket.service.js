@@ -1,17 +1,23 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebSocketService = void 0;
 const socket_io_1 = require("socket.io");
 const auth_service_1 = require("./auth.service");
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const env_1 = require("../config/env");
+const db_1 = __importDefault(require("../db"));
 class WebSocketService {
     constructor(server) {
-        this.connectedUsers = new Map(); // userId -> socketId
+        this.connectedUsers = new Map();
         this.io = new socket_io_1.Server(server, {
             cors: {
-                origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+                origin: env_1.config.corsOrigin,
                 methods: ['GET', 'POST'],
+                credentials: true,
             },
+            path: '/socket.io/',
         });
         this.initializeMiddleware();
         this.initializeConnection();
@@ -20,27 +26,15 @@ class WebSocketService {
         this.io.use(async (socket, next) => {
             try {
                 const token = socket.handshake.auth.token;
-                if (!token) {
+                if (!token)
                     return next(new Error('Authentication error'));
-                }
-                // Properly await the async verifyToken function
                 const decoded = await (0, auth_service_1.verifyToken)(token);
-                if (!decoded || !decoded.userId || !decoded.role) {
+                if (!decoded)
                     return next(new Error('Invalid token'));
-                }
-                // Type check to ensure we have the correct role type
-                if (decoded.role !== 'STUDENT' && decoded.role !== 'TEACHER') {
-                    return next(new Error('Invalid user role'));
-                }
-                // Attach user to socket for later use
-                socket.user = {
-                    userId: decoded.userId,
-                    role: decoded.role
-                };
+                socket.user = { userId: decoded.userId, role: decoded.role };
                 next();
             }
             catch (error) {
-                console.error('WebSocket authentication error:', error);
                 next(new Error('Authentication error'));
             }
         });
@@ -50,124 +44,87 @@ class WebSocketService {
             if (!socket.user)
                 return;
             const { userId, role } = socket.user;
-            console.log(`User connected: ${userId} (${role})`);
-            // Store the socket ID for this user
             this.connectedUsers.set(userId, socket.id);
-            // Notify all clients about the updated user list
-            this.broadcastUserList();
-            // Handle private messages
-            socket.on('sendMessage', async (data) => {
+            this.io.emit('user_status_change', { userId, status: 'online' });
+            socket.on('getUsers', async () => {
+                if (!socket.user)
+                    return;
                 try {
-                    const { recipientId, content } = data;
-                    const senderId = socket.user?.userId;
-                    if (!senderId || !recipientId || !content)
-                        return;
-                    // Save message to database
-                    const message = await prisma.message.create({
-                        data: {
-                            content,
-                            sender: { connect: { id: senderId } },
-                            recipient: { connect: { id: recipientId } },
-                            read: false,
-                        },
-                        include: {
-                            sender: {
-                                select: { id: true, firstName: true, lastName: true, role: true },
-                            },
-                        },
-                    });
-                    // Emit to recipient if online
-                    const recipientSocketId = this.connectedUsers.get(recipientId);
-                    if (recipientSocketId) {
-                        this.io.to(recipientSocketId).emit('message', {
-                            id: message.id,
-                            senderId: message.senderId,
-                            senderName: `${message.sender.firstName} ${message.sender.lastName}`,
-                            senderRole: message.sender.role,
-                            content: message.content,
-                            timestamp: message.createdAt,
-                            read: message.read,
+                    const userSelection = {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        lastActive: true
+                    };
+                    let usersFromDb = [];
+                    if (socket.user.role === 'TEACHER') {
+                        const students = await db_1.default.student.findMany({
+                            where: { teachers: { some: { userId: socket.user.userId } } },
+                            select: { user: { select: userSelection } },
                         });
+                        usersFromDb = students.map((s) => s.user);
                     }
-                    // Also emit back to sender for UI update
-                    socket.emit('message', {
-                        id: message.id,
-                        senderId: message.senderId,
-                        senderName: `${message.sender.firstName} ${message.sender.lastName}`,
-                        senderRole: message.sender.role,
-                        content: message.content,
-                        timestamp: message.createdAt,
-                        read: message.read,
-                    });
+                    else {
+                        const teachers = await db_1.default.teacher.findMany({
+                            where: { students: { some: { userId: socket.user.userId } } },
+                            select: { user: { select: userSelection } },
+                        });
+                        usersFromDb = teachers.map((t) => t.user);
+                    }
+                    const usersWithStatus = usersFromDb.map((user) => ({
+                        id: user.id,
+                        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                        role: user.role.toLowerCase(),
+                        isOnline: this.connectedUsers.has(user.id),
+                        lastSeen: user.lastActive,
+                    }));
+                    socket.emit('users', usersWithStatus);
                 }
                 catch (error) {
-                    console.error('Error sending message:', error);
+                    console.error('Error in getUsers:', error);
                 }
             });
-            // Handle message read receipts
-            socket.on('markAsRead', async (data) => {
-                try {
-                    const { messageId } = data;
-                    const userId = socket.user?.userId;
-                    if (!userId)
-                        return;
-                    // Update message as read in the database
-                    await prisma.message.updateMany({
-                        where: {
-                            id: messageId,
-                            recipientId: userId,
-                            read: false,
-                        },
-                        data: {
-                            read: true,
-                            readAt: new Date(),
-                        },
-                    });
-                }
-                catch (error) {
-                    console.error('Error marking message as read:', error);
-                }
-            });
-            // Handle get messages request
             socket.on('getMessages', async (data) => {
+                if (!socket.user || !data.userId)
+                    return;
                 try {
-                    const { userId } = data;
-                    const currentUserId = socket.user?.userId;
-                    if (!currentUserId)
-                        return;
-                    // Get conversation between the two users
-                    const messages = await prisma.message.findMany({
+                    const messages = await db_1.default.message.findMany({
                         where: {
                             OR: [
-                                { senderId: currentUserId, recipientId: userId },
-                                { senderId: userId, recipientId: currentUserId },
+                                { senderId: socket.user.userId, recipientId: data.userId },
+                                { senderId: data.userId, recipientId: socket.user.userId },
                             ],
                         },
                         orderBy: { createdAt: 'asc' },
                         include: {
                             sender: {
-                                select: { id: true, firstName: true, lastName: true, role: true },
-                            },
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    role: true
+                                }
+                            }
                         },
                     });
-                    // Mark messages as read when they are loaded
-                    await prisma.message.updateMany({
+                    await db_1.default.message.updateMany({
                         where: {
-                            senderId: userId,
-                            recipientId: currentUserId,
-                            read: false,
+                            senderId: data.userId,
+                            recipientId: socket.user.userId,
+                            read: false
                         },
                         data: {
                             read: true,
-                            readAt: new Date(),
+                            readAt: new Date()
                         },
                     });
-                    // Format and send messages to the client
                     const formattedMessages = messages.map((msg) => ({
                         id: msg.id,
                         senderId: msg.senderId,
-                        senderName: `${msg.sender.firstName} ${msg.sender.lastName}`,
-                        senderRole: msg.sender.role,
+                        senderName: `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim(),
+                        senderRole: msg.sender.role.toLowerCase(),
                         content: msg.content,
                         timestamp: msg.createdAt,
                         read: msg.read,
@@ -175,67 +132,70 @@ class WebSocketService {
                     socket.emit('messages', formattedMessages);
                 }
                 catch (error) {
-                    console.error('Error fetching messages:', error);
+                    console.error('Error in getMessages:', error);
                 }
             });
-            // Handle get users request
-            socket.on('getUsers', async () => {
+            socket.on('sendMessage', async (data) => {
+                const senderId = socket.user?.userId;
+                const { recipientId, content } = data;
+                if (!senderId || !recipientId || !content) {
+                    console.error('Missing required fields for sendMessage');
+                    return;
+                }
                 try {
-                    const currentUser = socket.user;
-                    if (!currentUser)
-                        return;
-                    // Get all users except the current user
-                    const users = await prisma.user.findMany({
-                        where: {
-                            id: { not: currentUser.userId },
-                            // If teacher, show only students, if student, show only teachers
-                            ...(currentUser.role === 'TEACHER'
-                                ? { role: 'STUDENT' }
-                                : { role: 'TEACHER' }),
+                    const newMessage = await db_1.default.message.create({
+                        data: {
+                            content,
+                            senderId,
+                            recipientId,
                         },
-                        select: {
-                            id: true,
-                            firstName: true,
-                            lastName: true,
-                            role: true,
-                            lastActive: true,
+                        include: {
+                            sender: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    role: true
+                                }
+                            },
                         },
                     });
-                    // Format users with online status
-                    const usersWithStatus = users.map((user) => ({
-                        id: user.id,
-                        name: `${user.firstName} ${user.lastName}`,
-                        role: user.role,
-                        isOnline: this.connectedUsers.has(user.id),
-                        lastSeen: user.lastActive,
-                    }));
-                    socket.emit('users', usersWithStatus);
+                    const formattedMessage = {
+                        id: newMessage.id,
+                        senderId: newMessage.senderId,
+                        senderName: `${newMessage.sender.firstName || ''} ${newMessage.sender.lastName || ''}`.trim(),
+                        senderRole: newMessage.sender.role.toLowerCase(),
+                        content: newMessage.content,
+                        timestamp: newMessage.createdAt,
+                        read: newMessage.read,
+                    };
+                    // Send to recipient if online
+                    const recipientSocketId = this.connectedUsers.get(recipientId);
+                    if (recipientSocketId) {
+                        this.io.to(recipientSocketId).emit('message', formattedMessage);
+                    }
+                    // Send back to sender
+                    socket.emit('message', formattedMessage);
                 }
                 catch (error) {
-                    console.error('Error fetching users:', error);
+                    console.error('Error sending message:', error);
                 }
             });
-            // Handle disconnection
             socket.on('disconnect', () => {
                 if (socket.user) {
-                    console.log(`User disconnected: ${socket.user.userId}`);
                     this.connectedUsers.delete(socket.user.userId);
-                    this.broadcastUserList();
+                    this.io.emit('user_status_change', {
+                        userId: socket.user.userId,
+                        status: 'offline',
+                        lastSeen: new Date()
+                    });
                 }
             });
         });
     }
-    broadcastUserList() {
-        // Broadcast updated user list to all connected clients
-        const users = Array.from(this.connectedUsers.entries()).map(([userId, socketId]) => ({
-            userId,
-            socketId,
-            isOnline: true,
-        }));
-        this.io.emit('userList', users);
-    }
+    // Helper method to get socket.io instance
     getIO() {
         return this.io;
     }
 }
-exports.default = WebSocketService;
+exports.WebSocketService = WebSocketService;

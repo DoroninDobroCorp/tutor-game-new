@@ -10,10 +10,10 @@ const LEONARDO_API_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 const generateImage = async (params) => {
     try {
         // Check if API key is available
-        if (!env_1.config.leonardo.apiKey) {
+        if (!env_1.config.leonardoApiKey) {
             throw new Error('Leonardo API key is not configured');
         }
-        const { prompt, negativePrompt = '', width = 512, height = 512, modelId = env_1.config.leonardo.modelId, numImages = 1, guidanceScale = 7, scheduler = 'LEONARDO', numInferenceSteps = 30, presetStyle = 'LEONARDO', } = params;
+        const { prompt, negativePrompt = '', width = 512, height = 512, modelId = env_1.config.leonardoModelId, numImages = 1, guidanceScale = 7, scheduler = 'LEONARDO', numInferenceSteps = 30, presetStyle = 'LEONARDO', } = params;
         // Start generation
         const generationResponse = await axios_1.default.post(`${LEONARDO_API_URL}/generations`, {
             height,
@@ -31,7 +31,7 @@ const generateImage = async (params) => {
         }, {
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${env_1.config.leonardo.apiKey}`,
+                'Authorization': `Bearer ${env_1.config.leonardoApiKey}`,
             },
         });
         const generationId = generationResponse.data.sdGenerationJob.generationId;
@@ -45,7 +45,7 @@ const generateImage = async (params) => {
             await new Promise(resolve => setTimeout(resolve, 3000));
             const statusResponse = await axios_1.default.get(`${LEONARDO_API_URL}/generations/${generationId}`, {
                 headers: {
-                    'Authorization': `Bearer ${env_1.config.leonardo.apiKey}`,
+                    'Authorization': `Bearer ${env_1.config.leonardoApiKey}`,
                 },
             });
             const generation = statusResponse.data.generations_by_pk;

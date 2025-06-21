@@ -16,13 +16,12 @@ const teacher_routes_1 = __importDefault(require("./routes/teacher.routes"));
 const student_routes_1 = __importDefault(require("./routes/student.routes"));
 const generate_routes_1 = __importDefault(require("./routes/generate.routes"));
 const env_1 = require("./config/env");
-const websocket_service_1 = __importDefault(require("./services/websocket.service"));
+const websocket_service_1 = require("./services/websocket.service");
 const createServer = () => {
     const app = (0, express_1.default)();
     const server = http_1.default.createServer(app);
-    // Initialize WebSocket service
-    const wsService = new websocket_service_1.default(server);
-    server.wsService = wsService; // Attach WebSocket service to server instance
+    // Initialize WebSocket service with the server instance
+    server.wsService = new websocket_service_1.WebSocketService(server);
     // Enhanced CORS configuration
     const corsOptions = {
         origin: [
@@ -66,7 +65,7 @@ const createServer = () => {
             status: 'ok',
             timestamp: new Date().toISOString(),
             environment: env_1.config.env,
-            websockets: wsService ? 'active' : 'inactive',
+            websockets: server.wsService ? 'active' : 'inactive',
         });
     });
     // API Routes

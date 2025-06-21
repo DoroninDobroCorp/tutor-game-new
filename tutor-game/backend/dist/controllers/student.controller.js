@@ -1,18 +1,20 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.submitAnswer = exports.generateMathProblemHandler = exports.getRoadmap = exports.setStudentGoal = exports.getStudentProfile = void 0;
-const client_1 = require("@prisma/client");
 const error_middleware_1 = require("../middlewares/error.middleware");
 const openai_service_1 = require("../services/openai.service");
-const prisma = new client_1.PrismaClient();
+const db_1 = __importDefault(require("../db"));
 const getStudentProfile = async (req, res) => {
     if (!req.user) {
         throw new error_middleware_1.AppError('Not authenticated', 401);
     }
-    const student = await prisma.student.findUnique({
-        where: { id: req.user.userId },
+    const student = await db_1.default.student.findUnique({
+        where: { userId: req.user.userId },
         include: {
-            goal: true,
+            goals: true,
             roadmaps: {
                 orderBy: { order: 'asc' },
             },
@@ -40,16 +42,32 @@ const setStudentGoal = async (req, res) => {
     if (!title) {
         throw new error_middleware_1.AppError('Please provide a goal title', 400);
     }
-    const goal = await prisma.goal.upsert({
-        where: { studentId: req.user.userId },
-        update: { title },
-        create: {
-            title,
-            student: {
-                connect: { id: req.user.userId },
-            },
-        },
+    // First try to find if a goal with this title already exists for the student
+    const existingGoal = await db_1.default.goal.findFirst({
+        where: {
+            studentId: req.user.userId,
+            title: title
+        }
     });
+    let goal;
+    if (existingGoal) {
+        // Update existing goal
+        goal = await db_1.default.goal.update({
+            where: { id: existingGoal.id },
+            data: { title }
+        });
+    }
+    else {
+        // Create new goal
+        goal = await db_1.default.goal.create({
+            data: {
+                title,
+                student: {
+                    connect: { userId: req.user.userId }
+                }
+            }
+        });
+    }
     res.json({
         success: true,
         data: goal,
@@ -60,7 +78,7 @@ const getRoadmap = async (req, res) => {
     if (!req.user) {
         throw new error_middleware_1.AppError('Not authenticated', 401);
     }
-    const roadmaps = await prisma.roadmapEntry.findMany({
+    const roadmaps = await db_1.default.roadmapEntry.findMany({
         where: { studentId: req.user.userId },
         orderBy: { order: 'asc' },
     });

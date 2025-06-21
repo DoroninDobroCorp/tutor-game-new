@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from './app/hooks';
 import { useGetProfileQuery } from './features/auth/authApi';
 import { logout, setUser, selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
 import Spinner from './components/common/Spinner';
+import { WebSocketProvider } from './components/common/WebSocketManager';
 
 export default function AuthInitializer({ children }: { children: JSX.Element }) {
   const dispatch = useAppDispatch();
@@ -46,5 +47,6 @@ export default function AuthInitializer({ children }: { children: JSX.Element })
     return <Navigate to={targetPath} replace />;
   }
 
-  return children;
+  // Wrap children with WebSocketProvider if authenticated
+  return isAuthenticated ? <WebSocketProvider>{children}</WebSocketProvider> : children;
 }

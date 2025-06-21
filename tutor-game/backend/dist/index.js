@@ -2,12 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
 const app_1 = require("./app");
-const sockets_1 = require("./sockets");
-const PORT = process.env.PORT || '3002'; // Изменено на 3002, чтобы соответствовать .env
+const PORT = process.env.PORT || '3002';
 // Create and configure the server with Express app and WebSocket
 const { server } = (0, app_1.createServer)();
-// Initialize WebSocket
-(0, sockets_1.attachSockets)(server);
+// WebSocket is already initialized inside createServer() via WebSocketService
 // Start server
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

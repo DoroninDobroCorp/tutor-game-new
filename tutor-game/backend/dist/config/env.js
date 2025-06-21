@@ -16,6 +16,7 @@ const envSchema = zod_1.z.object({
     PORT: zod_1.z.string().default('3002'),
     // JWT
     JWT_SECRET: zod_1.z.string().min(32).default('your_secure_jwt_secret_here'),
+    JWT_REFRESH_SECRET: zod_1.z.string().min(32).default('your_secure_refresh_secret_here'),
     JWT_EXPIRES_IN: zod_1.z.string().default('15m'),
     REFRESH_TOKEN_EXPIRES_IN: zod_1.z.string().default('7d'),
     // Database
@@ -47,6 +48,7 @@ exports.config = {
     isDevelopment: envVars.data.NODE_ENV === 'development',
     // JWT
     jwtSecret: envVars.data.JWT_SECRET,
+    jwtRefreshSecret: envVars.data.JWT_REFRESH_SECRET,
     jwtExpiresIn: envVars.data.JWT_EXPIRES_IN,
     refreshTokenExpiresIn: envVars.data.REFRESH_TOKEN_EXPIRES_IN,
     // Database
