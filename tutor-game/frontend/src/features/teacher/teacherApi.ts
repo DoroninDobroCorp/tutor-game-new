@@ -1,10 +1,32 @@
 import { apiSlice } from '../../app/api/apiSlice';
 
+// Типы данных
 interface Student {
     id: string;
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
+}
+
+interface Lesson {
+    id: string;
+    title: string;
+    status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
+    order: number;
+    content?: {
+        blocks: Array<{
+            type: 'theory' | 'practice';
+            duration: number;
+            content: string;
+        }>;
+    } | null;
+}
+
+interface ContentSection {
+    id: string;
+    title: string;
+    order: number;
+    lessons: Lesson[];
 }
 
 interface LearningGoal {
@@ -14,66 +36,107 @@ interface LearningGoal {
     studentAge: number; 
     studentId: string;
     student: Student;
-    sections: Array<{id: string; title: string; description: string; order: number}>;
+    sections: ContentSection[];
     language?: string;
 }
-interface RoadmapProposal { sectionTitle: string; lessons: string[]; }
 
+export interface RoadmapProposal { 
+    sectionTitle: string; 
+    lessons: Array<string | { title: string }>; 
+}
+
+// API Slice
 export const teacherApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    // Студенты
     connectStudent: builder.mutation<{ message: string }, { email: string }>({
       query: (body) => ({ url: '/teacher/students/connect', method: 'POST', body }),
-      invalidatesTags: ['Teacher', 'Student'],
+      invalidatesTags: ['Student'],
     }),
-    getConnectedStudents: builder.query<Array<{ id: string; email: string; firstName: string | null; lastName: string | null; }>, void>({
+    getConnectedStudents: builder.query<Student[], void>({
       query: () => '/teacher/students',
-      transformResponse: (response: { data: any }) => response.data,
+      transformResponse: (response: { data: Student[] }) => response.data,
       providesTags: (result) => result ? [...result.map(({ id }) => ({ type: 'Student' as const, id })), { type: 'Student', id: 'LIST' }] : [{ type: 'Student', id: 'LIST' }],
     }),
-    // --- Learning Goals Endpoints ---
-    createLearningGoal: builder.mutation<LearningGoal, Omit<LearningGoal, 'id'>>({
-        query: (body) => ({ url: '/goals', method: 'POST', body }),
-        transformResponse: (response: { data: LearningGoal }) => response.data,
-    }),
-    getLearningGoal: builder.query<LearningGoal, string>({
-        query: (goalId) => ({ url: `/goals/${goalId}`, method: 'GET' }),
-        transformResponse: (response: { data: LearningGoal }) => response.data,
-    }),
+    
+    // Учебные планы (Goals)
     getLearningGoals: builder.query<LearningGoal[], void>({
         query: () => '/goals',
         transformResponse: (response: { data: LearningGoal[] }) => response.data,
         providesTags: (result) =>
-            result ? [...result.map(({ id }) => ({ type: 'User' as const, id })), { type: 'User', id: 'LIST' }] : [{ type: 'User', id: 'LIST' }],
+            result ? [...result.map(({ id }) => ({ type: 'Goal' as const, id })), { type: 'Goal', id: 'LIST' }] : [{ type: 'Goal', id: 'LIST' }],
+    }),
+    getLearningGoal: builder.query<LearningGoal, string>({
+        query: (goalId) => `/goals/${goalId}`,
+        transformResponse: (response: { data: LearningGoal }) => response.data,
+    }),
+    createLearningGoal: builder.mutation<LearningGoal, Partial<LearningGoal>>({
+        query: (body) => ({ url: '/goals', method: 'POST', body }),
+        transformResponse: (response: { data: LearningGoal }) => response.data,
+        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
     }),
     updateLearningGoal: builder.mutation<LearningGoal, Partial<LearningGoal>>({
         query: (body) => ({ url: '/goals', method: 'PUT', body }),
         transformResponse: (response: { data: LearningGoal }) => response.data,
+        invalidatesTags: (_result, _error, { id }) => [{ type: 'Goal', id }],
     }),
-    deleteLearningGoal: builder.mutation<void, string>({
+    deleteLearningGoal: builder.mutation<{ success: boolean; message: string }, string>({
         query: (goalId) => ({ url: `/goals/${goalId}`, method: 'DELETE' }),
+        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
     }),
+
+    // Roadmap
     generateRoadmapProposal: builder.mutation<RoadmapProposal[], { goalId: string; existingPlan?: RoadmapProposal[]; feedback?: string }>({
         query: ({ goalId, ...body }) => ({
             url: `/goals/${goalId}/generate-roadmap`,
             method: 'POST',
-            body: Object.keys(body).length > 0 ? body : undefined
+            body,
         }),
         transformResponse: (response: { data: RoadmapProposal[] }) => response.data,
     }),
     updateRoadmap: builder.mutation<void, { goalId: string; roadmap: RoadmapProposal[] }>({
-        query: ({ goalId, roadmap }) => ({ url: `/goals/${goalId}/roadmap`, method: 'PUT', body: { roadmap } }),
+        query: ({ goalId, roadmap }) => ({
+            url: `/goals/${goalId}/roadmap`,
+            method: 'PUT',
+            body: { roadmap },
+        }),
+        invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: goalId }],
+    }),
+
+    // Контент уроков
+    generateLessonContent: builder.mutation<Lesson, string>({
+        query: (lessonId) => ({
+            url: `/goals/lessons/${lessonId}/generate-content`,
+            method: 'POST',
+        }),
+        transformResponse: (response: { data: Lesson }) => response.data,
+        invalidatesTags: (_result, _error, _lessonId) => [{ type: 'Goal', id: 'LIST' }],
+    }),
+    updateLessonContent: builder.mutation<void, { lessonId: string; content: Lesson['content'] }>({
+        query: ({ lessonId, content }) => ({
+            url: `/goals/lessons/${lessonId}/content`,
+            method: 'PUT',
+            body: { content },
+        }),
+        invalidatesTags: (_result, _error, _args) => [{ type: 'Goal', id: 'LIST' }],
     }),
   }),
 });
 
+// Экспортируем хуки
 export const {
   useConnectStudentMutation, 
   useGetConnectedStudentsQuery,
-  useCreateLearningGoalMutation, 
-  useGetLearningGoalQuery,
   useGetLearningGoalsQuery,
+  useGetLearningGoalQuery,
+  useCreateLearningGoalMutation, 
   useUpdateLearningGoalMutation,
   useDeleteLearningGoalMutation,
   useGenerateRoadmapProposalMutation, 
   useUpdateRoadmapMutation,
+  useGenerateLessonContentMutation,
+  useUpdateLessonContentMutation,
 } = teacherApi;
+
+// Экспортируем типы
+export type { LearningGoal, ContentSection, Lesson, Student };

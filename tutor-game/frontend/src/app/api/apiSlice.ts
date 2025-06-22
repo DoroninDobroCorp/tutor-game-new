@@ -13,7 +13,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ['User', 'Student', 'Teacher', 'Story'],
+  tagTypes: ['User', 'Student', 'Teacher', 'Story', 'Goal'],
   endpoints: (builder) => ({
     // Generate endpoints
     generateStory: builder.mutation<{ story: string }, { prompt: string; ageGroup?: string; subject?: string }>({

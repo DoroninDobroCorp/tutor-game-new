@@ -3,7 +3,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateRoadmap } from '../services/openai.service';
+import { generateRoadmap, generateLessonContent } from '../services/openai.service';
 import { Prisma } from '@prisma/client';
 
 interface CreateGoalBody {
@@ -107,8 +107,21 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
                 }
             },
             sections: {
-                select: {
-                    id: true
+                include: {
+                    lessons: {
+                        orderBy: {
+                            order: 'asc'
+                        },
+                        select: {
+                            id: true,
+                            title: true,
+                            status: true,
+                            order: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    order: 'asc'
                 }
             }
         },
@@ -162,26 +175,112 @@ export const deleteGoalHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
     const teacherId = req.user?.userId;
 
-    if (!teacherId) {
-        throw new AppError('User not authenticated', 401);
-    }
-    if (!goalId) {
-        throw new AppError('Goal ID is required', 400);
-    }
-
-    // Удаляем запись, только если ID цели и ID учителя совпадают.
-    // Это гарантирует, что учитель не удалит чужой план.
-    const result = await prisma.learningGoal.deleteMany({
-        where: {
-            id: goalId,
-            teacherId: teacherId, // Важнейшая проверка безопасности!
-        },
+    const goal = await prisma.learningGoal.findUnique({
+        where: { id: goalId },
+        select: { teacherId: true }
     });
 
-    // Если ничего не было удалено, значит план не найден или не принадлежит этому учителю
-    if (result.count === 0) {
-        throw new AppError('Learning goal not found or you do not have permission to delete it', 404);
+    if (!goal) {
+        throw new AppError('Goal not found', 404);
     }
 
-    res.status(200).json({ success: true, message: 'Learning goal deleted successfully' });
+    if (goal.teacherId !== teacherId) {
+        throw new AppError('Unauthorized', 403);
+    }
+
+    await prisma.learningGoal.delete({
+        where: { id: goalId }
+    });
+
+    res.json({ success: true, message: 'Goal deleted successfully' });
+};
+
+export const generateLessonContentHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const teacherId = req.user?.userId;
+
+    // 1. Find the lesson and verify teacher access
+    const lesson = await prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: {
+            section: {
+                include: {
+                    learningGoal: true
+                }
+            }
+        }
+    });
+
+    if (!lesson || lesson.section.learningGoal.teacherId !== teacherId) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+    
+    // 2. Call the service to generate content
+    const goal = await prisma.learningGoal.findUnique({
+        where: { id: lesson.section.learningGoalId },
+        select: {
+            subject: true,
+            studentAge: true,
+            setting: true
+        }
+    });
+    
+    if (!goal) {
+        throw new AppError('Learning goal not found', 404);
+    }
+    
+    // Use default language if not specified
+    const language = 'Russian';
+    const { subject, studentAge, setting } = goal;
+    const generatedContent = await generateLessonContent(
+        lesson.title, subject, studentAge, setting, language
+    );
+    
+    // 3. Update the lesson in the database
+    const updatedLesson = await prisma.lesson.update({
+        where: { id: lessonId },
+        data: {
+            content: generatedContent, // Save JSON
+            status: 'PENDING_APPROVAL'  // Update status
+        }
+    });
+    
+    res.json({ success: true, data: updatedLesson });
+};
+
+export const updateLessonContentHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { content } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!content) {
+        throw new AppError('Content is required', 400);
+    }
+
+    // Verify access rights
+    const lesson = await prisma.lesson.findFirst({
+        where: { 
+            id: lessonId,
+            section: {
+                learningGoal: {
+                    teacherId: teacherId
+                }
+            }
+        }
+    });
+
+    if (!lesson) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+    
+    // Update the lesson
+    await prisma.lesson.update({
+        where: { id: lessonId },
+        data: {
+            content,
+            status: 'APPROVED'
+        }
+    });
+    
+    res.json({ success: true, message: 'Lesson content updated and approved.' });
 };

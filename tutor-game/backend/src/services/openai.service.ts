@@ -62,7 +62,83 @@ export const generateMathProblem = async (topic: string, difficulty: number) => 
   }
 };
 
-export const generateRoadmap = async (subject: string, age: number, language: string, existingPlan?: any, feedback?: string) => {
+export const generateLessonContent = async (
+    lessonTitle: string, 
+    subject: string, 
+    studentAge: number, 
+    setting: string, 
+    language: string
+) => {
+    const systemMessage = `
+You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
+Your task is to create content for a single lesson titled "${lessonTitle}" within a larger subject of "${subject}" for a ${studentAge}-year-old student.
+The lesson should be broken down into a series of small, manageable blocks, each lasting 3-13 minutes.
+
+RULES:
+1.  Your response MUST BE ONLY a valid JSON object with a single root key "blocks".
+2.  "blocks" must be an array of objects.
+3.  Each block object must have three keys:
+    - "type": either "theory" or "practice".
+    - "duration": an estimated time in minutes (number, 3-13).
+    - "content": the actual text for the block. For "practice" blocks, this should be the question or task.
+4.  **Pedagogical value is the #1 priority.** The lesson must be accurate, logical, and age-appropriate.
+5.  The theme "${setting}" is secondary. Use it for examples or narrative framing ONLY if it enhances the lesson and does not compromise the educational goal. Do not invent concepts to fit the theme.
+6.  If the topic is complex, create more blocks. If it's simple, create fewer.
+
+Example Response Format:
+{
+  "blocks": [
+    {
+      "type": "theory",
+      "duration": 5,
+      "content": "This is the theoretical part of the lesson..."
+    },
+    {
+      "type": "practice",
+      "duration": 8,
+      "content": "This is a practical task or question for the student..."
+    }
+  ]
+}
+`;
+
+    const userMessage = `Generate the lesson content for "${lessonTitle}".`;
+
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4-turbo',
+            messages: [
+                { role: 'system', content: systemMessage },
+                { role: 'user', content: userMessage }
+            ],
+            response_format: { type: "json_object" },
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error('No content received from OpenAI for lesson generation.');
+        }
+
+        const parsedJson = JSON.parse(content);
+        if (!parsedJson.blocks || !Array.isArray(parsedJson.blocks)) {
+            throw new Error("AI did not return a valid 'blocks' array.");
+        }
+
+        return parsedJson;
+
+    } catch (error) {
+        console.error('[FATAL ERROR] An error occurred in generateLessonContent:', error);
+        throw new Error('Failed to generate lesson content due to an internal error.');
+    }
+};
+
+export const generateRoadmap = async (
+    subject: string,
+    age: number,
+    language: string,
+    existingPlan?: any,
+    feedback?: string
+) => {
   console.log(`[LOG] 1. Starting generateRoadmap for subject: ${subject}, age: ${age}, language: ${language}`);
   
   const systemMessage = `You are a world-class curriculum designer and a creative methodologist for children's education. 
