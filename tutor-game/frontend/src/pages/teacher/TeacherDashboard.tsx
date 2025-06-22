@@ -39,6 +39,13 @@ export default function TeacherDashboard() {
             <h3 className="font-medium text-lg">💬 Чат с учениками</h3>
             <p className="text-sm text-gray-500">Общение со студентами</p>
           </Link>
+          <Link 
+            to="/teacher/create-goal" 
+            className="p-4 border rounded-lg hover:bg-green-50 transition-colors bg-green-50 border-green-200"
+          >
+            <h3 className="font-medium text-lg">🌟 Новая учебная цель</h3>
+            <p className="text-sm text-gray-500">Создать новый план для студента</p>
+          </Link>
         </div>
       </div>
     </div>

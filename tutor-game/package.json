@@ -14,7 +14,14 @@
     "backend",
     "frontend"
   ],
+  "dependencies": {
+    "@prisma/client": "^6.10.1"
+  },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "prisma": "^6.9.0"
+  },
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma"
   }
 }

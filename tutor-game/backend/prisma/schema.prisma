@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,111 +10,166 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id         String     @id @default(uuid())
-  email      String     @unique
-  password   String
-  firstName  String?
-  lastName   String?
-  lastActive DateTime?
-  role       Role
-  createdAt  DateTime   @default(now())
-  
-  teacher    Teacher?
-  student    Student?
-  sentMessages     Message[]  @relation("Sender")
-  receivedMessages Message[]  @relation("Recipient")
-}
-
-model Teacher {
-  userId   String   @id
-  user     User     @relation(fields: [userId], references: [id])
-  students Student[] @relation("TeachersAndStudents")
-  // другие поля учителя
-}
-
-model Student {
-  userId    String    @id
-  user      User      @relation(fields: [userId], references: [id])
-  teachers  Teacher[] @relation("TeachersAndStudents")
-  goals     Goal[]
-  bossBattles BossBattle[]
-  roadmaps  RoadmapEntry[]
-  badges    Badge[]
-  stories   Story[]
-  images    GeneratedImage[]
-}
-
-
-
+// --- ENUMS ---
 enum Role {
   STUDENT
   TEACHER
 }
 
-model Goal {
+enum LessonType { 
+  THEORY 
+  PRACTICE 
+  WITH_TEACHER 
+}
+
+enum LessonStatus { 
+  DRAFT 
+  PENDING_APPROVAL 
+  APPROVED 
+  COMPLETED 
+}
+
+enum BadgeStatus { 
+  HIDDEN 
+  ACTIVE 
+  EARNED 
+}
+
+// --- CORE MODELS ---
+model User {
+  id               String                  @id @default(uuid())
+  email            String                  @unique
+  password         String
+  firstName        String?
+  lastName         String?
+  lastActive       DateTime?
+  role             Role
+  createdAt        DateTime                @default(now())
+  
+  // Relations
+  teacher          Teacher?
+  student          Student?
+  sentMessages     Message[]               @relation("Sender")
+  receivedMessages Message[]               @relation("Recipient")
+  
+  // Teacher relations
+  taughtGoals      LearningGoal[]          @relation("LearningGoalTeacher")
+  
+  // Student relations
+  learningGoals    LearningGoal[]          @relation("LearningGoalStudent")
+  performanceLogs  StudentPerformanceLog[]
+  refreshTokens    RefreshToken[]
+}
+
+model Teacher {
+  // userId is both primary key and foreign key
+  userId   String   @id
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations - Only keep direct relations that are absolutely necessary
+  students Student[] @relation("TeachersAndStudents")
+  
+  @@map("teachers")
+}
+
+model Student {
+  // userId is both primary key and foreign key
+  userId   String    @id
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  teachers Teacher[] @relation("TeachersAndStudents")
+  badges   Badge[]
+  stories  Story[]
+  
+  @@map("students")
+}
+
+// --- LEARNING FLOW MODELS ---
+model LearningGoal {
+  id           String           @id @default(uuid())
+  subject      String
+  setting      String
+  studentAge   Int
+  createdAt    DateTime         @default(now())
+  
+  // Relations
+  teacherId    String
+  teacher      User             @relation("LearningGoalTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  studentId    String
+  student      User             @relation("LearningGoalStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  
+  sections     ContentSection[]
+  story        Story?
+
+  @@map("learning_goals")
+}
+
+model ContentSection {
+  id             String       @id @default(uuid())
+  title          String
+  order          Int
+  learningGoalId String
+  learningGoal   LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
+  lessons        Lesson[]
+
+  @@map("content_sections")
+}
+
+model Lesson {
+  id              String                  @id @default(uuid())
+  title           String
+  order           Int
+  type            LessonType              @default(PRACTICE)
+  status          LessonStatus            @default(DRAFT)
+  content         Json?
+  sectionId       String
+  section         ContentSection          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  performanceLogs StudentPerformanceLog[]
+
+  @@map("lessons")
+}
+
+model StudentPerformanceLog {
   id        String   @id @default(uuid())
-  student   Student  @relation(fields: [studentId], references: [userId])
-  studentId String
-  title     String
+  isCorrect Boolean
+  answer    String
+  aiNote    String?
   createdAt DateTime @default(now())
-}
-
-model RoadmapEntry {
-  id        String   @id @default(uuid())
-  student   Student  @relation(fields: [studentId], references: [userId])
+  
+  // Relations
   studentId String
-  topic     String
-  order     Int
-  startAt   DateTime?
-  finished  Boolean  @default(false)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("student_performance_logs")
 }
 
+// --- OTHER MODELS ---
 model Badge {
-  id        String   @id @default(uuid())
+  id        String      @id @default(uuid())
   studentId String
-  student   Student  @relation(fields: [studentId], references: [userId])
+  student   Student     @relation(fields: [studentId], references: [userId], onDelete: Cascade)
   title     String
   status    BadgeStatus
+
+  @@map("badges")
 }
 
 model Story {
-  id          String           @id @default(uuid())
-  studentId   String
-  student     Student          @relation(fields: [studentId], references: [userId])
-  chapter     Int
-  text        String
-  prompt      String
-  images      GeneratedImage[]  @relation("StoryImages")
-  createdAt   DateTime         @default(now())
-}
-
-model GeneratedImage {
-  id          String    @id @default(uuid())
-  studentId   String
-  student     Student   @relation(fields: [studentId], references: [userId])
-  storyId     String?
-  story       Story?    @relation("StoryImages", fields: [storyId], references: [id])
-  url         String
-  prompt      String
-  createdAt   DateTime  @default(now())
-}
-
-model BossBattle {
-  id            String   @id @default(uuid())
-  student       Student  @relation(fields: [studentId], references: [userId])
-  studentId     String
-  lives         Int
-  timeLimitSec  Int
-  difficulty    Int
-  prompt        String
-  createdAt     DateTime @default(now())
-}
-
-enum BadgeStatus {
-  HIDDEN
-  ACTIVE
-  EARNED
+  id             String       @id @default(uuid())
+  text           String
+  createdAt      DateTime     @default(now())
+  
+  // Relations
+  learningGoalId String?      @unique
+  learningGoal   LearningGoal? @relation(fields: [learningGoalId], references: [id])
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  
+  @@map("stories")
 }
 
 model Message {
@@ -122,9 +180,10 @@ model Message {
   read        Boolean  @default(false)
   readAt      DateTime?
   createdAt   DateTime @default(now())
-  
-  sender      User     @relation("Sender", fields: [senderId], references: [id])
-  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
+  sender      User     @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
 }
 
 model TokenBlacklist {
@@ -132,4 +191,19 @@ model TokenBlacklist {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@map("token_blacklists")
 }
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Many-to-many relation between Teacher and Student is defined using the @relation("TeachersAndStudents")

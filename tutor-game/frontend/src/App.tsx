@@ -8,6 +8,8 @@ import { useAppSelector } from './app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
 
 // Компоненты и страницы
+import CreateGoalPage from './pages/teacher/CreateGoalPage';
+import RoadmapEditorPage from './pages/teacher/RoadmapEditorPage';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -62,12 +64,15 @@ function App() {
           </Route>
           
           {/* Защищенные роуты для Учителя */}
-          <Route element={<PrivateRoute requiredRole="teacher" />}>
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/students" element={<StudentsPage />} />
-            <Route path="/teacher/students/:studentId" element={<StudentProgress />} />
-            <Route path="/teacher/progress" element={<div>Progress Overview Page</div>} />
-            <Route path="/teacher/chat" element={<ChatPage />} />
+          <Route path="/teacher" element={<PrivateRoute requiredRole="teacher" />}>
+            {/* Новые маршруты для управления учебными целями */}
+            <Route path="create-goal" element={<CreateGoalPage />} />
+            <Route path="goals/:goalId/edit" element={<RoadmapEditorPage />} />
+            <Route path="" element={<TeacherDashboard />} />
+            <Route path="students" element={<StudentsPage />} />
+            <Route path="students/:studentId" element={<StudentProgress />} />
+            <Route path="progress" element={<div>Progress Overview Page</div>} />
+            <Route path="chat" element={<ChatPage />} />
           </Route>
           
           {/* Страница 404 для всех остальных путей внутри Layout */}

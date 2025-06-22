@@ -1,17 +1,32 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, LessonType, LessonStatus, BadgeStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function createTestUsers() {
+async function main() {
+  console.log('Start seeding...');
+
   try {
-    // Create test teacher
+    // Delete existing data
+    await prisma.refreshToken.deleteMany({});
+    await prisma.message.deleteMany({});
+    await prisma.story.deleteMany({});
+    await prisma.studentPerformanceLog.deleteMany({});
+    await prisma.lesson.deleteMany({});
+    await prisma.contentSection.deleteMany({});
+    await prisma.learningGoal.deleteMany({});
+    await prisma.badge.deleteMany();
+    
+    // Delete teachers and students (this will cascade to users due to onDelete: Cascade)
+    await prisma.teacher.deleteMany({});
+    await prisma.student.deleteMany({});
+    await prisma.user.deleteMany({});
+
+    // --- Create Teacher ---
     console.log('Creating test teacher...');
     const hashedTeacherPassword = await bcrypt.hash('testteacher123', 10);
-    const teacher = await prisma.user.upsert({
-      where: { email: 'testteacher@example.com' },
-      update: {},
-      create: {
+    const teacherUser = await prisma.user.create({
+      data: {
         email: 'testteacher@example.com',
         password: hashedTeacherPassword,
         firstName: 'Test',
@@ -19,26 +34,19 @@ async function createTestUsers() {
         role: Role.TEACHER,
         teacher: {
           create: {}
-        }
+        },
       },
-      include: { teacher: true }
+      include: {
+        teacher: true
+      }
     });
+    console.log(`✅ Teacher created: ${teacherUser.email} (ID: ${teacherUser.id})`);
 
-    // Verify teacher was created successfully
-    if (!teacher || !teacher.teacher) {
-      throw new Error('❌ Failed to create teacher. Cannot create student without a teacher.');
-    }
-    console.log(`✅ Teacher created: ${teacher.email} (ID: ${teacher.id})`);
-
-    // Create test student
+    // --- Create Student ---
     console.log('\nCreating test student...');
     const hashedStudentPassword = await bcrypt.hash('teststudent123', 10);
-    
-    // First, create the student user
-    const student = await prisma.user.upsert({
-      where: { email: 'teststudent@example.com' },
-      update: {},
-      create: {
+    const studentUser = await prisma.user.create({
+      data: {
         email: 'teststudent@example.com',
         password: hashedStudentPassword,
         firstName: 'Test',
@@ -46,68 +54,124 @@ async function createTestUsers() {
         role: Role.STUDENT,
         student: {
           create: {}
-        }
+        },
       },
-      include: { student: true }
-    });
-
-    // Then connect the student to the teacher using the many-to-many relation
-    if (student.student) {
-      await prisma.teacher.update({
-        where: { userId: teacher.id },
-        data: {
-          students: {
-            connect: {
-              userId: student.id  // Connect using the userId field
-            }
-          }
-        }
-      });
-      console.log(`✅ Student connected to teacher: ${student.email}`);
-    }
-
-    if (!student || !student.student) {
-      throw new Error('❌ Failed to create student.');
-    }
-
-    // Fetch the teacher with students to verify the connection
-    const updatedTeacher = await prisma.teacher.findUnique({
-      where: { userId: teacher.id },
       include: {
+        student: true
+      }
+    });
+    console.log(`✅ Student created: ${studentUser.email} (ID: ${studentUser.id})`);
+
+    // --- Connect Student to Teacher ---
+    await prisma.teacher.update({
+      where: { userId: teacherUser.id },
+      data: {
         students: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true
-              }
-            }
+          connect: {
+            userId: studentUser.id
           }
         }
       }
     });
+    console.log('✅ Student connected to teacher');
 
-    console.log('\n✅ Test users created successfully:');
-    console.log(`Teacher: ${teacher.email} (ID: ${teacher.id})`);
-    console.log(`Student: ${student.email} (ID: ${student.id})`);
-    
-    if (updatedTeacher && updatedTeacher.students.length > 0) {
-      console.log('\n📚 Teacher-Student Connections:');
-      updatedTeacher.students.forEach(s => {
-        console.log(`   - ${s.user.firstName} ${s.user.lastName} (${s.user.email})`);
-      });
-    }
+    // --- Create a sample learning goal ---
+    const learningGoal = await prisma.learningGoal.create({
+      data: {
+        subject: 'Mathematics',
+        setting: 'Online',
+        studentAge: 12,
+        teacherId: teacherUser.id,
+        studentId: studentUser.id,
+        sections: {
+          create: [
+            {
+              title: 'Introduction to Algebra',
+              order: 1,
+              lessons: {
+                create: [
+                  { 
+                    title: 'Basic Variables', 
+                    order: 1, 
+                    type: LessonType.THEORY, 
+                    status: LessonStatus.DRAFT 
+                  },
+                  { 
+                    title: 'Simple Equations', 
+                    order: 2, 
+                    type: LessonType.PRACTICE, 
+                    status: LessonStatus.DRAFT 
+                  }
+                ]
+              }
+            },
+            {
+              title: 'Geometry Basics',
+              order: 2,
+              lessons: {
+                create: [
+                  { 
+                    title: 'Shapes and Angles', 
+                    order: 1, 
+                    type: LessonType.THEORY, 
+                    status: LessonStatus.DRAFT 
+                  },
+                  { 
+                    title: 'Area and Perimeter', 
+                    order: 2, 
+                    type: LessonType.PRACTICE, 
+                    status: LessonStatus.DRAFT 
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        story: {
+          create: {
+            text: 'Once upon a time, a student started learning Mathematics...',
+            studentId: studentUser.id
+          }
+        }
+      },
+      include: {
+        sections: {
+          include: {
+            lessons: true
+          }
+        },
+        story: true
+      }
+    });
 
-    console.log('\n🔑 You can now log in with these credentials:');
-    console.log('   Teacher: testteacher@example.com / testteacher123');
-    console.log('   Student: teststudent@example.com / teststudent123');
+    console.log('✅ Created sample learning goal with sections and lessons');
+
+    // --- Create a sample badge for the student ---
+    await prisma.badge.create({
+      data: {
+        title: 'Math Beginner',
+        status: BadgeStatus.EARNED,
+        studentId: studentUser.id
+      }
+    });
+    console.log('✅ Created sample badge for the student');
+
+    console.log('\n✅ Test data created successfully!');
+    console.log('\nYou can now log in with these credentials:');
+    console.log('Teacher: testteacher@example.com / testteacher123');
+    console.log('Student: teststudent@example.com / teststudent123');
+
   } catch (error) {
-    console.error('Error creating test users:', error);
+    console.error('Error creating test data:', error);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-createTestUsers();
+// Execute the main function
+main()
+  .catch((e) => {
+    console.error('Error during seeding:', e);
+    process.exit(1);
+  });
