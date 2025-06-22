@@ -1,5 +1,3 @@
-// Полное содержимое файла: tutor-game/backend/src/controllers/goal.controller.ts
-
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
@@ -12,11 +10,6 @@ interface CreateGoalBody {
     setting: string;
     studentAge: number | string;
     language?: string;
-}
-
-interface GenerateRoadmapBody {
-    existingPlan?: any[];
-    feedback?: string;
 }
 
 export const createGoalHandler = async (req: Request, res: Response) => {
@@ -40,28 +33,25 @@ export const createGoalHandler = async (req: Request, res: Response) => {
             setting,
             studentAge: age,
             language: language || 'Russian'
+        },
+        include: {
+            student: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                }
+            }
         }
     });
 
     res.status(201).json({ success: true, data: goal });
 };
 
-interface GenerateRoadmapBody {
-    existingPlan?: any[];
-    feedback?: string;
-}
-
 export const generateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
-    const { existingPlan, feedback } = (req.body || {}) as GenerateRoadmapBody;
-
-    // Define the type for the goal data we're selecting
-    type GoalForRoadmap = {
-        subject: string;
-        studentAge: number;
-        language: string;
-        setting: string;
-    };
+    const { existingPlan, feedback } = (req.body || {}) as { existingPlan?: any[], feedback?: string };
 
     const goal = await prisma.learningGoal.findUnique({ 
         where: { id: goalId },
@@ -69,15 +59,20 @@ export const generateRoadmapHandler = async (req: Request, res: Response) => {
             subject: true,
             studentAge: true,
             language: true,
-            setting: true
+            setting: true,
+            student: {
+                select: {
+                    firstName: true,
+                    lastName: true
+                }
+            }
         }
-    }) as GoalForRoadmap | null;
+    });
     
     if (!goal) {
         throw new AppError('Learning goal not found', 404);
     }
     
-    // Ensure we have a default language
     const language = goal.language || 'Russian';
     
     const roadmapProposal = await generateRoadmap(
@@ -109,25 +104,20 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
             sections: {
                 include: {
                     lessons: {
-                        orderBy: {
-                            order: 'asc'
-                        },
+                        orderBy: { order: 'asc' },
                         select: {
                             id: true,
                             title: true,
                             status: true,
                             order: true,
+                            content: true,
                         }
                     }
                 },
-                orderBy: {
-                    order: 'asc'
-                }
+                orderBy: { order: 'asc' }
             }
         },
-        orderBy: {
-            createdAt: 'desc'
-        }
+        orderBy: { createdAt: 'desc' }
     });
 
     res.json({ success: true, data: goals });
@@ -142,11 +132,11 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
     }
 
     await prisma.$transaction(async (tx) => {
-        const prismaTx = tx as Prisma.TransactionClient;
-        await prismaTx.contentSection.deleteMany({ where: { learningGoalId: goalId } });
+        await tx.lesson.deleteMany({ where: { section: { learningGoalId: goalId } } });
+        await tx.contentSection.deleteMany({ where: { learningGoalId: goalId } });
 
         for (const [sectionIndex, sectionData] of (roadmap as any[]).entries()) {
-            const section = await prismaTx.contentSection.create({
+            const section = await tx.contentSection.create({
                 data: {
                     title: sectionData.sectionTitle,
                     order: sectionIndex,
@@ -156,7 +146,7 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
 
             if (sectionData.lessons && Array.isArray(sectionData.lessons)) {
                 for (const [lessonIndex, lessonTitle] of sectionData.lessons.entries()) {
-                    await prismaTx.lesson.create({
+                    await tx.lesson.create({
                         data: { 
                             title: lessonTitle, 
                             order: lessonIndex, 
@@ -180,17 +170,10 @@ export const deleteGoalHandler = async (req: Request, res: Response) => {
         select: { teacherId: true }
     });
 
-    if (!goal) {
-        throw new AppError('Goal not found', 404);
-    }
+    if (!goal) throw new AppError('Goal not found', 404);
+    if (goal.teacherId !== teacherId) throw new AppError('Unauthorized', 403);
 
-    if (goal.teacherId !== teacherId) {
-        throw new AppError('Unauthorized', 403);
-    }
-
-    await prisma.learningGoal.delete({
-        where: { id: goalId }
-    });
+    await prisma.learningGoal.delete({ where: { id: goalId } });
 
     res.json({ success: true, message: 'Goal deleted successfully' });
 };
@@ -199,7 +182,6 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
     const { lessonId } = req.params;
     const teacherId = req.user?.userId;
 
-    // 1. Find the lesson and verify teacher access
     const lesson = await prisma.lesson.findUnique({
         where: { id: lessonId },
         include: {
@@ -215,13 +197,13 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
         throw new AppError('Lesson not found or you do not have permission', 404);
     }
     
-    // 2. Call the service to generate content
     const goal = await prisma.learningGoal.findUnique({
         where: { id: lesson.section.learningGoalId },
         select: {
             subject: true,
             studentAge: true,
-            setting: true
+            setting: true,
+            language: true,
         }
     });
     
@@ -229,19 +211,17 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
         throw new AppError('Learning goal not found', 404);
     }
     
-    // Use default language if not specified
-    const language = 'Russian';
+    const language = goal.language || 'Russian';
     const { subject, studentAge, setting } = goal;
     const generatedContent = await generateLessonContent(
         lesson.title, subject, studentAge, setting, language
     );
     
-    // 3. Update the lesson in the database
     const updatedLesson = await prisma.lesson.update({
         where: { id: lessonId },
         data: {
-            content: generatedContent, // Save JSON
-            status: 'PENDING_APPROVAL'  // Update status
+            content: generatedContent,
+            status: 'PENDING_APPROVAL'
         }
     });
     
@@ -257,7 +237,6 @@ export const updateLessonContentHandler = async (req: Request, res: Response) =>
         throw new AppError('Content is required', 400);
     }
 
-    // Verify access rights
     const lesson = await prisma.lesson.findFirst({
         where: { 
             id: lessonId,
@@ -273,7 +252,6 @@ export const updateLessonContentHandler = async (req: Request, res: Response) =>
         throw new AppError('Lesson not found or you do not have permission', 404);
     }
     
-    // Update the lesson
     await prisma.lesson.update({
         where: { id: lessonId },
         data: {

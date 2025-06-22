@@ -87,38 +87,64 @@ export const teacherApi = apiSlice.injectEndpoints({
 
     // Roadmap
     generateRoadmapProposal: builder.mutation<RoadmapProposal[], { goalId: string; existingPlan?: RoadmapProposal[]; feedback?: string }>({
-        query: ({ goalId, ...body }) => ({
-            url: `/goals/${goalId}/generate-roadmap`,
-            method: 'POST',
-            body,
-        }),
+        query: ({ goalId, ...body }) => ({ url: `/goals/${goalId}/generate-roadmap`, method: 'POST', body }),
         transformResponse: (response: { data: RoadmapProposal[] }) => response.data,
     }),
     updateRoadmap: builder.mutation<void, { goalId: string; roadmap: RoadmapProposal[] }>({
-        query: ({ goalId, roadmap }) => ({
-            url: `/goals/${goalId}/roadmap`,
-            method: 'PUT',
-            body: { roadmap },
-        }),
-        invalidatesTags: (result, error, { goalId }) => [{ type: 'Goal', id: goalId }],
+        query: ({ goalId, roadmap }) => ({ url: `/goals/${goalId}/roadmap`, method: 'PUT', body: { roadmap } }),
+        invalidatesTags: (result, error, { goalId }) => [{ type: 'Goal', id: 'LIST' }],
     }),
 
     // Контент уроков
     generateLessonContent: builder.mutation<Lesson, string>({
-        query: (lessonId) => ({
-            url: `/goals/lessons/${lessonId}/generate-content`,
-            method: 'POST',
-        }),
+        query: (lessonId) => ({ url: `/goals/lessons/${lessonId}/generate-content`, method: 'POST' }),
         transformResponse: (response: { data: Lesson }) => response.data,
-        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
+        async onQueryStarted(lessonId, { dispatch, queryFulfilled }) {
+            try {
+                const { data: updatedLesson } = await queryFulfilled;
+                dispatch(
+                    teacherApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
+                        const goal = draft.find(g => g.sections.some(s => s.lessons.some(l => l.id === lessonId)));
+                        if (goal) {
+                            for (const section of goal.sections) {
+                                const lessonIndex = section.lessons.findIndex(l => l.id === lessonId);
+                                if (lessonIndex !== -1) {
+                                    section.lessons[lessonIndex] = updatedLesson;
+                                    break;
+                                }
+                            }
+                        }
+                    })
+                );
+            } catch (error) {
+                console.error('Failed to update lesson content optimistically', error);
+            }
+        },
     }),
     updateLessonContent: builder.mutation<void, { lessonId: string; content: Lesson['content'] }>({
-        query: ({ lessonId, content }) => ({
-            url: `/goals/lessons/${lessonId}/content`,
-            method: 'PUT',
-            body: { content },
-        }),
-        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
+        query: ({ lessonId, content }) => ({ url: `/goals/lessons/${lessonId}/content`, method: 'PUT', body: { content } }),
+        async onQueryStarted({ lessonId, content }, { dispatch, queryFulfilled }) {
+            const patchResult = dispatch(
+                teacherApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
+                    const goal = draft.find(g => g.sections.some(s => s.lessons.some(l => l.id === lessonId)));
+                    if (goal) {
+                        for (const section of goal.sections) {
+                            const lesson = section.lessons.find(l => l.id === lessonId);
+                            if (lesson) {
+                                lesson.content = content;
+                                lesson.status = 'APPROVED';
+                                break;
+                            }
+                        }
+                    }
+                })
+            );
+            try {
+                await queryFulfilled;
+            } catch {
+                patchResult.undo();
+            }
+        },
     }),
   }),
 });
