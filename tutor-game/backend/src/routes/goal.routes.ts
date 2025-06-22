@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import {
     createGoalHandler,
-    generateRoadmapHandler,
-    updateRoadmapHandler,
     getGoalsHandler,
     deleteGoalHandler,
+    generateRoadmapHandler,
+    updateRoadmapHandler,
+    generateCharacterHandler,
+    approveCharacterHandler,
     generateLessonContentHandler,
-    updateLessonContentHandler,
+    updateLessonContentHandler
 } from '../controllers/goal.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 
@@ -27,5 +29,9 @@ router.put('/:goalId/roadmap', updateRoadmapHandler);
 // Lesson content routes
 router.post('/lessons/:lessonId/generate-content', generateLessonContentHandler);
 router.put('/lessons/:lessonId/content', updateLessonContentHandler);
+
+// Character routes
+router.post('/:goalId/generate-character', generateCharacterHandler);
+router.post('/:goalId/approve-character', approveCharacterHandler);
 
 export default router;

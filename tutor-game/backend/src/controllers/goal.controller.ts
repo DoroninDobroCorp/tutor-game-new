@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateRoadmap, generateLessonContent } from '../services/openai.service';
+import { generateImage } from '../services/leonardo.service';
 import { Prisma } from '@prisma/client';
 
 interface CreateGoalBody {
@@ -231,34 +232,89 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
 export const updateLessonContentHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
     const { content } = req.body;
-    const teacherId = req.user?.userId;
+    const userId = req.user?.userId;
 
     if (!content) {
         throw new AppError('Content is required', 400);
     }
 
+    // Find the lesson and verify ownership through the learning goal
     const lesson = await prisma.lesson.findFirst({
-        where: { 
-            id: lessonId,
+        where: { id: lessonId },
+        include: {
             section: {
-                learningGoal: {
-                    teacherId: teacherId
+                include: {
+                    learningGoal: true
                 }
             }
         }
     });
 
     if (!lesson) {
-        throw new AppError('Lesson not found or you do not have permission', 404);
+        throw new AppError('Lesson not found', 404);
     }
-    
-    await prisma.lesson.update({
+
+    if (lesson.section.learningGoal.teacherId !== userId) {
+        throw new AppError('Not authorized to update this lesson', 403);
+    }
+
+    const updatedLesson = await prisma.lesson.update({
         where: { id: lessonId },
-        data: {
-            content,
-            status: 'APPROVED'
-        }
+        data: { content }
+    });
+
+    res.json({ success: true, data: updatedLesson });
+};
+
+export const generateCharacterHandler = async (req: Request, res: Response) => {
+    const { goalId } = req.params;
+    const { prompt } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!prompt) {
+        throw new AppError('Character prompt is required', 400);
+    }
+
+    const goal = await prisma.learningGoal.findFirst({
+        where: { id: goalId, teacherId }
+    });
+
+    if (!goal) {
+        throw new AppError('Learning Goal not found or you do not have permission', 404);
+    }
+
+    const imageResult = await generateImage({
+        prompt: `cartoon-style, full-body portrait of ${prompt}, dynamic pose, cinematic wide-angle shot, clean background, for an educational game`,
     });
     
-    res.json({ success: true, message: 'Lesson content updated and approved.' });
+    // Просто возвращаем результат, ничего не сохраняя
+    res.json({ success: true, data: imageResult });
+};
+
+export const approveCharacterHandler = async (req: Request, res: Response) => {
+    const { goalId } = req.params;
+    const { prompt, imageId, genId, imageUrl } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!prompt || !imageId || !genId || !imageUrl) {
+        throw new AppError('All character data is required for approval', 400);
+    }
+
+    const updatedGoal = await prisma.learningGoal.updateMany({
+        where: { id: goalId, teacherId }, // updateMany, чтобы убедиться, что учитель владеет целью
+        data: {
+            characterPrompt: prompt,
+            characterImageId: imageId,
+            characterGenId: genId,
+            characterImageUrl: imageUrl,
+        }
+    });
+
+    if (updatedGoal.count === 0) {
+        throw new AppError('Learning Goal not found or you do not have permission', 404);
+    }
+
+    const finalGoal = await prisma.learningGoal.findUnique({ where: { id: goalId } });
+
+    res.json({ success: true, data: finalGoal });
 };

@@ -38,6 +38,11 @@ interface LearningGoal {
     student: Student;
     sections: ContentSection[];
     language?: string;
+    // Character fields
+    characterPrompt?: string | null;
+    characterImageId?: string | null;
+    characterGenId?: string | null;
+    characterImageUrl?: string | null;
 }
 
 export interface RoadmapProposal { 
@@ -92,7 +97,7 @@ export const teacherApi = apiSlice.injectEndpoints({
     }),
     updateRoadmap: builder.mutation<void, { goalId: string; roadmap: RoadmapProposal[] }>({
         query: ({ goalId, roadmap }) => ({ url: `/goals/${goalId}/roadmap`, method: 'PUT', body: { roadmap } }),
-        invalidatesTags: (result, error, { goalId }) => [{ type: 'Goal', id: 'LIST' }],
+        invalidatesTags: () => [{ type: 'Goal', id: 'LIST' }],
     }),
 
     // Контент уроков
@@ -146,6 +151,56 @@ export const teacherApi = apiSlice.injectEndpoints({
             }
         },
     }),
+    
+    // Character creation
+    createCharacter: builder.mutation<LearningGoal, { goalId: string; prompt: string }>({
+        query: ({ goalId, prompt }) => ({
+            url: `/goals/${goalId}/character`,
+            method: 'POST',
+            body: { prompt },
+        }),
+        transformResponse: (response: { data: LearningGoal }) => response.data,
+        // Update the specific goal in the cache
+        onQueryStarted({ goalId }, { dispatch, queryFulfilled }) {
+            const patchResult = dispatch(
+                teacherApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
+                    const goalIndex = draft.findIndex(g => g.id === goalId);
+                    if (goalIndex !== -1) {
+                        // This will be updated with the server response
+                        draft[goalIndex] = { ...draft[goalIndex] };
+                    }
+                })
+            );
+            
+            queryFulfilled.catch(() => {
+                patchResult.undo();
+            });
+        },
+    }),
+    generateCharacterForGoal: builder.mutation<{ data: LeonardoImage }, { goalId: string; prompt: string }>({
+      query: ({ goalId, prompt }) => ({
+        url: `/goals/${goalId}/generate-character`,
+        method: 'POST',
+        body: { prompt },
+      }),
+    }),
+    approveCharacterForGoal: builder.mutation<LearningGoal, { 
+      goalId: string; 
+      prompt: string; 
+      imageId: string; 
+      genId: string; 
+      imageUrl: string 
+    }>({
+      query: ({ goalId, ...body }) => ({
+        url: `/goals/${goalId}/approve-character`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { goalId }) => [
+        { type: 'Goal', id: 'LIST' },
+        { type: 'Goal', id: goalId },
+      ],
+    }),
   }),
 });
 
@@ -160,7 +215,17 @@ export const {
   useUpdateRoadmapMutation,
   useGenerateLessonContentMutation,
   useUpdateLessonContentMutation,
+  useCreateCharacterMutation,
+  useGenerateCharacterForGoalMutation,
+  useApproveCharacterForGoalMutation,
 } = teacherApi;
 
-// Экспортируем типы
+// Export all types
 export type { LearningGoal, ContentSection, Lesson, Student };
+
+// LeonardoImage type for character generation
+export interface LeonardoImage {
+  generationId: string;
+  imageId: string | null;
+  url: string | null;
+}

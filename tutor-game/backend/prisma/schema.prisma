@@ -103,6 +103,17 @@ model LearningGoal {
   
   sections     ContentSection[]
   story        Story?
+  
+  // --- CHARACTER FIELDS ---
+  characterPrompt  String?
+  characterImageId String? // ID изображения из Leonardo AI
+  characterGenId   String? // ID самой генерации для проверки статуса
+  characterImageUrl String? // Прямой URL на готовое изображение
+  // ------------------------
+  
+  // --- STORY CHAPTERS ---
+  storyChapters StoryChapter[]
+  // ----------------------
 
   @@map("learning_goals")
 }
@@ -128,7 +139,12 @@ model Lesson {
   sectionId       String
   section         ContentSection          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   performanceLogs StudentPerformanceLog[]
+  
+  // --- STORY CHAPTER RELATION ---
+  storyChapter    StoryChapter?
+  // ------------------------------
 
+  
   @@map("lessons")
 }
 
@@ -195,6 +211,34 @@ model TokenBlacklist {
 
   @@map("token_blacklists")
 }
+
+// --- STORY CHAPTER MODEL ---
+model StoryChapter {
+  id                     String       @id @default(uuid())
+  
+  // Связь с глобальной целью
+  learningGoalId         String
+  learningGoal           LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
+  
+  // Связь с конкретным уроком (один-к-одному)
+  lessonId               String       @unique
+  lesson                 Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  // Контент от учителя
+  teacherSnippetText     String
+  teacherSnippetImageUrl String?
+  teacherSnippetStatus   LessonStatus @default(DRAFT)
+  
+  // Ответ ученика
+  studentResponseText    String?
+  
+  createdAt              DateTime     @default(now())
+  
+  @@map("story_chapters")
+}
+
+// -------------------------
+
 
 model RefreshToken {
   id        String   @id @default(uuid())
