@@ -62,13 +62,14 @@ export default function Layout() {
   const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
   const [logoutUser] = useLogoutMutation();
 
-  // Update document title with unread count
+  // Update browser tab title with unread count
   useEffect(() => {
     if (totalUnreadCount > 0) {
       document.title = `(${totalUnreadCount}) Math Quest`;
     } else {
       document.title = 'Math Quest';
     }
+    // Cleanup function to reset title when component unmounts
     return () => {
       document.title = 'Math Quest';
     };

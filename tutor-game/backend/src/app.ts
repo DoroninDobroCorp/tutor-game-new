@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
 import studentRoutes from './routes/student.routes';
 import generateRoutes from './routes/generate.routes';
+import chatRoutes from './routes/chat.routes';
 import { config } from './config/env';
 import { WebSocketService } from './services/websocket.service';
 
@@ -80,6 +81,7 @@ export const createServer = () => {
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/generate', generateRoutes);
+  app.use('/api/chat', chatRoutes);
 
   // Serve static files from frontend build
   const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
