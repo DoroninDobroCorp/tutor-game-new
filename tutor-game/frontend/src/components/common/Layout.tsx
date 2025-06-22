@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
   ChartBarIcon,
+  ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
@@ -61,6 +62,7 @@ export default function Layout() {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
   const [logoutUser] = useLogoutMutation();
+  const chatPath = user?.role === 'teacher' ? '/teacher/chat' : '/student/chat';
 
   // Update browser tab title with unread count
   useEffect(() => {
@@ -276,14 +278,26 @@ export default function Layout() {
           <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {isAuthenticated ? (
-                <button
-                  type="button"
-                  className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
-                  onClick={handleLogout}
-                >
-                  <span className="sr-only">Sign out</span>
-                  <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
-                </button>
+                <>
+                  <Link to={chatPath} className="relative text-gray-400 hover:text-gray-500">
+                    <span className="sr-only">View messages</span>
+                    <ChatBubbleLeftEllipsisIcon className="h-6 w-6" aria-hidden="true" />
+                    {totalUnreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                        {totalUnreadCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  <button
+                    type="button"
+                    className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+                    onClick={handleLogout}
+                  >
+                    <span className="sr-only">Sign out</span>
+                    <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
+                  </button>
+                </>
               ) : (
                 <div className="flex items-center gap-x-4">
                   <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-gray-900">
