@@ -42,7 +42,7 @@ interface LearningGoal {
 
 export interface RoadmapProposal { 
     sectionTitle: string; 
-    lessons: Array<string | { title: string }>; 
+    lessons: string[]; 
 }
 
 // API Slice
@@ -100,7 +100,7 @@ export const teacherApi = apiSlice.injectEndpoints({
             method: 'PUT',
             body: { roadmap },
         }),
-        invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: goalId }],
+        invalidatesTags: (result, error, { goalId }) => [{ type: 'Goal', id: goalId }],
     }),
 
     // Контент уроков
@@ -110,7 +110,7 @@ export const teacherApi = apiSlice.injectEndpoints({
             method: 'POST',
         }),
         transformResponse: (response: { data: Lesson }) => response.data,
-        invalidatesTags: (_result, _error, _lessonId) => [{ type: 'Goal', id: 'LIST' }],
+        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
     }),
     updateLessonContent: builder.mutation<void, { lessonId: string; content: Lesson['content'] }>({
         query: ({ lessonId, content }) => ({
@@ -118,7 +118,7 @@ export const teacherApi = apiSlice.injectEndpoints({
             method: 'PUT',
             body: { content },
         }),
-        invalidatesTags: (_result, _error, _args) => [{ type: 'Goal', id: 'LIST' }],
+        invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
     }),
   }),
 });
@@ -128,9 +128,7 @@ export const {
   useConnectStudentMutation, 
   useGetConnectedStudentsQuery,
   useGetLearningGoalsQuery,
-  useGetLearningGoalQuery,
   useCreateLearningGoalMutation, 
-  useUpdateLearningGoalMutation,
   useDeleteLearningGoalMutation,
   useGenerateRoadmapProposalMutation, 
   useUpdateRoadmapMutation,

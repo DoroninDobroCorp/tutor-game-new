@@ -11,7 +11,8 @@ import {
 } from '../../features/teacher/teacherApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { FiPlus, FiTrash2, FiArrowLeft, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiArrowLeft, FiEdit2, FiSettings } from 'react-icons/fi';
+import LessonEditorModal from './LessonEditorModal';
 
 type LessonStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
 
@@ -39,6 +40,7 @@ const RoadmapEditorPage = () => {
     const [roadmap, setRoadmap] = useState<ContentSection[]>([]);
     const [isEditing, setIsEditing] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
     const [feedback, setFeedback] = useState('');
+    const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
     const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     const [generateProposal, { isLoading: isGenerating }] = useGenerateRoadmapProposalMutation();
     const [updateRoadmap, { isLoading: isSaving }] = useUpdateRoadmapMutation();
@@ -174,6 +176,12 @@ const RoadmapEditorPage = () => {
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
+            {/* Lesson Editor Modal */}
+            <LessonEditorModal
+                isOpen={!!editingLesson}
+                onClose={() => setEditingLesson(null)}
+                lesson={editingLesson}
+            />
             <div className="flex items-center mb-6">
                 <button
                     onClick={() => navigate(-1)}
@@ -358,9 +366,16 @@ const RoadmapEditorPage = () => {
                                         <button
                                             className="text-blue-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100"
                                             onClick={() => startEditing(sectionIndex, lessonIndex)}
-                                            title="Редактировать"
+                                            title="Edit title"
                                         >
                                             <FiEdit2 size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => setEditingLesson(lesson)}
+                                            className="text-gray-500 hover:text-indigo-600 p-1 opacity-0 group-hover:opacity-100"
+                                            title="Configure content"
+                                        >
+                                            <FiSettings size={14} />
                                         </button>
                                         <button
                                             onClick={(e) => {

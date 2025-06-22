@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { FiTrash2 } from 'react-icons/fi';
 
 export default function LearningGoalsListPage() {
-  const { data: goals, isLoading, error, refetch } = useGetLearningGoalsQuery();
+  const { data: goals, isLoading, error } = useGetLearningGoalsQuery();
   const [deleteLearningGoal, { isLoading: isDeleting }] = useDeleteLearningGoalMutation();
 
   const handleDelete = async (goalId: string, goalSubject: string) => {
@@ -13,7 +13,7 @@ export default function LearningGoalsListPage() {
       try {
         await deleteLearningGoal(goalId).unwrap();
         toast.success('Учебный план успешно удален.');
-        refetch();
+        // refetch() больше не нужен, invalidatesTags сделает всю работу
       } catch (err) {
         toast.error('Не удалось удалить план.');
         console.error(err);
