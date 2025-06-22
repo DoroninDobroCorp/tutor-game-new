@@ -4,7 +4,13 @@ import { useGetConnectedStudentsQuery, useCreateLearningGoalMutation } from '../
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 
-interface IFormInput { studentId: string; subject: string; setting: string; studentAge: number; }
+interface IFormInput { 
+    studentId: string; 
+    subject: string; 
+    setting: string; 
+    studentAge: number; 
+    language: string;
+}
 
 export default function CreateGoalPage() {
     const navigate = useNavigate();
@@ -72,7 +78,7 @@ export default function CreateGoalPage() {
                     <input 
                         type="number" 
                         id="studentAge" 
-                        {...register('studentAge', { required: true, min: 4, max: 18 })} 
+                        {...register('studentAge', { required: true, min: 4, max: 18, valueAsNumber: true })} 
                         className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                     />
                     {errors.studentAge && (
@@ -80,6 +86,19 @@ export default function CreateGoalPage() {
                             Возраст должен быть от 4 до 18 лет
                         </p>
                     )}
+                </div>
+                <div>
+                    <label htmlFor="language" className="block text-sm font-medium text-gray-700">Язык обучения</label>
+                    <select
+                        id="language"
+                        {...register('language', { required: true })}
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                        defaultValue="Russian"
+                    >
+                        <option value="Russian">Русский</option>
+                        <option value="English">English</option>
+                    </select>
+                    {errors.language && <p className="mt-1 text-sm text-red-600">Выберите язык обучения</p>}
                 </div>
                 <button 
                     type="submit" 

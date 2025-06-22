@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../services/auth.service';
+import { verifyAccessToken } from '../services/auth.service';
 import { AppError } from './error.middleware';
 
 declare global {
@@ -15,21 +15,19 @@ declare global {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get token from header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Authentication invalid', 401);
+      throw new AppError('Authentication invalid, no token provided', 401);
     }
 
     const token = authHeader.split(' ')[1];
     
-    // Verify token
-    const decoded = await verifyToken(token);
+    // Используем новую функцию верификации access-токена
+    const decoded = await verifyAccessToken(token);
     if (!decoded) {
-      throw new AppError('Authentication invalid', 401);
+      throw new AppError('Authentication invalid or token expired', 401);
     }
 
-    // Add user to request
     req.user = {
       userId: decoded.userId,
       role: decoded.role,

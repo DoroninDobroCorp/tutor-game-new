@@ -10,14 +10,15 @@ import { selectIsAuthenticated, selectCurrentUser } from './features/auth/authSl
 // Компоненты и страницы
 import CreateGoalPage from './pages/teacher/CreateGoalPage';
 import RoadmapEditorPage from './pages/teacher/RoadmapEditorPage';
+import LearningGoalsListPage from './pages/teacher/LearningGoalsListPage';
 import Layout from './components/common/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import StudentDashboard from './pages/student/StudentDashboard'; // <--- ПРАВИЛЬНЫЙ ПУТЬ
-import TeacherDashboard from './pages/teacher/TeacherDashboard'; // <--- ПРАВИЛЬНЫЙ ПУТЬ
-import MathProblemSolver from './pages/student/MathProblemSolver'; // <--- ПРАВИЛЬНЫЙ ПУТЬ
-import StoryGenerator from './pages/student/StoryGenerator'; // <--- ПРАВИЛЬНЫЙ ПУТЬ
+import StudentDashboard from './pages/student/StudentDashboard';
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import MathProblemSolver from './pages/student/MathProblemSolver';
+import StoryGenerator from './pages/student/StoryGenerator';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -66,6 +67,7 @@ function App() {
           {/* Защищенные роуты для Учителя */}
           <Route path="/teacher" element={<PrivateRoute requiredRole="teacher" />}>
             {/* Новые маршруты для управления учебными целями */}
+            <Route path="goals" element={<LearningGoalsListPage />} />
             <Route path="create-goal" element={<CreateGoalPage />} />
             <Route path="goals/:goalId/edit" element={<RoadmapEditorPage />} />
             <Route path="" element={<TeacherDashboard />} />

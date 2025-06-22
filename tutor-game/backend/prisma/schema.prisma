@@ -91,6 +91,7 @@ model LearningGoal {
   subject      String
   setting      String
   studentAge   Int
+  language     String           @default("Russian")
   createdAt    DateTime         @default(now())
   
   // Relations

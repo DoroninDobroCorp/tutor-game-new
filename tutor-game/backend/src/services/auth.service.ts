@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, User, Role, Prisma } from '@prisma/client';
+import { PrismaClient, User, Role, Prisma, Student, Teacher } from '@prisma/client';
 import { AppError } from '../middlewares/error.middleware';
 
 // Define a user type without the password
@@ -40,7 +40,8 @@ interface TokenPayload {
   jti?: string; // JWT ID for blacklisting
 }
 
-interface AuthTokens {
+interface AuthResponse {
+  user: SafeUser;
   accessToken: string;
   refreshToken: string;
 }
@@ -209,119 +210,88 @@ export const getCurrentUser = async (userId: string): Promise<SafeUser | null> =
   
   if (!user) return null;
   
-  const { password, ...userData } = user;
-  return userData as SafeUser;
+  const { password, ...safeUser } = user;
+  return safeUser as SafeUser;
 };
 
-export const generateToken = (user: User, type: 'access' | 'refresh' = 'access'): string => {
-  const now = Math.floor(Date.now() / 1000);
+// Generate token helper function
+const generateToken = (user: User, type: 'access' | 'refresh'): string => {
+  const secret = type === 'access' ? config.jwtSecret : config.jwtRefreshSecret;
   const expiresIn = type === 'access' ? '15m' : '7d';
-  
-  const payload: Omit<TokenPayload, 'exp' | 'iat'> = {
+
+  const payload = {
     userId: user.id,
     role: user.role,
     type,
   };
 
-  return jwt.sign(
-    payload,
-    config.jwtSecret,
-    { 
-      expiresIn,
-    }
-  );
+  return jwt.sign(payload, secret, { expiresIn });
 };
 
-interface AuthResponse {
-  user: SafeUser;
-  accessToken: string;
-  refreshToken: string;
-}
-
-export const generateTokens = async (user: User): Promise<AuthResponse> => {
+// Generate both access and refresh tokens
+const generateTokens = async (user: User): Promise<AuthResponse> => {
   const accessToken = generateToken(user, 'access');
   const refreshToken = generateToken(user, 'refresh');
 
-  // Get fresh user data to ensure we have all fields
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!currentUser) {
-    throw new AppError('User not found', 404);
-  }
-
-  const { password: _, ...userData } = currentUser;
+  const { password, ...safeUser } = user;
   
   return {
-    user: userData as SafeUser,
+    user: safeUser as SafeUser,
     accessToken,
-    refreshToken
+    refreshToken,
   };
 };
 
-export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
-  const blacklistedToken = await prisma.tokenBlacklist.findUnique({
-    where: { token },
-  } as any);
-  return !!blacklistedToken;
-};
-
-export const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
-  await prisma.tokenBlacklist.create({
-    data: {
-      token,
-      expiresAt,
-    },
-  } as any);
-
-  // Clean up expired tokens in the background
-  await prisma.tokenBlacklist.deleteMany({
-    where: {
-      expiresAt: {
-        lt: new Date()
-      }
-    }
-  } as any);
-};
-
-export const verifyToken = async (token: string): Promise<TokenPayload | null> => {
+// Verify refresh token
+const verifyRefreshToken = async (token: string): Promise<TokenPayload | null> => {
   try {
-    // Check if token is blacklisted
-    if (await isTokenBlacklisted(token)) {
-      return null;
-    }
-    
-    const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
-    return decoded;
+    if (await isTokenBlacklisted(token)) return null;
+    return jwt.verify(token, config.jwtRefreshSecret) as TokenPayload;
   } catch (error) {
     return null;
   }
 };
 
-export const refreshTokens = async (refreshToken: string): Promise<AuthResponse> => {
-  // Verify refresh token
-  const decoded = await verifyToken(refreshToken);
+// Blacklist a token
+const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
+  await prisma.tokenBlacklist.create({
+    data: { token, expiresAt },
+  });
+};
+
+// Check if token is blacklisted
+const isTokenBlacklisted = async (token: string): Promise<boolean> => {
+  const blacklistedToken = await prisma.tokenBlacklist.findUnique({
+    where: { token },
+  });
+  return !!blacklistedToken;
+};
+
+export const verifyAccessToken = async (token: string): Promise<TokenPayload | null> => {
+  try {
+    if (await isTokenBlacklisted(token)) return null;
+    return jwt.verify(token, config.jwtSecret) as TokenPayload;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const refreshTokens = async (token: string): Promise<AuthResponse> => {
+  const decoded = await verifyRefreshToken(token);
   if (!decoded || decoded.type !== 'refresh') {
-    throw new AppError('Invalid refresh token', 401);
+    throw new AppError('Invalid or expired refresh token', 401);
+  }
+
+  const user = await prisma.user.findUnique({ 
+    where: { id: decoded.userId },
+    include: { teacher: true, student: true }
+  });
+  
+  if (!user) {
+    throw new AppError('User not found', 404);
   }
   
-  // Blacklist the used refresh token
-  await blacklistToken(
-    refreshToken, 
-    new Date(decoded.exp! * 1000) // Use token expiration time
-  );
-
-  // Get user
-  const user = await prisma.user.findUnique({
-    where: { id: decoded.userId },
-    include: { teacher: true, student: true },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  // Generate new tokens
+  await blacklistToken(token, new Date(decoded.exp! * 1000));
+  
   return generateTokens(user);
 };

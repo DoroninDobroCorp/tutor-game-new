@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGenerateRoadmapProposalMutation, useUpdateRoadmapMutation } from '../../features/teacher/teacherApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { FiPlus, FiTrash2, FiArrowLeft } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiArrowLeft, FiEdit2 } from 'react-icons/fi';
 
 interface RoadmapSection { 
   sectionTitle: string; 
@@ -15,6 +15,8 @@ export default function RoadmapEditorPage() {
     const navigate = useNavigate();
     const [roadmap, setRoadmap] = useState<RoadmapSection[]>([]);
     const [isEditing, setIsEditing] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
+    const [feedback, setFeedback] = useState('');
+    const [isEditingFeedback, setIsEditingFeedback] = useState(false);
     
     const [generateProposal, { isLoading: isGenerating }] = useGenerateRoadmapProposalMutation();
     const [updateRoadmap, { isLoading: isSaving }] = useUpdateRoadmapMutation();
@@ -22,12 +24,17 @@ export default function RoadmapEditorPage() {
     const handleGenerate = async () => {
         if (!goalId) return;
         try {
-            const proposal = await generateProposal(goalId).unwrap();
+            const proposal = await generateProposal({ 
+                goalId, 
+                ...(roadmap.length > 0 && { existingPlan: roadmap }),
+                ...(feedback && { feedback })
+            }).unwrap();
             setRoadmap(proposal);
-            toast.success('План сгенерирован!');
+            setFeedback('');
+            toast.success('План обновлен!');
         } catch (error) {
             console.error('Generation error:', error);
-            toast.error('Не удалось сгенерировать план.');
+            toast.error('Не удалось обновить план.');
         }
     };
 
@@ -43,34 +50,37 @@ export default function RoadmapEditorPage() {
     };
 
     const handleAddSection = () => {
-        setRoadmap([...roadmap, { sectionTitle: 'Новый раздел', lessons: ['Новое занятие'] }]);
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
+        newRoadmap.push({ sectionTitle: 'Новый раздел', lessons: ['Новое занятие'] });
+        setRoadmap(newRoadmap);
     };
 
     const handleAddLesson = (sectionIndex: number) => {
-        const newRoadmap = [...roadmap];
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
         newRoadmap[sectionIndex].lessons.push('Новое занятие');
         setRoadmap(newRoadmap);
     };
 
     const handleRemoveSection = (sectionIndex: number) => {
-        const newRoadmap = roadmap.filter((_, idx) => idx !== sectionIndex);
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
+        newRoadmap.splice(sectionIndex, 1);
         setRoadmap(newRoadmap);
     };
 
     const handleRemoveLesson = (sectionIndex: number, lessonIndex: number) => {
-        const newRoadmap = [...roadmap];
-        newRoadmap[sectionIndex].lessons = newRoadmap[sectionIndex].lessons.filter((_, idx) => idx !== lessonIndex);
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
+        newRoadmap[sectionIndex].lessons.splice(lessonIndex, 1);
         setRoadmap(newRoadmap);
     };
 
     const handleSectionTitleChange = (sectionIndex: number, value: string) => {
-        const newRoadmap = [...roadmap];
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
         newRoadmap[sectionIndex].sectionTitle = value;
         setRoadmap(newRoadmap);
     };
 
     const handleLessonChange = (sectionIndex: number, lessonIndex: number, value: string) => {
-        const newRoadmap = [...roadmap];
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
         newRoadmap[sectionIndex].lessons[lessonIndex] = value;
         setRoadmap(newRoadmap);
     };
@@ -110,6 +120,60 @@ export default function RoadmapEditorPage() {
                         {isSaving ? 'Сохранение...' : 'Сохранить план'}
                     </button>
                 </div>
+            </div>
+
+            {/* Feedback Section */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-center mb-2">
+                    <label htmlFor="feedback" className="block text-sm font-medium text-gray-700">
+                        Пожелания для ИИ
+                    </label>
+                    {!isEditingFeedback && feedback && (
+                        <button 
+                            onClick={() => setIsEditingFeedback(true)}
+                            className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                        >
+                            <FiEdit2 className="mr-1" size={14} /> Редактировать
+                        </button>
+                    )}
+                </div>
+                
+                {isEditingFeedback || !feedback ? (
+                    <div>
+                        <textarea
+                            id="feedback"
+                            value={feedback}
+                            onChange={(e) => setFeedback(e.target.value)}
+                            rows={2}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Например: 'Сделай первый раздел короче' или 'Добавь тему про проценты'"
+                        />
+                        <div className="flex justify-end space-x-2 mt-2">
+                            <button
+                                onClick={() => {
+                                    setFeedback('');
+                                    setIsEditingFeedback(false);
+                                }}
+                                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                Отмена
+                            </button>
+                            <button
+                                onClick={() => setIsEditingFeedback(false)}
+                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                            >
+                                Сохранить
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-2 bg-white rounded border border-gray-200">
+                        <p className="text-gray-800">{feedback}</p>
+                    </div>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                    Опишите, что вы хотите изменить, и снова нажмите "Сгенерировать с ИИ", чтобы улучшить текущий план.
+                </p>
             </div>
 
             {roadmap.length === 0 && !isGenerating && (
@@ -185,12 +249,23 @@ export default function RoadmapEditorPage() {
                                         />
                                     ) : (
                                         <>
-                                            <span 
-                                                className="flex-1 cursor-text"
-                                                onClick={() => startEditing(sectionIndex, lessonIndex)}
-                                            >
-                                                {lesson}
-                                            </span>
+                                            <div className="flex-1 flex items-center">
+                                                <span 
+                                                    className="cursor-text flex-1"
+                                                    onClick={() => startEditing(sectionIndex, lessonIndex)}
+                                                >
+                                                    {lesson}
+                                                </span>
+                                                <button
+                                                    className="ml-2 text-blue-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100"
+                                                    onClick={() => {
+                                                        startEditing(sectionIndex, lessonIndex);
+                                                    }}
+                                                    title="Редактировать"
+                                                >
+                                                    <FiEdit2 size={14} />
+                                                </button>
+                                            </div>
                                             <button
                                                 onClick={() => handleRemoveLesson(sectionIndex, lessonIndex)}
                                                 className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1"

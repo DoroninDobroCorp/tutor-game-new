@@ -39,6 +39,7 @@ const studentNavigation: NavigationItem[] = [
 
 const teacherNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
+  { name: 'Учебные Планы', href: '/teacher/goals', icon: BookOpenIcon, current: false },
   { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
   { name: 'Progress', href: '/teacher/progress', icon: ChartBarIcon, current: false },
   {

@@ -62,74 +62,86 @@ export const generateMathProblem = async (topic: string, difficulty: number) => 
   }
 };
 
-export const generateRoadmap = async (subject: string, setting: string, age: number) => {
-  console.log(`[LOG] 1. Вызвана функция generateRoadmap.`);
+export const generateRoadmap = async (subject: string, age: number, language: string, existingPlan?: any, feedback?: string) => {
+  console.log(`[LOG] 1. Starting generateRoadmap for subject: ${subject}, age: ${age}, language: ${language}`);
+  
+  const systemMessage = `You are a world-class curriculum designer and a creative methodologist for children's education. 
+Your task is to create a comprehensive, engaging, and logically structured learning plan for a ${age}-year-old student in ${language}.
+The plan must be broken down into logical sections, and each section into specific, bite-sized lesson titles.
 
-  const messages: Array<{
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-  }> = [
+RULES:
+1.  Analyze the user's main goal.
+2.  Structure the entire curriculum into several thematic sections. The section titles should be creative and engaging.
+3.  Each section must contain a list of short, clear, and actionable lesson titles.
+4.  If an existing plan and teacher feedback are provided, you MUST use them as a basis to refine and improve the plan, not create a new one.
+5.  Your response MUST BE ONLY a valid JSON object with a single root key "roadmap", which contains an array of section objects.
+
+Example format:
+{
+  "roadmap": [
     {
-      role: 'system' as const,
-      content: `You are an expert curriculum designer for children. Your task is to create a learning plan. The plan should be broken down into logical sections, and each section into specific lessons. The tone should be engaging and tailored to the provided setting. The student is ${age} years old.
-      
-      Respond ONLY with a valid JSON object in the following format:
-      {
-        "roadmap": [
-          { "sectionTitle": "Title of the First Section", "lessons": ["Lesson 1.1", "Lesson 1.2"] },
-          { "sectionTitle": "Title of the Second Section", "lessons": ["Lesson 2.1", "Lesson 2.2"] }
-        ]
-      }`
+      "sectionTitle": "Section 1: The Basics",
+      "lessons": ["Lesson 1.1: First Topic", "Lesson 1.2: Second Topic"]
     },
     {
-      role: 'user' as const,
-      content: `Subject: ${subject}\nSetting: ${setting}`
-    },
+      "sectionTitle": "Section 2: Advanced Concepts",
+      "lessons": ["Lesson 2.1: Third Topic", "Lesson 2.2: Fourth Topic"]
+    }
+  ]
+}`;
+  
+  let userMessage = `The main learning goal is: "${subject}". Create a complete, sectioned learning plan.`;
+
+  if (existingPlan && existingPlan.length > 0) {
+    userMessage = `Here is the current version of the plan that needs to be improved:\n${JSON.stringify(existingPlan, null, 2)}`;
+    if (feedback) {
+      userMessage += `\n\nPlease apply the following instructions from the teacher to improve the plan: "${feedback}"`;
+    } else {
+      userMessage += '\n\nPlease review and improve this plan to make it more logical and engaging.';
+    }
+  }
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemMessage },
+    { role: 'user', content: userMessage }
   ];
 
-  // --- ШАГ 2: ЛОГИРУЕМ ТО, ЧТО ОТПРАВЛЯЕМ ---
-  console.log('[LOG] 2. Отправляем в OpenAI следующий запрос:');
-  console.log(JSON.stringify({ model: 'gpt-4-turbo-preview', messages }, null, 2));
+  console.log('[LOG] 2. Sending request to OpenAI with messages:', JSON.stringify(messages, null, 2));
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: messages,
+      model: 'gpt-4-turbo',
+      messages,
       response_format: { type: "json_object" },
     });
 
-    // --- ШАГ 3: ЛОГИРУЕМ ВЕСЬ ОБЪЕКТ ОТВЕТА ---
-    console.log('[LOG] 3. Получен ПОЛНЫЙ объект ответа от OpenAI:');
-    console.log(JSON.stringify(completion, null, 2)); // <--- САМЫЙ ВАЖНЫЙ ЛОГ
-
+    console.log('[LOG] 3. Received FULL response object from OpenAI:', JSON.stringify(completion, null, 2));
     const content = completion.choices[0]?.message?.content;
 
     if (!content) {
-      console.error('[ERROR] 4. Поле "content" в ответе OpenAI пустое.');
-      // Логируем причину завершения, если она есть
       const finishReason = completion.choices[0]?.finish_reason;
-      console.error(`[INFO] Причина завершения (finish_reason): ${finishReason}`);
+      console.error(`[ERROR] 4. OpenAI response content is empty. Finish reason: ${finishReason}`);
       throw new Error(`No content received from OpenAI. Finish reason: ${finishReason}`);
     }
     
-    console.log(`[LOG] 4. Сырое содержимое поля "content":\n---\n${content}\n---`);
+    console.log(`[LOG] 4. Raw "content" from OpenAI:\n---\n${content}\n---`);
     
-    console.log(`[LOG] 5. Пытаемся распарсить (JSON.parse) "content"...`);
+    console.log(`[LOG] 5. Attempting to parse JSON...`);
     const parsedJson = JSON.parse(content);
-    console.log(`[LOG] 6. JSON успешно распарсен.`);
+    console.log(`[LOG] 6. JSON parsed successfully.`);
 
     const roadmapArray = parsedJson.roadmap;
 
     if (!Array.isArray(roadmapArray)) {
-      console.error("[ERROR] 7. 'roadmap' в ответе не является массивом.");
+      console.error("[ERROR] 7. Parsed data does not contain a 'roadmap' array.");
       throw new Error("AI did not return a valid 'roadmap' array.");
     }
     
-    console.log(`[LOG] 8. Успех! Возвращаем учебный план.`);
+    console.log(`[LOG] 8. Success! Roadmap array extracted.`);
     return roadmapArray;
 
   } catch (error) {
-    console.error('[FATAL ERROR] Ошибка внутри generateRoadmap:', error);
-    throw new Error('Failed to generate roadmap');
+    console.error('[FATAL ERROR] An error occurred in generateRoadmap:', error);
+    throw new Error('Failed to generate roadmap due to an internal error.');
   }
 };
