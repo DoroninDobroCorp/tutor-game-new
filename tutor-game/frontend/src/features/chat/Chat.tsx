@@ -4,7 +4,9 @@ import {
   setActiveChat, 
   setMessagesForUser, 
   selectActiveChatMessages,
-  Message
+  Message,
+  addMessage,
+  selectTotalUnreadCount
 } from './chatSlice';
 import { useSocket } from '../../context/SocketContext';
 import { PaperAirplaneIcon, UserCircleIcon } from '@heroicons/react/24/outline';
@@ -14,6 +16,7 @@ interface ChatUser {
   name: string;
   role: 'student' | 'teacher';
   isOnline: boolean;
+  lastSeen?: string | Date | null;
 }
 
 const formatTime = (date: Date | string): string => {
@@ -31,15 +34,24 @@ const Chat: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Данные теперь приходят только из Redux
   const messages = useAppSelector(selectActiveChatMessages);
   const unreadCounts = useAppSelector((state) => state.chat.unreadCounts);
+  const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
 
-  // Эффект №1: Управление слушателями сокета
+  // Update document title with unread count
+  useEffect(() => {
+    document.title = totalUnreadCount > 0 
+      ? `(${totalUnreadCount}) Чат` 
+      : 'Чат';
+    
+    return () => {
+      document.title = 'Tutor Game';
+    };
+  }, [totalUnreadCount]);
+
+  // Handle socket events
   useEffect(() => {
     if (!socket || !user) return;
-
-    socket.emit('getUsers');
 
     const handleUsers = (usersList: ChatUser[]) => {
       const filtered = usersList.filter(u => u.id !== user.id);
@@ -54,32 +66,50 @@ const Chat: React.FC = () => {
         dispatch(setMessagesForUser({ partnerId: selectedUser.id, messages: history }));
       }
     };
+
+    const handleNewMessage = (message: Message) => {
+      dispatch(addMessage({ message, currentUserId: user.id }));
+    };
     
-    const handleUserStatusChange = ({ userId, status }: { userId: string, status: 'online' | 'offline' }) => {
-      setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, isOnline: status === 'online' } : u));
+    const handleUserStatus = ({ userId, status, lastSeen }: { userId: string; status: 'online' | 'offline'; lastSeen?: Date }) => {
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === userId 
+            ? { ...u, isOnline: status === 'online', lastSeen: lastSeen || u.lastSeen }
+            : u
+        )
+      );
     };
 
+    // Initial fetch
+    socket.emit('getUsers');
+    
+    // Event listeners
     socket.on('users', handleUsers);
     socket.on('messages', handleHistory);
-    socket.on('user_status_change', handleUserStatusChange);
+    socket.on('message', handleNewMessage);
+    socket.on('user_status_change', handleUserStatus);
 
     return () => {
       socket.off('users', handleUsers);
       socket.off('messages', handleHistory);
-      socket.off('user_status_change', handleUserStatusChange);
+      socket.off('message', handleNewMessage);
+      socket.off('user_status_change', handleUserStatus);
     };
-  }, [socket, user, selectedUser, dispatch]); // `selectedUser` нужен для установки первого юзера
+  }, [socket, user, selectedUser, dispatch]);
 
-  // Эффект №2: Управление активным чатом
+  // Handle active chat changes
   useEffect(() => {
     if (selectedUser) {
       dispatch(setActiveChat(selectedUser.id));
       socket?.emit('getMessages', { userId: selectedUser.id });
     }
-    return () => { dispatch(setActiveChat(null)); };
+    return () => { 
+      dispatch(setActiveChat(null));
+    };
   }, [selectedUser, dispatch, socket]);
 
-  // Эффект №3: Прокрутка чата
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -87,8 +117,21 @@ const Chat: React.FC = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedUser || !socket) return;
-    socket.emit('sendMessage', { content: newMessage, recipientId: selectedUser.id });
+    
+    socket.emit('sendMessage', { 
+      content: newMessage, 
+      recipientId: selectedUser.id 
+    });
+    
     setNewMessage('');
+  };
+
+  const getLastSeenText = (user: ChatUser) => {
+    if (user.isOnline) return 'Онлайн';
+    if (user.lastSeen) {
+      return `Был(а) в ${formatTime(user.lastSeen)}`;
+    }
+    return 'Офлайн';
   };
 
   if (!user) return null;
@@ -97,46 +140,133 @@ const Chat: React.FC = () => {
     <div className="flex h-[calc(100vh-200px)] bg-white rounded-lg shadow overflow-hidden">
       {/* Sidebar */}
       <div className="w-1/3 border-r border-gray-200 bg-gray-50 flex flex-col">
-        <div className="p-4 border-b"><h2 className="text-lg font-semibold">{user.role === 'teacher' ? 'Студенты' : 'Учителя'}</h2></div>
+        <div className="p-4 border-b">
+          <h2 className="text-lg font-semibold">
+            {user.role === 'teacher' ? 'Студенты' : 'Учителя'}
+          </h2>
+        </div>
         <div className="flex-1 overflow-y-auto">
           {users.map((userItem) => (
-            <div key={userItem.id} className={`p-4 border-b cursor-pointer hover:bg-gray-100 ${selectedUser?.id === userItem.id ? 'bg-blue-50' : ''}`} onClick={() => setSelectedUser(userItem)}>
+            <div 
+              key={userItem.id} 
+              className={`p-4 border-b cursor-pointer hover:bg-gray-100 ${
+                selectedUser?.id === userItem.id ? 'bg-blue-50' : ''
+              }`} 
+              onClick={() => setSelectedUser(userItem)}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center min-w-0">
-                  <div className="relative"><UserCircleIcon className="h-10 w-10 text-gray-400" />{userItem.isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white" />}</div>
-                  <div className="ml-3"><p className="text-sm font-medium truncate">{userItem.name}</p><p className="text-xs text-gray-500">{userItem.isOnline ? 'Онлайн' : 'Офлайн'}</p></div>
+                  <div className="relative">
+                    <UserCircleIcon className="h-10 w-10 text-gray-400" />
+                    {userItem.isOnline && (
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white" />
+                    )}
+                  </div>
+                  <div className="ml-3 min-w-0">
+                    <p className="text-sm font-medium truncate">{userItem.name}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {getLastSeenText(userItem)}
+                    </p>
+                  </div>
                 </div>
-                {unreadCounts[userItem.id] > 0 && <span className="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full">{unreadCounts[userItem.id]}</span>}
+                {unreadCounts[userItem.id] > 0 && (
+                  <span className="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full">
+                    {unreadCounts[userItem.id]}
+                  </span>
+                )}
               </div>
             </div>
           ))}
+          {users.length === 0 && (
+            <div className="p-4 text-center text-gray-500">
+              Нет доступных собеседников
+            </div>
+          )}
         </div>
       </div>
+
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
         {selectedUser ? (
           <>
-            <div className="p-4 border-b flex items-center"><UserCircleIcon className="h-10 w-10 text-gray-400" /><div className="ml-3"><p className="font-semibold">{selectedUser.name}</p><p className="text-sm text-gray-500">{selectedUser.isOnline ? 'Онлайн' : 'Офлайн'}</p></div></div>
+            <div className="p-4 border-b flex items-center">
+              <UserCircleIcon className="h-10 w-10 text-gray-400" />
+              <div className="ml-3">
+                <p className="font-semibold">{selectedUser.name}</p>
+                <p className="text-sm text-gray-500">
+                  {getLastSeenText(selectedUser)}
+                </p>
+              </div>
+            </div>
+            
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-4">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-md px-4 py-2 rounded-lg ${msg.senderId === user.id ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border'}`}>
-                    <p className="text-sm">{msg.content}</p>
-                    <p className={`text-xs mt-1 text-right ${msg.senderId === user.id ? 'text-indigo-200' : 'text-gray-500'}`}>{formatTime(msg.timestamp)}</p>
+              {messages.length > 0 ? (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`flex ${
+                      msg.senderId === user.id ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    <div 
+                      className={`max-w-md px-4 py-2 rounded-lg ${
+                        msg.senderId === user.id 
+                          ? 'bg-indigo-600 text-white rounded-br-none' 
+                          : 'bg-white text-gray-800 rounded-bl-none border'
+                      }`}
+                    >
+                      <p className="text-sm break-words">{msg.content}</p>
+                      <p 
+                        className={`text-xs mt-1 text-right ${
+                          msg.senderId === user.id ? 'text-indigo-200' : 'text-gray-500'
+                        }`}
+                      >
+                        {formatTime(msg.timestamp)}
+                        {msg.senderId === user.id && (
+                          <span className="ml-1">
+                            {msg.read ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <p>Нет сообщений</p>
                 </div>
-              ))}
+              )}
               <div ref={messagesEndRef} />
             </div>
+            
             <div className="p-4 border-t bg-white">
               <form onSubmit={handleSendMessage} className="flex space-x-2">
-                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Напишите сообщение..." className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={!socket?.connected} />
-                <button type="submit" disabled={!newMessage.trim() || !socket?.connected} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><PaperAirplaneIcon className="h-5 w-5 -rotate-45" /></button>
+                <input 
+                  type="text" 
+                  value={newMessage} 
+                  onChange={(e) => setNewMessage(e.target.value)} 
+                  placeholder="Напишите сообщение..." 
+                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" 
+                  disabled={!socket?.connected} 
+                />
+                <button 
+                  type="submit" 
+                  disabled={!newMessage.trim() || !socket?.connected} 
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  <PaperAirplaneIcon className="h-5 w-5 -rotate-45" />
+                </button>
               </form>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500"><p>{users.length > 0 ? "Выберите собеседника" : "У вас пока нет собеседников"}</p></div>
+          <div className="flex-1 flex items-center justify-center text-gray-500">
+            <p>{
+              users.length > 0 
+                ? "Выберите собеседника" 
+                : "У вас пока нет собеседников"
+            }</p>
+          </div>
         )}
       </div>
     </div>

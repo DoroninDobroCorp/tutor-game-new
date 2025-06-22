@@ -8,7 +8,7 @@ export type Message = {
   senderName: string;
   senderRole: 'student' | 'teacher';
   content: string;
-  timestamp: string; // Используем string для сериализации
+  timestamp: string;
   read: boolean;
 };
 
@@ -28,36 +28,32 @@ const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    // Получили историю сообщений с сервера
     setMessagesForUser: (state, action: PayloadAction<{ partnerId: string, messages: Message[] }>) => {
       state.messagesByPartnerId[action.payload.partnerId] = action.payload.messages;
     },
-    // Пришло одно новое сообщение (от нас или нам)
     addMessage: (state, action: PayloadAction<{ message: Message, currentUserId: string }>) => {
       const { message, currentUserId } = action.payload;
       const partnerId = message.senderId === currentUserId ? message.recipientId : message.senderId;
 
-      if (!state.messagesByPartnerId[partnerId]) {
-        state.messagesByPartnerId[partnerId] = [];
-      }
-      
-      // Предотвращаем дублирование сообщений
-      if (!state.messagesByPartnerId[partnerId].some(m => m.id === message.id)) {
-        state.messagesByPartnerId[partnerId].push(message);
+      const conversation = state.messagesByPartnerId[partnerId] || [];
+      if (!conversation.some(m => m.id === message.id)) {
+        state.messagesByPartnerId[partnerId] = [...conversation, message];
       }
 
-      // Логика счетчика непрочитанных
       if (message.senderId !== currentUserId && state.activeChatPartnerId !== partnerId) {
-        state.unreadCounts[partnerId] = (state.unreadCounts[partnerId] || 0) + 1;
+        state.unreadCounts = {
+          ...state.unreadCounts,
+          [partnerId]: (state.unreadCounts[partnerId] || 0) + 1,
+        };
       }
     },
-    // Пользователь открыл чат
     setActiveChat: (state, action: PayloadAction<string | null>) => {
       const partnerId = action.payload;
       state.activeChatPartnerId = partnerId;
-      if (partnerId) {
-        // Сбрасываем счетчик для этого чата при его открытии
-        delete state.unreadCounts[partnerId];
+      if (partnerId && state.unreadCounts[partnerId]) {
+        const newUnreadCounts = { ...state.unreadCounts };
+        delete newUnreadCounts[partnerId];
+        state.unreadCounts = newUnreadCounts;
       }
     },
     resetChatState: () => initialState,
@@ -68,10 +64,9 @@ export const {
   setMessagesForUser,
   addMessage,
   setActiveChat,
-  resetChatState,
+  resetChatState
 } = chatSlice.actions;
 
-// --- СЕЛЕКТОРЫ С MEMOIZATION ---
 const selectMessages = (state: RootState) => state.chat.messagesByPartnerId;
 const selectActivePartnerId = (state: RootState) => state.chat.activeChatPartnerId;
 

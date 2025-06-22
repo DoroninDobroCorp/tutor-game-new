@@ -135,6 +135,7 @@ export class WebSocketService {
           const formattedMessages = messages.map((msg) => ({
             id: msg.id,
             senderId: msg.senderId,
+            recipientId: msg.recipientId,
             senderName: `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim(),
             senderRole: msg.sender.role.toLowerCase(),
             content: msg.content,
@@ -148,61 +149,42 @@ export class WebSocketService {
         }
       });
 
-      socket.on('sendMessage', async (data: { recipientId: string; content: string }, callback: (response: any) => void) => {
+      socket.on('sendMessage', async (data: { recipientId: string; content: string }) => {
         const senderId = socket.user?.userId;
         const { recipientId, content } = data;
         
         if (!senderId || !recipientId || !content) {
-          console.error('Missing required fields for sendMessage');
-          if (callback) callback({ success: false, error: 'Missing required fields' });
           return;
         }
 
         try {
           const newMessage = await prisma.message.create({
-            data: {
-              content,
-              senderId,
-              recipientId,
-            },
+            data: { content, senderId, recipientId },
             include: {
-              sender: { 
-                select: { 
-                  id: true, 
-                  firstName: true, 
-                  lastName: true, 
-                  role: true 
-                } 
-              },
+              sender: { select: { id: true, firstName: true, lastName: true, role: true } },
             },
           });
           
           const formattedMessage = {
             id: newMessage.id,
-            recipientId: newMessage.recipientId, // Add recipient ID for client-side routing
+            recipientId: newMessage.recipientId,
             senderId: newMessage.senderId,
             senderName: `${newMessage.sender.firstName || ''} ${newMessage.sender.lastName || ''}`.trim(),
             senderRole: newMessage.sender.role.toLowerCase(),
             content: newMessage.content,
-            timestamp: newMessage.createdAt,
+            timestamp: newMessage.createdAt.toISOString(),
             read: newMessage.read,
           };
 
-          // Send to recipient if online
           const recipientSocketId = this.connectedUsers.get(recipientId);
           if (recipientSocketId) {
             this.io.to(recipientSocketId).emit('message', formattedMessage);
           }
           
-          // Send back to sender
           socket.emit('message', formattedMessage);
-          
-          // Send success callback
-          if (callback) callback({ success: true });
           
         } catch (error) {
           console.error('Error sending message:', error);
-          if (callback) callback({ success: false, error: 'Failed to send message' });
         }
       });
 
@@ -219,7 +201,6 @@ export class WebSocketService {
     });
   }
 
-  // Helper method to get socket.io instance
   public getIO(): Server {
     return this.io;
   }
