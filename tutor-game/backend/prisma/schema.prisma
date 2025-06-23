@@ -189,6 +189,24 @@ model Story {
   @@map("stories")
 }
 
+model StoryChapter {
+  id                      String      @id @default(uuid())
+  lessonId                String      @unique
+  lesson                  Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  learningGoalId          String
+  learningGoal            LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
+  teacherSnippetText      String?
+  teacherSnippetImageUrl  String?
+  teacherSnippetStatus    String      @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, COMPLETED
+  studentSnippetText      String?
+  studentSnippetImageUrl  String?
+  studentSnippetStatus    String      @default("LOCKED") // LOCKED, DRAFT, SUBMITTED, APPROVED
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  @@map("story_chapters")
+}
+
 model Message {
   id          String   @id @default(uuid())
   senderId    String

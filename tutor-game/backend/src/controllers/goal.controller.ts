@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateRoadmap, generateLessonContent } from '../services/openai.service';
+import { generateRoadmap, generateLessonContent, generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
 import { generateImage } from '../services/leonardo.service';
 import { Prisma } from '@prisma/client';
 
@@ -112,6 +112,7 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
                             status: true,
                             order: true,
                             content: true,
+                            storyChapter: true // Include story chapter data
                         }
                     }
                 },
@@ -126,36 +127,88 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
 
 export const updateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
-    const { roadmap } = req.body;
+    
+    // ИСПРАВЛЕНИЕ 1: Определяем полный тип данных, который приходит с фронтенда
+    const roadmapSections = req.body.roadmap as { 
+        id?: string; 
+        title: string; 
+        lessons: { 
+            id?: string; 
+            title: string;
+            status?: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED'; // Добавляем статус
+            content?: any; // Добавляем контент
+        }[] 
+    }[];
 
-    if (!roadmap || !Array.isArray(roadmap)) {
-        throw new AppError('Roadmap data must be an array', 400);
+    if (!roadmapSections || !Array.isArray(roadmapSections)) {
+        throw new AppError('Roadmap data must be an array of sections', 400);
     }
 
-    await prisma.$transaction(async (tx) => {
-        await tx.lesson.deleteMany({ where: { section: { learningGoalId: goalId } } });
-        await tx.contentSection.deleteMany({ where: { learningGoalId: goalId } });
+    const teacherId = req.user?.userId;
+    const goal = await prisma.learningGoal.findFirst({
+        where: { id: goalId, teacherId },
+        select: { id: true }
+    });
 
-        for (const [sectionIndex, sectionData] of (roadmap as any[]).entries()) {
-            const section = await tx.contentSection.create({
-                data: {
-                    title: sectionData.sectionTitle,
+    if (!goal) {
+        throw new AppError('Learning Goal not found or access denied', 404);
+    }
+
+    // Use transaction for atomic operation
+    await prisma.$transaction(async (tx) => {
+        const receivedSectionIds = new Set<string>();
+        const receivedLessonIds = new Set<string>();
+
+        for (const [sectionIndex, sectionData] of roadmapSections.entries()) {
+            // --- SECTION MANAGEMENT (UPSERT) ---
+            const section = await tx.contentSection.upsert({
+                where: { id: sectionData.id || `new-section-${sectionIndex}` }, // Use ID or temp ID for creation
+                update: { title: sectionData.title, order: sectionIndex },
+                create: {
+                    title: sectionData.title,
                     order: sectionIndex,
                     learningGoalId: goalId,
-                }
+                },
             });
+            receivedSectionIds.add(section.id);
 
-            if (sectionData.lessons && Array.isArray(sectionData.lessons)) {
-                for (const [lessonIndex, lessonTitle] of sectionData.lessons.entries()) {
-                    await tx.lesson.create({
-                        data: { 
-                            title: lessonTitle, 
-                            order: lessonIndex, 
-                            sectionId: section.id 
-                        }
-                    });
-                }
+            for (const [lessonIndex, lessonData] of sectionData.lessons.entries()) {
+                // --- LESSON MANAGEMENT (UPSERT) ---
+                const lesson = await tx.lesson.upsert({
+                    where: { id: lessonData.id || `new-lesson-${lessonIndex}` },
+                    update: { 
+                        title: lessonData.title, 
+                        order: lessonIndex, 
+                        sectionId: section.id,
+                        status: lessonData.status || 'DRAFT', // Обновляем статус
+                        content: lessonData.content || null, // Обновляем контент
+                    },
+                    create: {
+                        title: lessonData.title,
+                        order: lessonIndex,
+                        sectionId: section.id,
+                        status: lessonData.status || 'DRAFT', // Создаем со статусом
+                        content: lessonData.content || null, // Создаем с контентом
+                    },
+                });
+                receivedLessonIds.add(lesson.id);
             }
+        }
+
+        // --- CLEAN UP DELETED ITEMS ---
+        // Find all section and lesson IDs in the DB that weren't in the received data
+        const allDbSections = await tx.contentSection.findMany({ where: { learningGoalId: goalId }, select: { id: true } });
+        const sectionIdsToDelete = allDbSections.filter(s => !receivedSectionIds.has(s.id)).map(s => s.id);
+        
+        const allDbLessons = await tx.lesson.findMany({ where: { section: { learningGoalId: goalId } }, select: { id: true } });
+        const lessonIdsToDelete = allDbLessons.filter(l => !receivedLessonIds.has(l.id)).map(l => l.id);
+
+        if (lessonIdsToDelete.length > 0) {
+            // Cascade delete will handle related StoryChapter
+            await tx.lesson.deleteMany({ where: { id: { in: lessonIdsToDelete } } });
+        }
+        if (sectionIdsToDelete.length > 0) {
+            await tx.contentSection.deleteMany({ where: { id: { in: sectionIdsToDelete } } });
         }
     });
 
@@ -317,4 +370,156 @@ export const approveCharacterHandler = async (req: Request, res: Response) => {
     const finalGoal = await prisma.learningGoal.findUnique({ where: { id: goalId } });
 
     res.json({ success: true, data: finalGoal });
+};
+
+export const generateStorySnippetHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { refinementPrompt } = req.body;
+    const teacherId = req.user?.userId;
+
+    // Find the lesson with related data
+    const lesson = await prisma.lesson.findFirst({
+        where: { 
+            id: lessonId, 
+            section: { 
+                learningGoal: { 
+                    teacherId 
+                } 
+            } 
+        },
+        include: { 
+            section: { 
+                include: { 
+                    learningGoal: true 
+                } 
+            } 
+        }
+    });
+
+    if (!lesson) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+
+    const { learningGoal } = lesson.section;
+    
+    // Check if character is created
+    if (!learningGoal.characterPrompt || !learningGoal.characterImageId) {
+        throw new AppError('A character must be created for this Learning Goal before generating a story snippet.', 400);
+    }
+
+    try {
+        // 1. Generate high-quality story text in the target language
+        const storyText = await generateStorySnippet(
+            lesson.title,
+            learningGoal.setting,
+            learningGoal.studentAge,
+            learningGoal.characterPrompt,
+            learningGoal.language || 'Russian',
+            refinementPrompt
+        );
+
+        // 2. Translate the text to English for image generation
+        const imagePromptText = await translateForImagePrompt(storyText);
+
+        // 3. Generate image with consistent character using Leonardo AI
+        const imageResult = await generateImage({
+            prompt: `cinematic illustration, vibrant colors, cartoon style, ${imagePromptText}`,
+            characterImageId: learningGoal.characterImageId
+        });
+
+        if (!imageResult.url) {
+            throw new AppError('Failed to generate story image', 500);
+        }
+        
+        // Return the generated content for teacher approval
+        res.json({ 
+            success: true, 
+            data: { 
+                text: storyText, 
+                imageUrl: imageResult.url 
+            } 
+        });
+    } catch (error) {
+        console.error('Error in generateStorySnippetHandler:', error);
+        // More specific error handling
+        if (error instanceof AppError) {
+            throw error;
+        }
+        throw new AppError('Failed to generate story snippet. Please try again later.', 500);
+    }
+};
+
+export const approveStorySnippetHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { text, imageUrl } = req.body;
+    const teacherId = req.user?.userId;
+
+    // Validate input
+    if (!text || !imageUrl) {
+        throw new AppError('Text and image URL are required for approval', 400);
+    }
+
+    // Find the lesson with permission check
+    const lesson = await prisma.lesson.findFirst({
+        where: { 
+            id: lessonId, 
+            section: { 
+                learningGoal: { 
+                    teacherId 
+                } 
+            } 
+        },
+        include: { 
+            section: { 
+                select: { 
+                    learningGoalId: true 
+                } 
+            } 
+        }
+    });
+
+    if (!lesson) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+
+    try {
+        // Use transaction to ensure data consistency
+        const storyChapter = await prisma.$transaction(async (tx) => {
+            // Check if we need to update or create
+            const existingChapter = await tx.storyChapter.findUnique({
+                where: { lessonId }
+            });
+
+            if (existingChapter) {
+                // Update existing chapter
+                return await tx.storyChapter.update({
+                    where: { id: existingChapter.id },
+                    data: {
+                        teacherSnippetText: text,
+                        teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetStatus: 'APPROVED'
+                    }
+                });
+            } else {
+                // Create new chapter
+                return await tx.storyChapter.create({
+                    data: {
+                        lessonId,
+                        learningGoalId: lesson.section.learningGoalId,
+                        teacherSnippetText: text,
+                        teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetStatus: 'APPROVED'
+                    }
+                });
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            data: storyChapter 
+        });
+    } catch (error) {
+        console.error('Error in approveStorySnippetHandler:', error);
+        throw new AppError('Failed to approve story snippet. Please try again later.', 500);
+    }
 };

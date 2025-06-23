@@ -8,6 +8,13 @@ interface Student {
     email: string;
 }
 
+interface StoryChapter {
+    id: string;
+    teacherSnippetText: string;
+    teacherSnippetImageUrl: string;
+    teacherSnippetStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
+}
+
 interface Lesson {
     id: string;
     title: string;
@@ -20,6 +27,7 @@ interface Lesson {
             content: string;
         }>;
     } | null;
+    storyChapter?: StoryChapter | null;
 }
 
 interface ContentSection {
@@ -46,8 +54,8 @@ interface LearningGoal {
 }
 
 export interface RoadmapProposal { 
-    sectionTitle: string; 
-    lessons: string[]; 
+    sectionTitle: string; // ИИ возвращает именно 'sectionTitle'
+    lessons: string[]; // ИИ возвращает массив строк, а не объектов
 }
 
 // API Slice
@@ -91,11 +99,11 @@ export const teacherApi = apiSlice.injectEndpoints({
     }),
 
     // Roadmap
-    generateRoadmapProposal: builder.mutation<RoadmapProposal[], { goalId: string; existingPlan?: RoadmapProposal[]; feedback?: string }>({
+    generateRoadmapProposal: builder.mutation<RoadmapProposal[], { goalId: string; existingPlan?: ContentSection[]; feedback?: string }>({
         query: ({ goalId, ...body }) => ({ url: `/goals/${goalId}/generate-roadmap`, method: 'POST', body }),
         transformResponse: (response: { data: RoadmapProposal[] }) => response.data,
     }),
-    updateRoadmap: builder.mutation<void, { goalId: string; roadmap: RoadmapProposal[] }>({
+    updateRoadmap: builder.mutation<void, { goalId: string; roadmap: ContentSection[] }>({
         query: ({ goalId, roadmap }) => ({ url: `/goals/${goalId}/roadmap`, method: 'PUT', body: { roadmap } }),
         invalidatesTags: () => [{ type: 'Goal', id: 'LIST' }],
     }),
@@ -183,8 +191,9 @@ export const teacherApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: { prompt },
       }),
+      invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: goalId }],
     }),
-    approveCharacterForGoal: builder.mutation<LearningGoal, { 
+    approveCharacterForGoal: builder.mutation<{ data: LearningGoal }, { 
       goalId: string; 
       prompt: string; 
       imageId: string; 
@@ -197,8 +206,35 @@ export const teacherApi = apiSlice.injectEndpoints({
         body,
       }),
       invalidatesTags: (_result, _error, { goalId }) => [
-        { type: 'Goal', id: 'LIST' },
         { type: 'Goal', id: goalId },
+        { type: 'Goal', id: 'LIST' },
+      ],
+    }),
+        
+    // Story Snippet Generation and Approval
+    generateStorySnippet: builder.mutation<{ text: string; imageUrl: string }, { lessonId: string; refinementPrompt?: string }>({
+      query: ({ lessonId, refinementPrompt }) => ({
+        url: `/goals/lessons/${lessonId}/story`,
+        method: 'POST',
+        body: { refinementPrompt },
+      }),
+      transformResponse: (response: { data: { text: string; imageUrl: string } }) => response.data,
+    }),
+
+    approveStorySnippet: builder.mutation<StoryChapter, { 
+      lessonId: string; 
+      text: string; 
+      imageUrl: string 
+    }>({
+      query: ({ lessonId, ...body }) => ({
+        url: `/goals/lessons/${lessonId}/story/approve`,
+        method: 'PUT',
+        body,
+      }),
+      transformResponse: (response: { data: StoryChapter }) => response.data,
+      // Invalidate the goals cache to reflect the updated story chapter
+      invalidatesTags: () => [
+        { type: 'Goal', id: 'LIST' },
       ],
     }),
   }),
@@ -215,13 +251,13 @@ export const {
   useUpdateRoadmapMutation,
   useGenerateLessonContentMutation,
   useUpdateLessonContentMutation,
-  useCreateCharacterMutation,
   useGenerateCharacterForGoalMutation,
   useApproveCharacterForGoalMutation,
+  useGenerateStorySnippetMutation,
+  useApproveStorySnippetMutation,
 } = teacherApi;
 
-// Export all types
-export type { LearningGoal, ContentSection, Lesson, Student };
+export type { LearningGoal, ContentSection, Lesson, Student, StoryChapter };
 
 // LeonardoImage type for character generation
 export interface LeonardoImage {

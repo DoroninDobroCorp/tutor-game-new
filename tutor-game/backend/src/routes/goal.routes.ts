@@ -8,7 +8,9 @@ import {
     generateCharacterHandler,
     approveCharacterHandler,
     generateLessonContentHandler,
-    updateLessonContentHandler
+    updateLessonContentHandler,
+    generateStorySnippetHandler,
+    approveStorySnippetHandler
 } from '../controllers/goal.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 
@@ -25,6 +27,10 @@ router.delete('/:goalId', deleteGoalHandler);
 // Roadmap routes
 router.post('/:goalId/generate-roadmap', generateRoadmapHandler);
 router.put('/:goalId/roadmap', updateRoadmapHandler);
+
+// Story snippet routes
+router.post('/lessons/:lessonId/story', generateStorySnippetHandler);
+router.put('/lessons/:lessonId/story/approve', approveStorySnippetHandler);
 
 // Lesson content routes
 router.post('/lessons/:lessonId/generate-content', generateLessonContentHandler);

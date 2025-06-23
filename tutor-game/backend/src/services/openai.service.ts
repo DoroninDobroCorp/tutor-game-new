@@ -132,6 +132,80 @@ Example Response Format:
     }
 };
 
+export const generateStorySnippet = async (
+    lessonTitle: string,
+    setting: string,
+    studentAge: number,
+    characterPrompt: string,
+    language: string,
+    refinementPrompt?: string
+): Promise<string> => {
+    const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
+    Your goal is to create a short story snippet (3-5 sentences) that sets up a problem related to a lesson topic.
+    
+    RULES:
+    1.  The story must be fun, not boring or preachy. Use unexpected twists.
+    2.  The tone should be appropriate for a ${studentAge}-year-old.
+    3.  The story MUST end with an open-ended question to the student, like "Что же он предпримет?", "Как поступит наш герой?", or "Какой выбор он сделает?".
+    4.  DO NOT give the answer or the solution. Only create the narrative setup.`;
+
+    let userPrompt = `Lesson Title: "${lessonTitle}"
+    Story Setting: "${setting}"
+    Main Character: "${characterPrompt}"`;
+
+    // Add refinement instruction if provided
+    if (refinementPrompt) {
+        userPrompt += `\n\nRefine the story with the following instruction: "${refinementPrompt}"`;
+    }
+    
+    userPrompt += '\n\nWrite the story snippet now.';
+
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4-turbo',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            max_tokens: 400, // Increased limit to prevent text cutoff
+            temperature: 0.85,
+        });
+
+        return completion.choices[0]?.message?.content || 'Не удалось сгенерировать фрагмент истории.';
+    } catch (error) {
+        console.error('Error generating story snippet with OpenAI:', error);
+        throw new Error('Failed to generate story snippet.');
+    }
+};
+
+export const translateForImagePrompt = async (text: string): Promise<string> => {
+    const systemPrompt = `You are an expert prompt engineer for AI image generation models like DALL-E and Stable Diffusion.
+    Translate the user's text to English. 
+    Focus on key visual objects, actions, and atmosphere. 
+    Make it a concise, powerful, comma-separated list of keywords.
+    Example: "Отважный рыцарь в сияющих доспехах входит в темную пещеру, где сверкают кристаллы."
+    Result: "brave knight, shining armor, entering dark cave, glowing crystals, cinematic lighting, fantasy art"
+    
+    Your output MUST be only the translated English prompt.`;
+
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo', // 3.5-turbo is sufficient here and cheaper
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: text },
+            ],
+            max_tokens: 100,
+            temperature: 0.2,
+        });
+
+        return completion.choices[0]?.message?.content || text; // Return original text if error
+    } catch (error) {
+        console.error('Error translating text for image prompt:', error);
+        return text; // Return original on error
+    }
+};
+
 export const generateRoadmap = async (
     subject: string,
     age: number,
