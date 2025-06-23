@@ -293,7 +293,25 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
 
                                         {/* Панель 2: История */}
                                         <Tab.Panel className="rounded-xl p-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                            {/* Previous lesson context */}
+                                            {lesson?.previousLesson?.storyChapter?.studentSnippetText && (
+                                                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <h4 className="font-semibold text-gray-800 mb-3">Контекст из предыдущего урока:</h4>
+                                                    <div className="space-y-3 text-sm">
+                                                        {lesson.previousLesson.storyChapter.teacherSnippetText && (
+                                                            <div className="bg-white p-3 rounded border border-gray-100">
+                                                                <p className="text-gray-500 text-xs font-medium mb-1">Учитель писал:</p>
+                                                                <p className="text-gray-700 italic">"{lesson.previousLesson.storyChapter.teacherSnippetText}"</p>
+                                                            </div>
+                                                        )}
+                                                        <div className="bg-white p-3 rounded border border-gray-100">
+                                                            <p className="text-gray-500 text-xs font-medium mb-1">Студент ответил:</p>
+                                                            <p className="text-gray-700 font-medium">"{lesson.previousLesson.storyChapter.studentSnippetText}"</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Текст истории</label>
                                             <textarea 

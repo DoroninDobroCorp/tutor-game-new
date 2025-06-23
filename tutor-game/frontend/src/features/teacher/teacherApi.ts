@@ -11,6 +11,7 @@ interface Student {
 interface StoryChapter {
     id: string;
     teacherSnippetText: string;
+    studentSnippetText: string;
     teacherSnippetImageUrl: string;
     teacherSnippetImagePrompt: string | null;
     teacherSnippetStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
@@ -29,6 +30,7 @@ interface Lesson {
         }>;
     } | null;
     storyChapter?: StoryChapter | null;
+    previousLesson?: Lesson | null;
 }
 
 interface ContentSection {

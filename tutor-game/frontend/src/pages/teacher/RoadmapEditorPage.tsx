@@ -395,7 +395,30 @@ const RoadmapEditorPage = () => {
                                                                                 ) : (<span>{lesson.title}</span>)}
                                                                             </div>
                                                                             <button onClick={() => startEditing(sectionIndex, lessonIndex)} className="ml-4 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Редактировать название"><FiEdit2 /></button>
-                                                                            <button onClick={() => setEditingLesson(lesson)} className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Настроить контент"><FiSettings /></button>
+                                                                            <button 
+                                                                                onClick={() => {
+                                                                                    let previousLesson: Lesson | null = null;
+                                                                                    // Find the previous lesson
+                                                                                    if (sectionIndex > 0 || lessonIndex > 0) {
+                                                                                        if (lessonIndex > 0) {
+                                                                                            // Get previous lesson in the same section
+                                                                                            previousLesson = section.lessons[lessonIndex - 1];
+                                                                                        } else {
+                                                                                            // First lesson in section, get last lesson from previous section
+                                                                                            const prevSection = roadmap[sectionIndex - 1];
+                                                                                            if (prevSection?.lessons?.length > 0) {
+                                                                                                previousLesson = prevSection.lessons[prevSection.lessons.length - 1];
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                    // Pass both current and previous lesson to the editor
+                                                                                    setEditingLesson({ ...lesson, previousLesson });
+                                                                                }} 
+                                                                                className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                                title="Настроить контент"
+                                                                            >
+                                                                                <FiSettings />
+                                                                            </button>
                                                                             <button onClick={() => handleRemoveLesson(sectionIndex, lessonIndex)} className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Удалить урок"><FiTrash2 size={14} /></button>
                                                                         </li>
                                                                     )}
