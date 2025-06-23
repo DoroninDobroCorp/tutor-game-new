@@ -7,6 +7,7 @@ import {
   connectStudentHandler,
   getMyStudents,
 } from '../controllers/teacher.controller';
+import { getStudentPerformanceLogs } from '../controllers/performanceLogs.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { checkStudentAccess } from '../middlewares/teacher.middleware';
 
@@ -29,5 +30,12 @@ router.post('/students/connect', connectStudentHandler);
 router.get('/students/:studentId', checkStudentAccess, getStudentProgress);
 router.put('/students/:studentId/roadmap', checkStudentAccess, updateStudentRoadmap);
 router.post('/students/:studentId/badges', checkStudentAccess, assignBadge);
+
+// Get student performance logs for a specific goal
+router.get(
+  '/goals/:goalId/students/:studentId/logs',
+  checkStudentAccess,
+  getStudentPerformanceLogs
+);
 
 export default router;

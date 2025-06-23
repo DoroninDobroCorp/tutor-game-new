@@ -59,6 +59,27 @@ export interface RoadmapProposal {
     lessons: string[]; // ИИ возвращает массив строк, а не объектов
 }
 
+// Types for performance logs
+export interface PerformanceLog {
+  id: string;
+  question?: string | null;
+  answer: string;
+  isCorrect: boolean | null;
+  blockIndex: number | null;
+  blockType: string | null;
+  aiNote: string | null;
+  createdAt: string;
+  lesson: {
+    title: string;
+    section: {
+      title: string;
+      learningGoal: {
+        subject: string;
+      };
+    };
+  };
+}
+
 // API Slice
 export const teacherApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -285,6 +306,21 @@ export const teacherApi = apiSlice.injectEndpoints({
         { type: 'Goal', id: 'LIST' },
       ],
     }),
+    // Performance Logs
+    getPerformanceLogs: builder.query<PerformanceLog[], { goalId: string; studentId: string }>({
+      query: ({ goalId, studentId }) => ({
+        url: `/teacher/goals/${goalId}/students/${studentId}/logs`,
+        method: 'GET',
+      }),
+      transformResponse: (response: { data: PerformanceLog[] }) => response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Goal' as const, id })),
+              { type: 'Goal', id: 'PERFORMANCE_LOGS' },
+            ]
+          : [{ type: 'Goal', id: 'PERFORMANCE_LOGS' }],
+    }),
   }),
 });
 
@@ -297,6 +333,8 @@ export const {
   useDeleteLearningGoalMutation,
   useGenerateRoadmapProposalMutation, 
   useUpdateRoadmapMutation,
+  useGetPerformanceLogsQuery,
+  useLazyGetPerformanceLogsQuery,
   useGenerateLessonContentMutation,
   useUpdateLessonContentMutation,
   useGenerateCharacterForGoalMutation,

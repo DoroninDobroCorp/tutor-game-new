@@ -1,3 +1,6 @@
+// Файл: tutor-game/frontend/src/pages/teacher/RoadmapEditorPage.tsx
+// Версия: Полная, с интеграцией просмотра ответов студента
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -6,15 +9,17 @@ import {
     useUpdateRoadmapMutation,
     useGenerateCharacterForGoalMutation,
     useApproveCharacterForGoalMutation,
+    useLazyGetPerformanceLogsQuery, // <-- Новый импорт
     type ContentSection,
     type Lesson
 } from '../../features/teacher/teacherApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { FiPlus, FiTrash2, FiArrowLeft, FiEdit2, FiSettings, FiMove, FiUserPlus, FiCheck, FiX, FiBookOpen, FiMaximize2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiArrowLeft, FiEdit2, FiSettings, FiMove, FiUserPlus, FiCheck, FiX, FiBookOpen, FiMaximize2, FiEye } from 'react-icons/fi';
 import LessonEditorModal from './LessonEditorModal';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
+// Тип для сгенерированного персонажа
 interface GeneratedCharacter {
     url: string;
     prompt: string;
@@ -22,6 +27,18 @@ interface GeneratedCharacter {
     genId: string;
 }
 
+// Тип для логов успеваемости
+interface PerformanceLog {
+    id: string;
+    answer: string;
+    question: string;
+    createdAt: string;
+    lesson: {
+        title: string;
+    };
+}
+
+// Компонент для увеличения изображения
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
     if (!src) return null;
     return (
@@ -32,13 +49,14 @@ const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
     );
 };
 
+// Компонент для отображения статуса урока
 const LessonStatusIndicator = ({ lesson }: { lesson: Lesson }) => {
-    const status = lesson.storyChapter?.teacherSnippetStatus || lesson.status;
+    const status = lesson.storyChapter?.teacherSnippetStatus === 'APPROVED' ? 'APPROVED' : lesson.status;
     const statusMap = {
-        DRAFT: { color: 'bg-gray-400', title: 'Контент не создан или не утвержден' },
-        PENDING_APPROVAL: { color: 'bg-yellow-400', title: 'Контент ожидает утверждения' },
-        APPROVED: { color: 'bg-green-500', title: 'Контент готов для студента' },
-        COMPLETED: { color: 'bg-blue-500', title: 'Урок пройден студентом' },
+        DRAFT: { color: 'bg-gray-400', title: 'Черновик: контент или история не утверждены' },
+        PENDING_APPROVAL: { color: 'bg-yellow-400', title: 'Ожидает утверждения: контент готов, нужна история' },
+        APPROVED: { color: 'bg-green-500', title: 'Готов: урок полностью утвержден и доступен студенту' },
+        COMPLETED: { color: 'bg-blue-500', title: 'Завершен: урок пройден студентом' },
     };
     const { color, title } = statusMap[status] || statusMap.DRAFT;
 
@@ -49,7 +67,6 @@ const LessonStatusIndicator = ({ lesson }: { lesson: Lesson }) => {
         </div>
     );
 };
-
 
 const RoadmapEditorPage = () => {
     const { goalId } = useParams<{ goalId: string }>();
@@ -68,6 +85,10 @@ const RoadmapEditorPage = () => {
     const [generatedCharacter, setGeneratedCharacter] = useState<GeneratedCharacter | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    
+    // Новые состояния для модального окна с логами
+    const [showLogsModal, setShowLogsModal] = useState(false);
+    const [getLogs, { data: performanceLogs, isLoading: isLoadingLogs }] = useLazyGetPerformanceLogsQuery();
 
     const [generateProposal, { isLoading: isGenerating }] = useGenerateRoadmapProposalMutation();
     const [updateRoadmap, { isLoading: isSaving }] = useUpdateRoadmapMutation();
@@ -79,6 +100,13 @@ const RoadmapEditorPage = () => {
             setRoadmap(JSON.parse(JSON.stringify(currentGoal.sections)));
         }
     }, [currentGoal]);
+
+    const handleShowLogs = () => {
+        if (currentGoal) {
+            getLogs({ goalId: currentGoal.id, studentId: currentGoal.studentId });
+            setShowLogsModal(true);
+        }
+    };
 
     const onDragEnd = (result: DropResult) => {
         const { source, destination, type } = result;
@@ -104,16 +132,11 @@ const RoadmapEditorPage = () => {
     const handleSave = async () => {
         if (!goalId) return;
         const roadmapToSave = roadmap.map((section, sectionIndex) => ({
-            id: section.id,
-            title: section.title,
+            ...section,
             order: sectionIndex,
             lessons: section.lessons.map((lesson, lessonIndex) => ({
-                id: lesson.id,
-                title: lesson.title,
-                status: lesson.status || 'DRAFT', // Сохраняем статус урока
+                ...lesson,
                 order: lessonIndex,
-                content: lesson.content || null, // Сохраняем контент урока, если есть
-                storyChapter: lesson.storyChapter || null // Сохраняем главу истории, если есть
             }))
         }));
         try {
@@ -124,23 +147,22 @@ const RoadmapEditorPage = () => {
             toast.error('Ошибка сохранения плана.'); 
         }
     };
-
+    
     const handleGenerate = async () => {
         if (!goalId) return;
         try {
-            const result = await generateProposal({ goalId, feedback: feedback || undefined }).unwrap();
+            const result = await generateProposal({ goalId, existingPlan: roadmap, feedback: feedback || undefined }).unwrap();
             const newRoadmap: ContentSection[] = result.map((sectionData, index) => ({
                 id: `new-section-${index}-${Date.now()}`,
-                title: sectionData.sectionTitle, // Используем sectionTitle из ответа ИИ
+                title: sectionData.sectionTitle,
                 order: index,
-                // sectionData.lessons - это массив строк, преобразуем его в массив объектов Lesson
                 lessons: sectionData.lessons.map((lessonTitle, i) => ({
                     id: `new-lesson-${index}-${i}-${Date.now()}`,
-                    title: lessonTitle, // lessonTitle - это строка из массива lessons
+                    title: lessonTitle,
                     status: 'DRAFT',
                     order: i,
-                    content: null, // Добавляем обязательные поля для типа Lesson
-                    storyChapter: null // Добавляем обязательные поля для типа Lesson
+                    content: null,
+                    storyChapter: null
                 }))
             }));
             setRoadmap(newRoadmap);
@@ -177,7 +199,9 @@ const RoadmapEditorPage = () => {
     };
 
     const handleRemoveSection = (sectionIndex: number) => {
-        if (window.confirm('Вы уверены, что хотите удалить этот раздел?')) setRoadmap(roadmap.filter((_, i) => i !== sectionIndex));
+        if (window.confirm('Вы уверены, что хотите удалить этот раздел со всеми уроками?')) {
+            setRoadmap(roadmap.filter((_, i) => i !== sectionIndex));
+        }
     };
 
     const handleRemoveLesson = (sectionIndex: number, lessonIndex: number) => {
@@ -229,9 +253,18 @@ const RoadmapEditorPage = () => {
         } catch (error) { toast.error("Не удалось утвердить персонажа."); }
     };
 
-    if (isLoadingGoals || isFetching) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
-    if (!currentGoal) return <div className="text-center text-red-500 p-10">Учебный план не найден. Возможно, он был удален. <Link to="/teacher/goals" className="text-indigo-600">Вернуться к списку</Link></div>;
-
+    if (isLoadingGoals || isFetching) {
+        return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
+    }
+    
+    if (!currentGoal) {
+        return (
+            <div className="text-center text-red-500 p-10">
+                Учебный план не найден. Возможно, он был удален. <Link to="/teacher/goals" className="text-indigo-600">Вернуться к списку</Link>
+            </div>
+        );
+    }
+    
     return (
         <>
             {isLightboxOpen && generatedCharacter && <Lightbox src={generatedCharacter.url} onClose={() => setIsLightboxOpen(false)} />}
@@ -246,6 +279,49 @@ const RoadmapEditorPage = () => {
                     </div>
                 </div>
 
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-yellow-800">Анализ ответов</h3>
+                            <p className="text-sm text-yellow-700">
+                                Посмотрите на ответы ученика, чтобы создать следующий урок максимально эффективно.
+                            </p>
+                        </div>
+                        <button onClick={handleShowLogs} className="px-4 py-2 bg-yellow-400 text-yellow-900 rounded-md hover:bg-yellow-500 flex items-center">
+                            <FiEye className="mr-2" /> Показать ответы
+                        </button>
+                    </div>
+                </div>
+                
+                {showLogsModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowLogsModal(false)}>
+                        <div className="bg-white p-6 rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                            <h2 className="text-xl font-bold mb-4">Ответы ученика: {currentGoal?.student.firstName}</h2>
+                            <div className="overflow-y-auto flex-grow pr-4">
+                                {isLoadingLogs && <Spinner />}
+                                {performanceLogs && performanceLogs.length > 0 ? (
+                                    <ul className="space-y-4">
+                                        {(performanceLogs as PerformanceLog[]).map(log => (
+                                            <li key={log.id} className="p-3 bg-gray-50 rounded-md border">
+                                                <p className="text-xs text-gray-500">Урок: {log.lesson.title}</p>
+                                                <p className="font-semibold mt-1">Вопрос:</p>
+                                                <p className="italic text-gray-700">"{log.question}"</p>
+                                                <p className="font-semibold mt-2">Ответ ученика:</p>
+                                                <p className="p-2 bg-blue-50 border border-blue-200 rounded-md">"{log.answer}"</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : !isLoadingLogs && (
+                                    <p>Ответов от ученика по этому плану пока нет.</p>
+                                )}
+                            </div>
+                            <button onClick={() => setShowLogsModal(false)} className="mt-4 px-4 py-2 bg-gray-200 rounded-md self-end">
+                                Закрыть
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                     <h2 className="text-xl font-semibold mb-4">Персонаж истории</h2>
                     {currentGoal.characterImageUrl && !isRegenerating && !generatedCharacter && (
@@ -254,22 +330,22 @@ const RoadmapEditorPage = () => {
                             <div>
                                 <p className="font-medium text-gray-800">Текущий персонаж:</p>
                                 <p className="text-gray-600 italic">"{currentGoal.characterPrompt}"</p>
-                                <button onClick={handleStartRegeneration} className="mt-4 px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200">Изменить и перегенерировать</button>
+                                <button onClick={handleStartRegeneration} className="mt-4 px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200">Изменить</button>
                             </div>
                         </div>
                     )}
                     {(!currentGoal.characterImageUrl || isRegenerating) && !generatedCharacter && (
-                        <div>
-                             <p className="text-sm text-gray-600 mb-2">{isRegenerating ? "Отредактируйте промпт и попробуйте снова:" : "Персонаж еще не создан. Опишите его:"}</p>
-                            <div className="flex flex-col sm:flex-row gap-2">
-                                <input type="text" value={characterPrompt} onChange={(e) => setCharacterPrompt(e.target.value)} placeholder="Например: отважная девочка-исследователь..." className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" disabled={isGeneratingCharacter} />
-                                <button onClick={handleGenerateCharacter} disabled={isGeneratingCharacter || !characterPrompt.trim()} className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
-                                    {isGeneratingCharacter ? <Spinner size="sm" /> : <FiUserPlus className="mr-2" />}
-                                    {isGeneratingCharacter ? "Генерация..." : (isRegenerating ? "Создать новую версию" : "Создать персонажа")}
-                                </button>
-                                {isRegenerating && <button onClick={() => setIsRegenerating(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Отмена</button>}
-                            </div>
-                        </div>
+                         <div>
+                            <p className="text-sm text-gray-600 mb-2">{isRegenerating ? "Отредактируйте промпт и попробуйте снова:" : "Персонаж еще не создан. Опишите его:"}</p>
+                           <div className="flex flex-col sm:flex-row gap-2">
+                               <input type="text" value={characterPrompt} onChange={(e) => setCharacterPrompt(e.target.value)} placeholder="Например: отважная девочка-исследователь..." className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" disabled={isGeneratingCharacter} />
+                               <button onClick={handleGenerateCharacter} disabled={isGeneratingCharacter || !characterPrompt.trim()} className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
+                                   {isGeneratingCharacter ? <Spinner size="sm" /> : <FiUserPlus className="mr-2" />}
+                                   {isGeneratingCharacter ? "Генерация..." : (isRegenerating ? "Создать новую версию" : "Создать")}
+                               </button>
+                               {isRegenerating && <button onClick={() => setIsRegenerating(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Отмена</button>}
+                           </div>
+                       </div>
                     )}
                     {generatedCharacter && (
                         <div className="bg-indigo-50 p-4 rounded-md">
