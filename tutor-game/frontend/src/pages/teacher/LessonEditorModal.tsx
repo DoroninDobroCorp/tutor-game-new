@@ -41,6 +41,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     // Состояние для вкладки "История"
     const [storyText, setStoryText] = useState('');
     const [storyImageUrl, setStoryImageUrl] = useState('');
+    const [storyImagePrompt, setStoryImagePrompt] = useState('');
     const [refinementPrompt, setRefinementPrompt] = useState('');
     const [isLightboxOpen, setIsLightboxOpen] = useState(false); // <-- State for lightbox
 
@@ -62,6 +63,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
             // Заполняем данными для истории
             setStoryText(lesson.storyChapter?.teacherSnippetText || '');
             setStoryImageUrl(lesson.storyChapter?.teacherSnippetImageUrl || '');
+            setStoryImagePrompt(lesson.storyChapter?.teacherSnippetImagePrompt || '');
         } else {
             // Сбрасываем все состояния при закрытии модального окна
             setBlocks([]);
@@ -134,6 +136,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
             }).unwrap();
             setStoryText(result.text);
             setStoryImageUrl(result.imageUrl);
+            setStoryImagePrompt(result.prompt);
             setRefinementPrompt(''); // Reset refinement prompt after generation
             toast.success("Фрагмент истории сгенерирован!");
         } catch {
@@ -142,9 +145,17 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     };
 
     const handleApproveStory = async () => {
-        if (!storyText || !storyImageUrl) return;
+        if (!storyText || !storyImageUrl || !storyImagePrompt) {
+            toast.error("Пожалуйста, сгенерируйте историю перед утверждением");
+            return;
+        }
         try {
-            await approveStory({ lessonId: lesson.id, text: storyText, imageUrl: storyImageUrl }).unwrap();
+            await approveStory({ 
+                lessonId: lesson.id, 
+                text: storyText, 
+                imageUrl: storyImageUrl,
+                prompt: storyImagePrompt 
+            }).unwrap();
             toast.success("История утверждена!");
             onClose();
         } catch {
@@ -250,6 +261,18 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                                     placeholder="Например: сделай смешнее, добавь дракона..."
                                                 />
                                                 <p className="mt-1 text-xs text-gray-500">Оставьте пустым для стандартной генерации</p>
+                                            </div>
+                                            <div className="mt-4">
+                                                <label className="block text-sm font-medium text-gray-700">Промпт для изображения</label>
+                                                <textarea
+                                                    rows={3}
+                                                    value={storyImagePrompt}
+                                                    onChange={e => setStoryImagePrompt(e.target.value)}
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                    placeholder="Промпт, использованный для генерации изображения..."
+                                                    disabled={!storyImageUrl}
+                                                />
+                                                <p className="mt-1 text-xs text-gray-500">Вы можете отредактировать промпт перед сохранением</p>
                                             </div>
                                         </div>
                                         <div className="flex flex-col">

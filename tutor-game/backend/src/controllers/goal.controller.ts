@@ -106,13 +106,8 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
                 include: {
                     lessons: {
                         orderBy: { order: 'asc' },
-                        select: {
-                            id: true,
-                            title: true,
-                            status: true,
-                            order: true,
-                            content: true,
-                            storyChapter: true // Include story chapter data
+                        include: {
+                            storyChapter: true // Include story chapter data with all fields
                         }
                     }
                 },
@@ -418,12 +413,14 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             refinementPrompt
         );
 
-        // 2. Translate the text to English for image generation
-        const imagePromptText = await translateForImagePrompt(storyText);
+        // 2. Create the image prompt
+        const imagePromptText = refinementPrompt 
+            ? `cinematic illustration, vibrant colors, cartoon style, ${refinementPrompt}`
+            : `cinematic illustration, vibrant colors, cartoon style, ${await translateForImagePrompt(storyText)}`;
 
         // 3. Generate image with consistent character using Leonardo AI
         const imageResult = await generateImage({
-            prompt: `cinematic illustration, vibrant colors, cartoon style, ${imagePromptText}`,
+            prompt: imagePromptText,
             characterImageId: learningGoal.characterImageId
         });
 
@@ -436,7 +433,8 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             success: true, 
             data: { 
                 text: storyText, 
-                imageUrl: imageResult.url 
+                imageUrl: imageResult.url,
+                prompt: imagePromptText // Include the prompt in the response
             } 
         });
     } catch (error) {
@@ -451,12 +449,12 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
 
 export const approveStorySnippetHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
-    const { text, imageUrl } = req.body;
+    const { text, imageUrl, prompt } = req.body;
     const teacherId = req.user?.userId;
 
     // Validate input
-    if (!text || !imageUrl) {
-        throw new AppError('Text and image URL are required for approval', 400);
+    if (!text || !imageUrl || !prompt) {
+        throw new AppError('Text, image URL and prompt are required for approval', 400);
     }
 
     // Find the lesson with permission check
@@ -497,6 +495,7 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
                     data: {
                         teacherSnippetText: text,
                         teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetImagePrompt: prompt,
                         teacherSnippetStatus: 'APPROVED'
                     }
                 });
@@ -508,6 +507,7 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
                         learningGoalId: lesson.section.learningGoalId,
                         teacherSnippetText: text,
                         teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetImagePrompt: prompt,
                         teacherSnippetStatus: 'APPROVED'
                     }
                 });

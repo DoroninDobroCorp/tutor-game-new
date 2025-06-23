@@ -12,6 +12,7 @@ interface StoryChapter {
     id: string;
     teacherSnippetText: string;
     teacherSnippetImageUrl: string;
+    teacherSnippetImagePrompt: string | null;
     teacherSnippetStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
 }
 
@@ -212,19 +213,24 @@ export const teacherApi = apiSlice.injectEndpoints({
     }),
         
     // Story Snippet Generation and Approval
-    generateStorySnippet: builder.mutation<{ text: string; imageUrl: string }, { lessonId: string; refinementPrompt?: string }>({
+    generateStorySnippet: builder.mutation<{ 
+      text: string; 
+      imageUrl: string;
+      prompt: string;
+    }, { lessonId: string; refinementPrompt?: string }>({
       query: ({ lessonId, refinementPrompt }) => ({
         url: `/goals/lessons/${lessonId}/story`,
         method: 'POST',
         body: { refinementPrompt },
       }),
-      transformResponse: (response: { data: { text: string; imageUrl: string } }) => response.data,
+      transformResponse: (response: { data: { text: string; imageUrl: string; prompt: string } }) => response.data,
     }),
 
     approveStorySnippet: builder.mutation<StoryChapter, { 
       lessonId: string; 
       text: string; 
-      imageUrl: string 
+      imageUrl: string;
+      prompt: string;
     }>({
       query: ({ lessonId, ...body }) => ({
         url: `/goals/lessons/${lessonId}/story/approve`,

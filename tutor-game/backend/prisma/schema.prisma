@@ -197,6 +197,7 @@ model StoryChapter {
   learningGoal            LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
   teacherSnippetText      String?
   teacherSnippetImageUrl  String?
+  teacherSnippetImagePrompt String? // Prompt used to generate the image
   teacherSnippetStatus    String      @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, COMPLETED
   studentSnippetText      String?
   studentSnippetImageUrl  String?
@@ -228,31 +229,6 @@ model TokenBlacklist {
   createdAt DateTime @default(now())
 
   @@map("token_blacklists")
-}
-
-// --- STORY CHAPTER MODEL ---
-model StoryChapter {
-  id                     String       @id @default(uuid())
-  
-  // Связь с глобальной целью
-  learningGoalId         String
-  learningGoal           LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
-  
-  // Связь с конкретным уроком (один-к-одному)
-  lessonId               String       @unique
-  lesson                 Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  
-  // Контент от учителя
-  teacherSnippetText     String
-  teacherSnippetImageUrl String?
-  teacherSnippetStatus   LessonStatus @default(DRAFT)
-  
-  // Ответ ученика
-  studentResponseText    String?
-  
-  createdAt              DateTime     @default(now())
-  
-  @@map("story_chapters")
 }
 
 // -------------------------
