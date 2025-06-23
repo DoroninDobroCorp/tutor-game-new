@@ -259,6 +259,32 @@ export const teacherApi = apiSlice.injectEndpoints({
       }),
       transformResponse: (response: { data: { imageUrl: string; prompt: string } }) => response.data,
     }),
+    
+    // Approve story snippet with image upload
+    approveStorySnippetWithUpload: builder.mutation<StoryChapter, { 
+      lessonId: string; 
+      text: string; 
+      prompt: string;
+      image: File;
+    }>({
+      query: ({ lessonId, text, prompt, image }) => {
+        const formData = new FormData();
+        formData.append('text', text);
+        formData.append('prompt', prompt);
+        formData.append('image', image);
+        
+        return {
+          url: `/goals/lessons/${lessonId}/approve-with-upload`,
+          method: 'PUT',
+          body: formData,
+        };
+      },
+      transformResponse: (response: { data: StoryChapter }) => response.data,
+      // Invalidate the goals cache to reflect the updated story chapter
+      invalidatesTags: () => [
+        { type: 'Goal', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -278,6 +304,7 @@ export const {
   useGenerateStorySnippetMutation,
   useRegenerateStoryImageMutation,
   useApproveStorySnippetMutation,
+  useApproveStorySnippetWithUploadMutation,
 } = teacherApi;
 
 export type { LearningGoal, ContentSection, Lesson, Student, StoryChapter };

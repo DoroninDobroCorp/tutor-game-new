@@ -11,8 +11,10 @@ import {
     updateLessonContentHandler,
     generateStorySnippetHandler,
     approveStorySnippetHandler,
-    regenerateStoryImageHandler
+    regenerateStoryImageHandler,
+    approveStorySnippetWithUploadHandler
 } from '../controllers/goal.controller';
+import { upload } from '../utils/fileUpload';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -33,6 +35,10 @@ router.put('/:goalId/roadmap', updateRoadmapHandler);
 router.post('/lessons/:lessonId/story', generateStorySnippetHandler);
 router.put('/lessons/:lessonId/story/approve', approveStorySnippetHandler);
 router.post('/lessons/:lessonId/regenerate-image', regenerateStoryImageHandler);
+router.put('/lessons/:lessonId/approve-with-upload', 
+    upload.single('image'), 
+    approveStorySnippetWithUploadHandler
+);
 
 // Lesson content routes
 router.post('/lessons/:lessonId/generate-content', generateLessonContentHandler);

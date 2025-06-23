@@ -33,6 +33,12 @@ export default defineConfig({
         target: 'ws://localhost:3002',
         ws: true,
         changeOrigin: true
+      },
+      // Proxy for uploaded files
+      '/uploads': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+        secure: false
       }
     },
     // This is the key part for SPA fallback

@@ -4,6 +4,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { json } from 'body-parser';
 import path from 'path';
+import fs from 'fs';
 import { errorHandler } from './middlewares/error.middleware';
 import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
@@ -55,14 +56,19 @@ export const createServer = () => {
     maxAge: 86400 // 24 hours
   };
 
-  // Apply CORS with options
+  // Create uploads directory if it doesn't exist
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Apply middlewares
   app.use(cors(corsOptions));
-  
-  // Handle preflight requests
-  app.options('*', cors(corsOptions));
-  
-  app.use(morgan('dev'));
   app.use(json({ limit: '10mb' }));
+  app.use(morgan('dev'));
+  
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(uploadsDir));
 
   // Handle favicon.ico requests
   app.get('/favicon.ico', (req, res) => res.status(204).end());

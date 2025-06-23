@@ -6,6 +6,7 @@ import {
     useGenerateStorySnippetMutation,
     useApproveStorySnippetMutation,
     useRegenerateStoryImageMutation,
+    useApproveStorySnippetWithUploadMutation,
     type Lesson
 } from '../../features/teacher/teacherApi';
 import Spinner from '../../components/common/Spinner';
@@ -45,6 +46,17 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     const [storyImagePrompt, setStoryImagePrompt] = useState('');
     const [refinementPrompt, setRefinementPrompt] = useState('');
     const [isLightboxOpen, setIsLightboxOpen] = useState(false); // <-- State for lightbox
+    const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
+
+    // Обработчик выбора файла
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setUploadedImageFile(file);
+            setStoryImageUrl(URL.createObjectURL(file));
+            setStoryImagePrompt('User uploaded image'); // Устанавливаем дефолтный промпт
+        }
+    };
 
     // Мутации API
     const [generateContent, { isLoading: isGeneratingContent }] = useGenerateLessonContentMutation();
@@ -52,6 +64,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     const [generateStory, { isLoading: isGeneratingStory }] = useGenerateStorySnippetMutation();
     const [regenerateImage, { isLoading: isRegeneratingImage }] = useRegenerateStoryImageMutation();
     const [approveStory, { isLoading: isApprovingStory }] = useApproveStorySnippetMutation();
+    const [approveStoryWithUpload, { isLoading: isApprovingWithUpload }] = useApproveStorySnippetWithUploadMutation();
 
     useEffect(() => {
         if (lesson) {
@@ -168,16 +181,36 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
             toast.error("Пожалуйста, сгенерируйте историю перед утверждением");
             return;
         }
+        
         try {
-            await approveStory({ 
-                lessonId: lesson.id, 
-                text: storyText, 
-                imageUrl: storyImageUrl,
-                prompt: storyImagePrompt 
-            }).unwrap();
+            if (uploadedImageFile) {
+                // Если загружен файл, используем новую мутацию с загрузкой
+                const formData = new FormData();
+                formData.append('text', storyText);
+                formData.append('prompt', storyImagePrompt);
+                formData.append('image', uploadedImageFile);
+                
+                // Вызываем новую мутацию (её добавим позже)
+                await approveStoryWithUpload({
+                    lessonId: lesson.id,
+                    text: storyText,
+                    prompt: storyImagePrompt,
+                    image: uploadedImageFile
+                }).unwrap();
+            } else {
+                // Или используем существующую логику с URL
+                await approveStory({ 
+                    lessonId: lesson.id, 
+                    text: storyText, 
+                    imageUrl: storyImageUrl,
+                    prompt: storyImagePrompt 
+                }).unwrap();
+            }
+            
             toast.success("История утверждена!");
             onClose();
-        } catch {
+        } catch (error) {
+            console.error('Error approving story:', error);
             toast.error("Не удалось утвердить историю.");
         }
     };
@@ -296,29 +329,59 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                         </div>
                                         <div className="flex flex-col">
                                             <label className="block text-sm font-medium text-gray-700 text-center mb-2">Изображение</label>
-                                            <div className="w-full h-64 bg-gray-100 rounded-md flex items-center justify-center border-2 border-dashed relative group">
-                                                {isGeneratingStory ? (
-                                                    <Spinner />
-                                                ) : storyImageUrl ? (
-                                                    <>
-                                                        <img 
-                                                            src={storyImageUrl} 
-                                                            alt="Story snippet" 
-                                                            className="object-contain h-full w-full rounded-md p-2"
-                                                        />
+                                            <div className="w-full space-y-2">
+                                                <div className="w-full h-64 bg-gray-100 rounded-md flex items-center justify-center border-2 border-dashed relative group">
+                                                    {isGeneratingStory ? (
+                                                        <Spinner />
+                                                    ) : storyImageUrl ? (
+                                                        <>
+                                                            <img 
+                                                                src={storyImageUrl} 
+                                                                alt="Story snippet" 
+                                                                className="object-contain h-full w-full rounded-md p-2"
+                                                            />
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setIsLightboxOpen(true);
+                                                                }} 
+                                                                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white text-2xl transition-all opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                <FiMaximize2 />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-sm">Здесь будет картинка</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <input
+                                                        type="file"
+                                                        id="imageUpload"
+                                                        className="hidden"
+                                                        accept="image/png, image/jpeg, image/webp"
+                                                        onChange={handleFileChange}
+                                                    />
+                                                    <label 
+                                                        htmlFor="imageUpload" 
+                                                        className="cursor-pointer px-3 py-1.5 text-xs font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        Загрузить свою картинку
+                                                    </label>
+                                                    {storyImageUrl && (
                                                         <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setIsLightboxOpen(true);
-                                                            }} 
-                                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white text-2xl transition-all opacity-0 group-hover:opacity-100"
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setUploadedImageFile(null);
+                                                                setStoryImageUrl('');
+                                                                setStoryImagePrompt('');
+                                                            }}
+                                                            className="text-xs text-red-500 hover:text-red-700"
                                                         >
-                                                            <FiMaximize2 />
+                                                            Удалить
                                                         </button>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-gray-400 text-sm">Здесь будет картинка</span>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -339,10 +402,10 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                         </button>
                                         <button 
                                             onClick={handleApproveStory} 
-                                            disabled={!storyText || !storyImageUrl || isApprovingStory || isGeneratingStory || isRegeneratingImage} 
+                                            disabled={!storyText || !storyImageUrl || isApprovingStory || isApprovingWithUpload || isGeneratingStory || isRegeneratingImage} 
                                             className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
                                         >
-                                            {isApprovingStory ? 'Утверждение...' : 'Утвердить историю'}
+                                            {isApprovingStory || isApprovingWithUpload ? 'Утверждение...' : 'Утвердить историю'}
                                         </button>
                                     </div>
                                 </Tab.Panel>

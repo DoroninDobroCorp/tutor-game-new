@@ -3,6 +3,16 @@ import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateRoadmap, generateLessonContent, generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
 import { generateImage } from '../services/leonardo.service';
+import fs from 'fs';
+import path from 'path';
+
+declare global {
+  namespace Express {
+    interface Request {
+      file?: Express.Multer.File;
+    }
+  }
+}
 import { Prisma } from '@prisma/client';
 
 interface CreateGoalBody {
@@ -562,5 +572,116 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
     } catch (error) {
         console.error('Error in approveStorySnippetHandler:', error);
         throw new AppError('Failed to approve story snippet. Please try again later.', 500);
+    }
+};
+
+export const approveStorySnippetWithUploadHandler = async (req: Request, res: Response) => {
+    try {
+        const { lessonId } = req.params;
+        const { text, prompt } = req.body;
+        const file = req.file as Express.Multer.File;
+        const teacherId = req.user?.userId;
+
+        if (!text || !prompt || !file) {
+            // If file was uploaded but something went wrong, delete it
+            if (file) {
+                fs.unlink(file.path, (err) => {
+                    if (err) console.error('Error deleting uploaded file:', err);
+                });
+            }
+            throw new AppError('Text, prompt, and image file are required', 400);
+        }
+
+        // Check if the lesson exists and the user has permission
+        const lesson = await prisma.lesson.findFirst({
+            where: { 
+                id: lessonId, 
+                section: { 
+                    learningGoal: { 
+                        teacherId 
+                    } 
+                } 
+            },
+            include: { 
+                section: { 
+                    select: { 
+                        learningGoalId: true 
+                    } 
+                } 
+            }
+        });
+
+        if (!lesson) {
+            // Delete the uploaded file if lesson not found
+            fs.unlink(file.path, (err) => {
+                if (err) console.error('Error deleting uploaded file:', err);
+            });
+            throw new AppError('Lesson not found or you do not have permission', 404);
+        }
+
+        // In a real application, you would upload the file to cloud storage here
+        // For now, we'll just move it to a permanent location in the uploads folder
+        const fileExt = path.extname(file.originalname);
+        const newFilename = `story-${Date.now()}${fileExt}`;
+        const uploadPath = path.join('uploads', newFilename);
+        
+        // Create uploads directory if it doesn't exist
+        if (!fs.existsSync('uploads')) {
+            fs.mkdirSync('uploads', { recursive: true });
+        }
+        
+        // Move the file to the uploads directory
+        fs.renameSync(file.path, uploadPath);
+        
+        // Create URL for the uploaded file
+        const imageUrl = `/uploads/${newFilename}`;
+
+        // Save to database
+        const storyChapter = await prisma.$transaction(async (tx) => {
+            // Check if story chapter already exists
+            const existingChapter = await tx.storyChapter.findFirst({
+                where: { lessonId }
+            });
+
+            if (existingChapter) {
+                // Update existing chapter
+                return await tx.storyChapter.update({
+                    where: { id: existingChapter.id },
+                    data: {
+                        teacherSnippetText: text,
+                        teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetImagePrompt: prompt,
+                        teacherSnippetStatus: 'APPROVED',
+                        updatedAt: new Date()
+                    }
+                });
+            } else {
+                // Create new chapter
+                return await tx.storyChapter.create({
+                    data: {
+                        lessonId,
+                        learningGoalId: lesson.section.learningGoalId,
+                        teacherSnippetText: text,
+                        teacherSnippetImageUrl: imageUrl,
+                        teacherSnippetImagePrompt: prompt,
+                        teacherSnippetStatus: 'APPROVED'
+                    }
+                });
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            data: storyChapter 
+        });
+    } catch (error) {
+        // Clean up uploaded file if an error occurs
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error('Error cleaning up uploaded file:', err);
+            });
+        }
+        console.error('Error in approveStorySnippetWithUploadHandler:', error);
+        throw new AppError('Failed to approve story snippet with upload. Please try again later.', 500);
     }
 };
