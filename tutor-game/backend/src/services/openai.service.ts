@@ -178,31 +178,37 @@ export const generateStorySnippet = async (
     }
 };
 
+/**
+ * Преобразует текст истории в короткий, эффективный промпт для генерации изображения.
+ * @param text Исходный текст истории (на любом языке).
+ * @returns Строка на английском, готовая для Leonardo.ai.
+ */
 export const translateForImagePrompt = async (text: string): Promise<string> => {
-    const systemPrompt = `You are an expert prompt engineer for AI image generation models like DALL-E and Stable Diffusion.
-    Translate the user's text to English. 
-    Focus on key visual objects, actions, and atmosphere. 
-    Make it a concise, powerful, comma-separated list of keywords.
-    Example: "Отважный рыцарь в сияющих доспехах входит в темную пещеру, где сверкают кристаллы."
-    Result: "brave knight, shining armor, entering dark cave, glowing crystals, cinematic lighting, fantasy art"
-    
-    Your output MUST be only the translated English prompt.`;
+    const systemPrompt = `You are an expert prompt engineer for AI image generation models.
+    Analyze the user's text, which describes a scene. Your task is to extract the main visual elements and convert them into a concise, powerful, comma-separated list of keywords in ENGLISH.
+    Focus on: main characters, key objects, the environment, actions, and the overall mood/atmosphere.
+    Limit the output to about 20-30 words.
+
+    Example Input (Russian): "Отважная девочка-исследователь в смешных носках и с яркими волосами скачет на коне по торговому центру. Вокруг витрины магазинов."
+    Example Output: "cinematic action shot, whimsical heroine explorer with bright hair and long socks, riding a horse inside a modern shopping mall, shop windows, dynamic composition, cartoon style"
+
+    Your output MUST be only the resulting English prompt. No extra text or explanations.`;
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo', // 3.5-turbo is sufficient here and cheaper
+            model: 'gpt-4-turbo',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: text },
             ],
-            max_tokens: 100,
-            temperature: 0.2,
+            max_tokens: 150,
+            temperature: 0.3,
         });
 
-        return completion.choices[0]?.message?.content || text; // Return original text if error
+        return completion.choices[0]?.message?.content || text;
     } catch (error) {
         console.error('Error translating text for image prompt:', error);
-        return text; // Return original on error
+        return text; // В случае ошибки вернем исходный текст, чтобы не сломать процесс
     }
 };
 

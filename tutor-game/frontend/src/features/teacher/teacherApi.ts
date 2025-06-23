@@ -243,6 +243,22 @@ export const teacherApi = apiSlice.injectEndpoints({
         { type: 'Goal', id: 'LIST' },
       ],
     }),
+
+    // Regenerate story image with a new prompt
+    regenerateStoryImage: builder.mutation<{ 
+      imageUrl: string;
+      prompt: string;
+    }, { 
+      lessonId: string; 
+      prompt: string;
+    }>({
+      query: ({ lessonId, prompt }) => ({
+        url: `/goals/lessons/${lessonId}/regenerate-image`,
+        method: 'POST',
+        body: { prompt },
+      }),
+      transformResponse: (response: { data: { imageUrl: string; prompt: string } }) => response.data,
+    }),
   }),
 });
 
@@ -260,6 +276,7 @@ export const {
   useGenerateCharacterForGoalMutation,
   useApproveCharacterForGoalMutation,
   useGenerateStorySnippetMutation,
+  useRegenerateStoryImageMutation,
   useApproveStorySnippetMutation,
 } = teacherApi;
 

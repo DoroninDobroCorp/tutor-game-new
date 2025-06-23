@@ -447,6 +447,47 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     }
 };
 
+export const regenerateStoryImageHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { prompt } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!prompt) {
+        throw new AppError('Image prompt is required for regeneration', 400);
+    }
+
+    const lesson = await prisma.lesson.findFirst({
+        where: { id: lessonId, section: { learningGoal: { teacherId } } },
+        select: { section: { select: { learningGoal: { select: { characterImageId: true } } } } }
+    });
+
+    if (!lesson?.section.learningGoal.characterImageId) {
+        throw new AppError('Lesson not found or character is not set for this goal', 404);
+    }
+
+    try {
+        const imageResult = await generateImage({
+            prompt,
+            characterImageId: lesson.section.learningGoal.characterImageId
+        });
+
+        if (!imageResult.url) {
+            throw new AppError('Failed to regenerate story image', 500);
+        }
+        
+        res.json({ 
+            success: true, 
+            data: { 
+                imageUrl: imageResult.url,
+                prompt: prompt 
+            } 
+        });
+    } catch (error) {
+        console.error('Error in regenerateStoryImageHandler:', error);
+        throw new AppError('Failed to regenerate image.', 500);
+    }
+};
+
 export const approveStorySnippetHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
     const { text, imageUrl, prompt } = req.body;

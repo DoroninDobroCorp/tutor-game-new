@@ -5,6 +5,7 @@ import {
     useUpdateLessonContentMutation,
     useGenerateStorySnippetMutation,
     useApproveStorySnippetMutation,
+    useRegenerateStoryImageMutation,
     type Lesson
 } from '../../features/teacher/teacherApi';
 import Spinner from '../../components/common/Spinner';
@@ -49,6 +50,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     const [generateContent, { isLoading: isGeneratingContent }] = useGenerateLessonContentMutation();
     const [updateContent, { isLoading: isSavingContent }] = useUpdateLessonContentMutation();
     const [generateStory, { isLoading: isGeneratingStory }] = useGenerateStorySnippetMutation();
+    const [regenerateImage, { isLoading: isRegeneratingImage }] = useRegenerateStoryImageMutation();
     const [approveStory, { isLoading: isApprovingStory }] = useApproveStorySnippetMutation();
 
     useEffect(() => {
@@ -138,9 +140,26 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
             setStoryImageUrl(result.imageUrl);
             setStoryImagePrompt(result.prompt);
             setRefinementPrompt(''); // Reset refinement prompt after generation
-            toast.success("Фрагмент истории сгенерирован!");
+            toast.success("Фрагмент истории и картинка сгенерированы!");
         } catch {
             toast.error("Не удалось сгенерировать историю.");
+        }
+    };
+
+    const handleRegenerateImage = async () => {
+        if (!storyImagePrompt) {
+            toast.error("Промпт для изображения пуст.");
+            return;
+        }
+        try {
+            const result = await regenerateImage({ 
+                lessonId: lesson.id, 
+                prompt: storyImagePrompt 
+            }).unwrap();
+            setStoryImageUrl(result.imageUrl);
+            toast.success("Картинка успешно перегенерирована!");
+        } catch {
+            toast.error("Не удалось перегенерировать картинку.");
         }
     };
 
@@ -306,14 +325,21 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                     <div className="mt-6 pt-4 border-t flex justify-end gap-3">
                                         <button 
                                             onClick={handleGenerateStory} 
-                                            disabled={isGeneratingStory || isApprovingStory} 
+                                            disabled={isGeneratingStory || isRegeneratingImage || isApprovingStory} 
                                             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                                         >
                                             {isGeneratingStory ? 'Генерация...' : 'Сгенерировать/Обновить'}
                                         </button>
                                         <button 
+                                            onClick={handleRegenerateImage} 
+                                            disabled={!storyImagePrompt || isGeneratingStory || isRegeneratingImage || isApprovingStory} 
+                                            className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+                                        >
+                                            {isRegeneratingImage ? 'Перегенерация...' : 'Перегенерировать изображение'}
+                                        </button>
+                                        <button 
                                             onClick={handleApproveStory} 
-                                            disabled={!storyText || !storyImageUrl || isApprovingStory || isGeneratingStory} 
+                                            disabled={!storyText || !storyImageUrl || isApprovingStory || isGeneratingStory || isRegeneratingImage} 
                                             className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
                                         >
                                             {isApprovingStory ? 'Утверждение...' : 'Утвердить историю'}

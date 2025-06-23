@@ -10,7 +10,8 @@ import {
     generateLessonContentHandler,
     updateLessonContentHandler,
     generateStorySnippetHandler,
-    approveStorySnippetHandler
+    approveStorySnippetHandler,
+    regenerateStoryImageHandler
 } from '../controllers/goal.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 
@@ -31,6 +32,7 @@ router.put('/:goalId/roadmap', updateRoadmapHandler);
 // Story snippet routes
 router.post('/lessons/:lessonId/story', generateStorySnippetHandler);
 router.put('/lessons/:lessonId/story/approve', approveStorySnippetHandler);
+router.post('/lessons/:lessonId/regenerate-image', regenerateStoryImageHandler);
 
 // Lesson content routes
 router.post('/lessons/:lessonId/generate-content', generateLessonContentHandler);
