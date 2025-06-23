@@ -19,6 +19,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import MathProblemSolver from './pages/student/MathProblemSolver';
 import StoryGenerator from './pages/student/StoryGenerator';
+import StudentAdventurePage from './pages/student/StudentAdventurePage';
 import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -59,6 +60,7 @@ function App() {
           {/* Защищенные роуты для Студента */}
           <Route element={<PrivateRoute requiredRole="student" />}>
             <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/student/adventure" element={<StudentAdventurePage />} />
             <Route path="/student/math" element={<MathProblemSolver />} />
             <Route path="/student/story" element={<StoryGenerator />} />
             <Route path="/student/chat" element={<ChatPage />} />

@@ -11,7 +11,8 @@ TOP_N_FILES = 3    # НОВОЕ: сколько самых больших фай
 # --- Списки игнорирования ---
 
 # Список расширений файлов для игнорирования (через запятую).
-USER_IGNORE_EXTENSIONS = ""
+# ИЗМЕНЕНО: Добавлены расширения изображений для игнорирования
+USER_IGNORE_EXTENSIONS = ".png, .jpeg, .jpg"
 
 # Список файлов-исключений, которые НУЖНО включить, даже если их расширение в списке игнорирования.
 USER_INCLUDE_FILES = "" # "important-script.js, special-types.d.ts"
@@ -83,6 +84,8 @@ def calculate_sizes(root):
                 continue
 
             filepath = os.path.join(dirpath, f)
+            # Для бинарных файлов, которые мы игнорируем, get_file_content не вызывается
+            # Но если вдруг какое-то расширение не добавлено, лучше обрабатывать ошибку
             content = get_file_content(filepath)
 
             if content is not None:

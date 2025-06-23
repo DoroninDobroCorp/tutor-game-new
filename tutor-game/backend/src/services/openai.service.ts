@@ -67,9 +67,11 @@ export const generateLessonContent = async (
     subject: string, 
     studentAge: number, 
     setting: string, 
-    language: string
+    language: string,
+    performanceContext?: string // <-- 1. Добавлен новый необязательный параметр
 ) => {
-    const systemMessage = `
+    // 2. Базовое системное сообщение остается как есть
+    let systemMessage = `
 You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
 Your task is to create content for a single lesson titled "${lessonTitle}" within a larger subject of "${subject}" for a ${studentAge}-year-old student.
 The lesson should be broken down into a series of small, manageable blocks, each lasting 3-13 minutes.
@@ -102,13 +104,22 @@ Example Response Format:
 }
 `;
 
+    // 3. Если контекст успеваемости передан, дополняем системное сообщение
+    if (performanceContext) {
+        systemMessage += `
+---
+IMPORTANT CONTEXT: Below are the student's previous raw answers. Analyze them to understand the student's level. 
+If you see mistakes or uncertainty in the answers, create more practice blocks on those topics. If the student seems confident, you can introduce a more complex task. Do not comment on the student's answers, just use them to build a better, more adaptive lesson.
+Student's performance context: ${performanceContext}`;
+    }
+
     const userMessage = `Generate the lesson content for "${lessonTitle}".`;
 
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-4-turbo',
             messages: [
-                { role: 'system', content: systemMessage },
+                { role: 'system', content: systemMessage }, // <-- Используем дополненный systemMessage
                 { role: 'user', content: userMessage }
             ],
             response_format: { type: "json_object" },
@@ -138,22 +149,31 @@ export const generateStorySnippet = async (
     studentAge: number,
     characterPrompt: string,
     language: string,
-    refinementPrompt?: string
+    refinementPrompt?: string,
+    storyContext?: string
 ): Promise<string> => {
     const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
-    Your goal is to create a short story snippet (3-5 sentences) that sets up a problem related to a lesson topic.
+    Your goal is to create a short story snippet (3-5 sentences) that logically continues the previous events and sets up a problem related to the new lesson topic.
     
     RULES:
-    1.  The story must be fun, not boring or preachy. Use unexpected twists.
-    2.  The tone should be appropriate for a ${studentAge}-year-old.
-    3.  The story MUST end with an open-ended question to the student, like "Что же он предпримет?", "Как поступит наш герой?", or "Какой выбор он сделает?".
-    4.  DO NOT give the answer or the solution. Only create the narrative setup.`;
+    1. The story must be fun, not boring or preachy. Use unexpected twists.
+    2. The tone should be appropriate for a ${studentAge}-year-old.
+    3. If a story context is provided, you MUST reference it and build upon it. The new story must be a direct continuation.
+    4. The story MUST end with an open-ended question to the student, like "What will happen next?" or "What should the character do?"
+    5. DO NOT give the answer or the solution. Only create the narrative setup.`;
 
-    let userPrompt = `Lesson Title: "${lessonTitle}"
-    Story Setting: "${setting}"
-    Main Character: "${characterPrompt}"`;
+    let userPrompt = '';
 
-    // Add refinement instruction if provided
+    if (storyContext) {
+        userPrompt += `This is what happened before:\n---\n${storyContext}\n---\n`;
+        userPrompt += `Now, continue the story, naturally leading into the new lesson: "${lessonTitle}".`;
+    } else {
+        userPrompt = `Lesson Title: "${lessonTitle}"
+        Story Setting: "${setting}"
+        Main Character: "${characterPrompt}"
+        \nWrite the very first chapter of the story.`;
+    }
+
     if (refinementPrompt) {
         userPrompt += `\n\nRefine the story with the following instruction: "${refinementPrompt}"`;
     }
@@ -167,7 +187,7 @@ export const generateStorySnippet = async (
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            max_tokens: 400, // Increased limit to prevent text cutoff
+            max_tokens: 400,
             temperature: 0.85,
         });
 
@@ -178,11 +198,6 @@ export const generateStorySnippet = async (
     }
 };
 
-/**
- * Преобразует текст истории в короткий, эффективный промпт для генерации изображения.
- * @param text Исходный текст истории (на любом языке).
- * @returns Строка на английском, готовая для Leonardo.ai.
- */
 export const translateForImagePrompt = async (text: string): Promise<string> => {
     const systemPrompt = `You are an expert prompt engineer for AI image generation models.
     Analyze the user's text, which describes a scene. Your task is to extract the main visual elements and convert them into a concise, powerful, comma-separated list of keywords in ENGLISH.
@@ -208,8 +223,40 @@ export const translateForImagePrompt = async (text: string): Promise<string> => 
         return completion.choices[0]?.message?.content || text;
     } catch (error) {
         console.error('Error translating text for image prompt:', error);
-        return text; // В случае ошибки вернем исходный текст, чтобы не сломать процесс
+        return text;
     }
+};
+
+export const evaluateAnswer = async (question: string, studentAnswer: string, correctAnswer?: string) => {
+  const systemPrompt = `You are an intelligent tutor. Evaluate the student's answer to a given question. 
+  Your response MUST BE a valid JSON object with two keys: "isCorrect" (boolean) and "explanation" (a short, encouraging string explaining why the answer is right or wrong).
+  If a correct answer is provided, the student's answer must match it. If not, evaluate the logic.`;
+  
+  let userPrompt = `Question: "${question}"\nStudent's Answer: "${studentAnswer}"`;
+  if (correctAnswer) {
+    userPrompt += `\nCorrect Answer for reference: "${correctAnswer}"`;
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: "json_object" },
+    });
+    
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content in response');
+    }
+    
+    return JSON.parse(content) as { isCorrect: boolean; explanation: string };
+  } catch (error) {
+    console.error('Error evaluating answer:', error);
+    return { isCorrect: true, explanation: 'Could not evaluate. Marked as correct.' };
+  }
 };
 
 export const generateRoadmap = async (

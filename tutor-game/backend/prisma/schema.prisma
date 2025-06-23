@@ -66,8 +66,9 @@ model Teacher {
   userId   String   @id
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Relations - Only keep direct relations that are absolutely necessary
-  students Student[] @relation("TeachersAndStudents")
+  // Relations
+  students       Student[]       @relation("TeachersAndStudents")
+  learningGoals  LearningGoal[]  @relation("LearningGoalTeacher")
   
   @@map("teachers")
 }
@@ -78,9 +79,11 @@ model Student {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // Relations
-  teachers Teacher[] @relation("TeachersAndStudents")
-  badges   Badge[]
-  stories  Story[]
+  teachers        Teacher[]               @relation("TeachersAndStudents")
+  badges          Badge[]
+  stories         Story[]
+  learningGoals   LearningGoal[]          @relation("LearningGoalStudent")
+  performanceLogs StudentPerformanceLog[]
   
   @@map("students")
 }
@@ -149,17 +152,18 @@ model Lesson {
 }
 
 model StudentPerformanceLog {
-  id        String   @id @default(uuid())
-  isCorrect Boolean
-  answer    String
-  aiNote    String?
-  createdAt DateTime @default(now())
-  
-  // Relations
-  studentId String
-  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  lessonId  String
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  isCorrect  Boolean?
+  answer     String
+  question   String?
+  blockIndex Int?     @map("block_index")
+  blockType  String?  @map("block_type")
+  aiNote     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  studentId  String   @map("student_id")
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId   String   @map("lesson_id")
+  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@map("student_performance_logs")
 }

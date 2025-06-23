@@ -1,6 +1,6 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { verifyToken as authVerifyToken } from './auth.service';
+import { verifyAccessToken } from './auth.service';
 import { Role } from '@prisma/client';
 import { config } from '../config/env';
 import prisma from '../db';
@@ -35,7 +35,7 @@ export class WebSocketService {
       try {
         const token = socket.handshake.auth.token;
         if (!token) return next(new Error('Authentication error'));
-        const decoded = await authVerifyToken(token);
+        const decoded = await verifyAccessToken(token);
         if (!decoded) return next(new Error('Invalid token'));
         socket.user = { userId: decoded.userId, role: decoded.role };
         next();
@@ -43,6 +43,22 @@ export class WebSocketService {
         next(new Error('Authentication error'));
       }
     });
+  }
+
+  /**
+   * Emits an event to a specific user if they are connected
+   * @param userId The ID of the user to send the event to
+   * @param event The event name
+   * @param data The data to send with the event
+   */
+  public emitToUser(userId: string, event: string, data: any) {
+    const socketId = this.connectedUsers.get(userId);
+    if (socketId) {
+      this.io.to(socketId).emit(event, data);
+      console.log(`[WebSocket] Emitted event '${event}' to user ${userId} on socket ${socketId}`);
+    } else {
+      console.log(`[WebSocket] User ${userId} not connected. Cannot emit event '${event}'.`);
+    }
   }
 
   private initializeConnection() {

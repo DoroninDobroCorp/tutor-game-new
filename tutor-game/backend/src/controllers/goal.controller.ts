@@ -3,8 +3,19 @@ import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateRoadmap, generateLessonContent, generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
 import { generateImage } from '../services/leonardo.service';
+import { WebSocketService } from '../services/websocket.service';
 import fs from 'fs';
 import path from 'path';
+
+// Import WebSocket event types from frontend
+type TeacherReviewedLessonEvent = {
+  message: string;
+  lessonId: string;
+  goalId: string;
+  teacherName: string;
+  timestamp: string;
+  hasImage: boolean;
+};
 
 declare global {
   namespace Express {
@@ -133,15 +144,14 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
 export const updateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
     
-    // ИСПРАВЛЕНИЕ 1: Определяем полный тип данных, который приходит с фронтенда
     const roadmapSections = req.body.roadmap as { 
         id?: string; 
         title: string; 
         lessons: { 
             id?: string; 
             title: string;
-            status?: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED'; // Добавляем статус
-            content?: any; // Добавляем контент
+            status?: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
+            content?: any;
         }[] 
     }[];
 
@@ -159,15 +169,13 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
         throw new AppError('Learning Goal not found or access denied', 404);
     }
 
-    // Use transaction for atomic operation
     await prisma.$transaction(async (tx) => {
         const receivedSectionIds = new Set<string>();
         const receivedLessonIds = new Set<string>();
 
         for (const [sectionIndex, sectionData] of roadmapSections.entries()) {
-            // --- SECTION MANAGEMENT (UPSERT) ---
             const section = await tx.contentSection.upsert({
-                where: { id: sectionData.id || `new-section-${sectionIndex}` }, // Use ID or temp ID for creation
+                where: { id: sectionData.id || `new-section-${sectionIndex}` },
                 update: { title: sectionData.title, order: sectionIndex },
                 create: {
                     title: sectionData.title,
@@ -178,30 +186,27 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
             receivedSectionIds.add(section.id);
 
             for (const [lessonIndex, lessonData] of sectionData.lessons.entries()) {
-                // --- LESSON MANAGEMENT (UPSERT) ---
                 const lesson = await tx.lesson.upsert({
                     where: { id: lessonData.id || `new-lesson-${lessonIndex}` },
                     update: { 
                         title: lessonData.title, 
                         order: lessonIndex, 
                         sectionId: section.id,
-                        status: lessonData.status || 'DRAFT', // Обновляем статус
-                        content: lessonData.content || null, // Обновляем контент
+                        status: lessonData.status || 'DRAFT',
+                        content: lessonData.content || null,
                     },
                     create: {
                         title: lessonData.title,
                         order: lessonIndex,
                         sectionId: section.id,
-                        status: lessonData.status || 'DRAFT', // Создаем со статусом
-                        content: lessonData.content || null, // Создаем с контентом
+                        status: lessonData.status || 'DRAFT',
+                        content: lessonData.content || null,
                     },
                 });
                 receivedLessonIds.add(lesson.id);
             }
         }
 
-        // --- CLEAN UP DELETED ITEMS ---
-        // Find all section and lesson IDs in the DB that weren't in the received data
         const allDbSections = await tx.contentSection.findMany({ where: { learningGoalId: goalId }, select: { id: true } });
         const sectionIdsToDelete = allDbSections.filter(s => !receivedSectionIds.has(s.id)).map(s => s.id);
         
@@ -209,7 +214,6 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
         const lessonIdsToDelete = allDbLessons.filter(l => !receivedLessonIds.has(l.id)).map(l => l.id);
 
         if (lessonIdsToDelete.length > 0) {
-            // Cascade delete will handle related StoryChapter
             await tx.lesson.deleteMany({ where: { id: { in: lessonIdsToDelete } } });
         }
         if (sectionIdsToDelete.length > 0) {
@@ -256,24 +260,41 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
         throw new AppError('Lesson not found or you do not have permission', 404);
     }
     
-    const goal = await prisma.learningGoal.findUnique({
-        where: { id: lesson.section.learningGoalId },
-        select: {
-            subject: true,
-            studentAge: true,
-            setting: true,
-            language: true,
-        }
+    // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    const { learningGoal } = lesson.section;
+    const { studentId, subject, studentAge, setting, language } = learningGoal;
+
+    // 1. Получаем из базы данных логи успеваемости для этого студента по этому плану.
+    const performanceLogs = await prisma.studentPerformanceLog.findMany({
+        where: {
+            studentId: studentId,
+            lesson: {
+                section: {
+                    learningGoalId: learningGoal.id
+                }
+            }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20 // Ограничиваем количество для экономии токенов и контекста
     });
+
+    // 2. Формируем из логов простой текстовый контекст для ИИ.
+    const performanceContext = performanceLogs.length > 0
+        ? "Context on student's previous answers: " + performanceLogs.map(log => 
+            `Student's answer: "${log.answer}"${log.aiNote ? `. AI note: "${log.aiNote}"` : ''}`
+          ).join('; ')
+        : undefined;
+        
+    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
     
-    if (!goal) {
-        throw new AppError('Learning goal not found', 404);
-    }
-    
-    const language = goal.language || 'Russian';
-    const { subject, studentAge, setting } = goal;
+    // 3. Передаем этот контекст в сервис.
     const generatedContent = await generateLessonContent(
-        lesson.title, subject, studentAge, setting, language
+        lesson.title, 
+        subject, 
+        studentAge, 
+        setting, 
+        language || 'Russian',
+        performanceContext 
     );
     
     const updatedLesson = await prisma.lesson.update({
@@ -296,30 +317,80 @@ export const updateLessonContentHandler = async (req: Request, res: Response) =>
         throw new AppError('Content is required', 400);
     }
 
-    // Find the lesson and verify ownership through the learning goal
-    const lesson = await prisma.lesson.findFirst({
+    // First get the lesson with section and learning goal
+    const lessonWithSection = await prisma.lesson.findUnique({
         where: { id: lessonId },
         include: {
             section: {
-                include: {
-                    learningGoal: true
+                select: {
+                    id: true,
+                    learningGoal: {
+                        select: {
+                            id: true,
+                            teacherId: true
+                        }
+                    }
                 }
             }
         }
     });
 
-    if (!lesson) {
+    if (!lessonWithSection) {
         throw new AppError('Lesson not found', 404);
     }
 
-    if (lesson.section.learningGoal.teacherId !== userId) {
+    if (lessonWithSection.section.learningGoal.teacherId !== userId) {
         throw new AppError('Not authorized to update this lesson', 403);
     }
 
+    // Update the lesson content and set status to PENDING_APPROVAL (waiting for story)
     const updatedLesson = await prisma.lesson.update({
         where: { id: lessonId },
-        data: { content }
+        data: { 
+            content,
+            status: 'PENDING_APPROVAL' // Waiting for story to be approved
+        },
+        select: {
+            id: true,
+            title: true,
+            content: true,
+            status: true,
+            sectionId: true
+        }
     });
+
+    // Get the learning goal with basic info
+    const learningGoal = await prisma.learningGoal.findUnique({
+        where: { id: lessonWithSection.section.learningGoal.id },
+        select: { id: true, studentId: true, teacherId: true }
+    });
+
+    if (!learningGoal) {
+        throw new AppError('Learning goal not found', 404);
+    }
+
+    // Get student and teacher users separately
+    const studentUser = await prisma.user.findUnique({
+        where: { id: learningGoal.studentId },
+        select: {
+            id: true,
+            firstName: true,
+            lastName: true
+        }
+    });
+
+    const teacherUser = await prisma.user.findUnique({
+        where: { id: learningGoal.teacherId },
+        select: {
+            id: true,
+            firstName: true,
+            lastName: true
+        }
+    });
+
+    if (!studentUser || !teacherUser) {
+        throw new AppError('Student or teacher user info not found', 404);
+    }
 
     res.json({ success: true, data: updatedLesson });
 };
@@ -345,7 +416,6 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
         prompt: `cartoon-style, full-body portrait of ${prompt}, dynamic pose, cinematic wide-angle shot, clean background, for an educational game`,
     });
     
-    // Просто возвращаем результат, ничего не сохраняя
     res.json({ success: true, data: imageResult });
 };
 
@@ -359,7 +429,7 @@ export const approveCharacterHandler = async (req: Request, res: Response) => {
     }
 
     const updatedGoal = await prisma.learningGoal.updateMany({
-        where: { id: goalId, teacherId }, // updateMany, чтобы убедиться, что учитель владеет целью
+        where: { id: goalId, teacherId },
         data: {
             characterPrompt: prompt,
             characterImageId: imageId,
@@ -382,7 +452,6 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     const { refinementPrompt } = req.body;
     const teacherId = req.user?.userId;
 
-    // Find the lesson with related data
     const lesson = await prisma.lesson.findFirst({
         where: { 
             id: lessonId, 
@@ -407,28 +476,40 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
 
     const { learningGoal } = lesson.section;
     
-    // Check if character is created
     if (!learningGoal.characterPrompt || !learningGoal.characterImageId) {
         throw new AppError('A character must be created for this Learning Goal before generating a story snippet.', 400);
     }
 
     try {
-        // 1. Generate high-quality story text in the target language
+        const previousChapters = await prisma.storyChapter.findMany({
+            where: {
+                learningGoalId: learningGoal.id,
+                studentSnippetText: { not: null }
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 3
+        });
+
+        const storyContext = previousChapters.length > 0
+            ? previousChapters.map(chapter => 
+                `Teacher: ${chapter.teacherSnippetText}\nStudent: ${chapter.studentSnippetText}`
+              ).join('\n\n---\n\n')
+            : undefined;
+
         const storyText = await generateStorySnippet(
             lesson.title,
             learningGoal.setting,
             learningGoal.studentAge,
             learningGoal.characterPrompt,
             learningGoal.language || 'Russian',
-            refinementPrompt
+            refinementPrompt,
+            storyContext
         );
 
-        // 2. Create the image prompt
         const imagePromptText = refinementPrompt 
             ? `cinematic illustration, vibrant colors, cartoon style, ${refinementPrompt}`
             : `cinematic illustration, vibrant colors, cartoon style, ${await translateForImagePrompt(storyText)}`;
 
-        // 3. Generate image with consistent character using Leonardo AI
         const imageResult = await generateImage({
             prompt: imagePromptText,
             characterImageId: learningGoal.characterImageId
@@ -438,18 +519,16 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             throw new AppError('Failed to generate story image', 500);
         }
         
-        // Return the generated content for teacher approval
         res.json({ 
             success: true, 
             data: { 
                 text: storyText, 
                 imageUrl: imageResult.url,
-                prompt: imagePromptText // Include the prompt in the response
+                prompt: imagePromptText
             } 
         });
     } catch (error) {
         console.error('Error in generateStorySnippetHandler:', error);
-        // More specific error handling
         if (error instanceof AppError) {
             throw error;
         }
@@ -503,12 +582,10 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
     const { text, imageUrl, prompt } = req.body;
     const teacherId = req.user?.userId;
 
-    // Validate input
     if (!text || !imageUrl || !prompt) {
         throw new AppError('Text, image URL and prompt are required for approval', 400);
     }
 
-    // Find the lesson with permission check
     const lesson = await prisma.lesson.findFirst({
         where: { 
             id: lessonId, 
@@ -532,16 +609,72 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
     }
 
     try {
-        // Use transaction to ensure data consistency
-        const storyChapter = await prisma.$transaction(async (tx) => {
-            // Check if we need to update or create
+        const result = await prisma.$transaction(async (tx) => {
+            // First, get the lesson with basic info
+            const lesson = await tx.lesson.findUnique({
+                where: { id: lessonId },
+                select: {
+                    id: true,
+                    sectionId: true,
+                    section: {
+                        select: {
+                            learningGoalId: true
+                        }
+                    }
+                }
+            });
+
+            if (!lesson?.section) {
+                throw new AppError('Lesson section not found', 404);
+            }
+
+            // Get learning goal with basic info
+            const learningGoal = await tx.learningGoal.findUnique({
+                where: { id: lesson.section.learningGoalId },
+                select: {
+                    id: true,
+                    studentId: true,
+                    teacherId: true
+                }
+            });
+
+            if (!learningGoal) {
+                throw new AppError('Learning goal not found', 404);
+            }
+
+            // Get student and teacher user info directly
+            const studentUser = await tx.user.findUnique({
+                where: { id: learningGoal.studentId },
+                select: { id: true, firstName: true, lastName: true }
+            });
+
+            const teacherUser = await tx.user.findUnique({
+                where: { id: learningGoal.teacherId },
+                select: { id: true, firstName: true, lastName: true }
+            });
+
+            if (!studentUser || !teacherUser) {
+                throw new AppError('Student or teacher user info not found', 404);
+            }
+
+            // Update the lesson status to APPROVED - this is the final step when story is approved
+            const updatedLesson = await tx.lesson.update({
+                where: { id: lessonId },
+                data: { status: 'APPROVED' },
+                select: { id: true, title: true }
+            });
+
+            if (!updatedLesson) {
+                throw new AppError('Lesson not found during transaction', 404);
+            }
+
+            let storyChapter;
             const existingChapter = await tx.storyChapter.findUnique({
                 where: { lessonId }
             });
 
             if (existingChapter) {
-                // Update existing chapter
-                return await tx.storyChapter.update({
+                storyChapter = await tx.storyChapter.update({
                     where: { id: existingChapter.id },
                     data: {
                         teacherSnippetText: text,
@@ -551,8 +684,7 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
                     }
                 });
             } else {
-                // Create new chapter
-                return await tx.storyChapter.create({
+                storyChapter = await tx.storyChapter.create({
                     data: {
                         lessonId,
                         learningGoalId: lesson.section.learningGoalId,
@@ -563,11 +695,34 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
                     }
                 });
             }
+
+
+            // Send WebSocket notification to student
+            try {
+                const wsService = req.app.get('wsService');
+                // Emit WebSocket event to student with TeacherReviewedLessonEvent type
+                const notificationPayload: TeacherReviewedLessonEvent = {
+                    message: `Учитель ${teacherUser.firstName || ''} проверил ваш урок.`,
+                    lessonId: updatedLesson.id,
+                    goalId: learningGoal.id,
+                    teacherName: `${teacherUser.firstName || ''} ${teacherUser.lastName || ''}`.trim(),
+                    timestamp: new Date().toISOString(),
+                    hasImage: !!imageUrl
+                };
+                
+                wsService.emitToUser(studentUser.id, 'teacher_reviewed_lesson', notificationPayload);
+            } catch (wsError) {
+                console.error('Failed to send WebSocket notification:', wsError);
+                // Don't fail the request if WebSocket notification fails
+            }
+
+            return { lesson: updatedLesson, storyChapter };
         });
 
         res.json({ 
             success: true, 
-            data: storyChapter 
+            data: result.storyChapter,
+            lessonId: result.lesson.id
         });
     } catch (error) {
         console.error('Error in approveStorySnippetHandler:', error);
@@ -583,7 +738,6 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
         const teacherId = req.user?.userId;
 
         if (!text || !prompt || !file) {
-            // If file was uploaded but something went wrong, delete it
             if (file) {
                 fs.unlink(file.path, (err) => {
                     if (err) console.error('Error deleting uploaded file:', err);
@@ -592,7 +746,6 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
             throw new AppError('Text, prompt, and image file are required', 400);
         }
 
-        // Check if the lesson exists and the user has permission
         const lesson = await prisma.lesson.findFirst({
             where: { 
                 id: lessonId, 
@@ -612,39 +765,30 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
         });
 
         if (!lesson) {
-            // Delete the uploaded file if lesson not found
             fs.unlink(file.path, (err) => {
                 if (err) console.error('Error deleting uploaded file:', err);
             });
             throw new AppError('Lesson not found or you do not have permission', 404);
         }
 
-        // In a real application, you would upload the file to cloud storage here
-        // For now, we'll just move it to a permanent location in the uploads folder
         const fileExt = path.extname(file.originalname);
         const newFilename = `story-${Date.now()}${fileExt}`;
         const uploadPath = path.join('uploads', newFilename);
         
-        // Create uploads directory if it doesn't exist
         if (!fs.existsSync('uploads')) {
             fs.mkdirSync('uploads', { recursive: true });
         }
         
-        // Move the file to the uploads directory
         fs.renameSync(file.path, uploadPath);
         
-        // Create URL for the uploaded file
         const imageUrl = `/uploads/${newFilename}`;
 
-        // Save to database
         const storyChapter = await prisma.$transaction(async (tx) => {
-            // Check if story chapter already exists
             const existingChapter = await tx.storyChapter.findFirst({
                 where: { lessonId }
             });
 
             if (existingChapter) {
-                // Update existing chapter
                 return await tx.storyChapter.update({
                     where: { id: existingChapter.id },
                     data: {
@@ -656,7 +800,6 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
                     }
                 });
             } else {
-                // Create new chapter
                 return await tx.storyChapter.create({
                     data: {
                         lessonId,
@@ -675,7 +818,6 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
             data: storyChapter 
         });
     } catch (error) {
-        // Clean up uploaded file if an error occurs
         if (req.file) {
             fs.unlink(req.file.path, (err) => {
                 if (err) console.error('Error cleaning up uploaded file:', err);

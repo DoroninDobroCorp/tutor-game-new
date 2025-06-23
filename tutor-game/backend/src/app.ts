@@ -26,6 +26,9 @@ export const createServer = () => {
   // Initialize WebSocket service with the server instance
   server.wsService = new WebSocketService(server);
   
+  // Make WebSocketService available to controllers via app
+  app.set('wsService', server.wsService);
+  
   // Enhanced CORS configuration
   const corsOptions = {
     origin: [
