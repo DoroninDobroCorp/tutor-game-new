@@ -1,7 +1,7 @@
 import { apiSlice } from '../../app/api/apiSlice';
 
 // Типы данных
-interface Student {
+interface StudentInfo {
     id: string;
     firstName: string | null;
     lastName: string | null;
@@ -46,7 +46,7 @@ interface LearningGoal {
     setting: string; 
     studentAge: number; 
     studentId: string;
-    student: Student;
+    student: StudentInfo;
     sections: ContentSection[];
     language?: string;
     // Character fields
@@ -90,10 +90,21 @@ export const teacherApi = apiSlice.injectEndpoints({
       query: (body) => ({ url: '/teacher/students/connect', method: 'POST', body }),
       invalidatesTags: ['Student'],
     }),
-    getConnectedStudents: builder.query<Student[], void>({
+    getConnectedStudents: builder.query<StudentInfo[], void>({
       query: () => '/teacher/students',
-      transformResponse: (response: { data: Student[] }) => response.data,
-      providesTags: (result) => result ? [...result.map(({ id }) => ({ type: 'Student' as const, id })), { type: 'Student', id: 'LIST' }] : [{ type: 'Student', id: 'LIST' }],
+      transformResponse: (response: { data: StudentInfo[] }) => response.data,
+      providesTags: (result) => 
+        result 
+          ? [...result.map(({ id }) => ({ type: 'Student' as const, id })), { type: 'Student', id: 'LIST' }] 
+          : [{ type: 'Student', id: 'LIST' }],
+    }),
+    getStudentPerformanceLogs: builder.query<PerformanceLog[], string>({
+      query: (studentId) => `/teacher/students/${studentId}/performance-logs`,
+      transformResponse: (response: { data: PerformanceLog[] }) => response.data,
+      providesTags: (result, _, studentId) => [
+        { type: 'Student', id: studentId },
+        ...(result?.map(({ id }) => ({ type: 'Goal' as const, id })) || []),
+      ],
     }),
     
     // Учебные планы (Goals)
@@ -347,7 +358,7 @@ export const {
   useApproveStorySnippetWithUploadMutation,
 } = teacherApi;
 
-export type { LearningGoal, ContentSection, Lesson, Student, StoryChapter };
+export type { LearningGoal, ContentSection, Lesson, StoryChapter, StudentInfo };
 
 // LeonardoImage type for character generation
 export interface LeonardoImage {

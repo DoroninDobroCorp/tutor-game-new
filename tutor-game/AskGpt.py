@@ -2,7 +2,7 @@
 import os
 
 # --- Настройки ---
-MAX_CHARS = 250000  # можно менять
+MAX_CHARS = 750000  # можно менять
 OUTPUT_PREFIX = "message_"
 FINISH_INSTRUCTION = "ГПТ, Я ЕЩЕ НЕ ЗАКОНЧИЛ - ПРОСТО КОРОТКО ОТВЕТЬ ОК И ВСЕ!!!"
 BASE_DIR = os.getcwd()  # корневая папка — та, где запущен скрипт
@@ -11,7 +11,8 @@ TOP_N_FILES = 3    # НОВОЕ: сколько самых больших фай
 # --- Списки игнорирования ---
 
 # Список расширений файлов для игнорирования (через запятую).
-USER_IGNORE_EXTENSIONS = ".js, .d.ts"
+# ИЗМЕНЕНО: Добавлены расширения изображений для игнорирования
+USER_IGNORE_EXTENSIONS = ".png, .jpeg, .jpg"
 
 # Список файлов-исключений, которые НУЖНО включить, даже если их расширение в списке игнорирования.
 USER_INCLUDE_FILES = "" # "important-script.js, special-types.d.ts"
@@ -25,7 +26,7 @@ USER_IGNORE_FILES = (
     # Common
     ".DS_Store, .gitignore, README.md, "
     # Specific user files
-    "analyzer_wide, tsconfig.tsbuildinfo, chat_sender.py"
+    "analyzer_wide, tsconfig.tsbuildinfo, chat_sender.py, chat_sender_g.py"
 )
 
 # Список папок для игнорирования (через запятую).
@@ -83,6 +84,8 @@ def calculate_sizes(root):
                 continue
 
             filepath = os.path.join(dirpath, f)
+            # Для бинарных файлов, которые мы игнорируем, get_file_content не вызывается
+            # Но если вдруг какое-то расширение не добавлено, лучше обрабатывать ошибку
             content = get_file_content(filepath)
 
             if content is not None:

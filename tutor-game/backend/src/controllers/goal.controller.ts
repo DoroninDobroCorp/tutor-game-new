@@ -110,35 +110,47 @@ export const generateRoadmapHandler = async (req: Request, res: Response) => {
 
 export const getGoalsHandler = async (req: Request, res: Response) => {
     const teacherId = req.user?.userId;
-    if (!teacherId) throw new AppError('User not authenticated', 401);
+    // Add explicit check for authentication
+    if (!teacherId) {
+        throw new AppError('User not authenticated', 401);
+    }
 
-    const goals = await prisma.learningGoal.findMany({
-        where: { teacherId },
-        include: {
-            student: {
-                select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    email: true
-                }
-            },
-            sections: {
-                include: {
-                    lessons: {
-                        orderBy: { order: 'asc' },
-                        include: {
-                            storyChapter: true // Include story chapter data with all fields
-                        }
+    try {
+        const goals = await prisma.learningGoal.findMany({
+            where: { teacherId },
+            include: {
+                // Include student data with necessary fields
+                student: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true
                     }
                 },
-                orderBy: { order: 'asc' }
-            }
-        },
-        orderBy: { createdAt: 'desc' }
-    });
+                sections: {
+                    include: {
+                        lessons: {
+                            orderBy: { order: 'asc' },
+                            include: {
+                                storyChapter: true
+                            }
+                        }
+                    },
+                    orderBy: { order: 'asc' }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
-    res.json({ success: true, data: goals });
+        res.json({ success: true, data: goals });
+    } catch (error) {
+        console.error('Error fetching learning goals:', error);
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            throw new AppError('Database error while fetching goals', 500);
+        }
+        throw error;
+    }
 };
 
 export const updateRoadmapHandler = async (req: Request, res: Response) => {

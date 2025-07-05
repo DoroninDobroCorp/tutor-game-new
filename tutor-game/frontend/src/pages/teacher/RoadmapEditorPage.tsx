@@ -1,7 +1,7 @@
 // Файл: tutor-game/frontend/src/pages/teacher/RoadmapEditorPage.tsx
 // Версия: Полная, с интеграцией просмотра ответов студента
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
     useGetLearningGoalsQuery,
@@ -75,7 +75,11 @@ const RoadmapEditorPage = () => {
     const { data: goals, isLoading: isLoadingGoals, isFetching } = useGetLearningGoalsQuery(undefined, {
         refetchOnMountOrArgChange: true,
     });
-    const currentGoal = goals?.find(g => g.id === goalId);
+    
+    // Use useMemo to stabilize the currentGoal reference
+    const currentGoal = useMemo(() => {
+        return goals?.find(g => g.id === goalId);
+    }, [goals, goalId]);
 
     const [roadmap, setRoadmap] = useState<ContentSection[]>([]);
     const [feedback, setFeedback] = useState('');
@@ -86,7 +90,7 @@ const RoadmapEditorPage = () => {
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     
-    // Новые состояния для модального окна с логами
+    // States for logs modal
     const [showLogsModal, setShowLogsModal] = useState(false);
     const [getLogs, { data: performanceLogs, isLoading: isLoadingLogs }] = useLazyGetPerformanceLogsQuery();
 
@@ -95,11 +99,34 @@ const RoadmapEditorPage = () => {
     const [generateCharacter, { isLoading: isGeneratingCharacter }] = useGenerateCharacterForGoalMutation();
     const [approveCharacter, { isLoading: isApprovingCharacter }] = useApproveCharacterForGoalMutation();
 
+    // Sync local state with data from RTK Query
     useEffect(() => {
         if (currentGoal?.sections) {
             setRoadmap(JSON.parse(JSON.stringify(currentGoal.sections)));
         }
     }, [currentGoal]);
+
+    // Early return for loading state
+    if (isLoadingGoals || isFetching) {
+        return (
+            <div className="flex justify-center items-center h-96">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
+    // Early return for error state (goal not found)
+    if (!currentGoal) {
+        return (
+            <div className="text-center text-red-500 p-10 bg-white rounded-lg shadow">
+                <h2 className="text-2xl font-bold">Ошибка</h2>
+                <p className="mt-2">Учебный план с ID "{goalId}" не найден или у вас нет к нему доступа.</p>
+                <Link to="/teacher/goals" className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-md">
+                    Вернуться к списку планов
+                </Link>
+            </div>
+        );
+    }
 
     const handleShowLogs = () => {
         if (currentGoal) {

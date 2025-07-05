@@ -16,104 +16,101 @@ enum Role {
   TEACHER
 }
 
-enum LessonType { 
-  THEORY 
-  PRACTICE 
-  WITH_TEACHER 
+enum LessonType {
+  THEORY
+  PRACTICE
+  WITH_TEACHER
 }
 
-enum LessonStatus { 
-  DRAFT 
-  PENDING_APPROVAL 
-  APPROVED 
-  COMPLETED 
+enum LessonStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  COMPLETED
 }
 
-enum BadgeStatus { 
-  HIDDEN 
-  ACTIVE 
-  EARNED 
+enum BadgeStatus {
+  HIDDEN
+  ACTIVE
+  EARNED
 }
 
 // --- CORE MODELS ---
 model User {
-  id               String                  @id @default(uuid())
-  email            String                  @unique
-  password         String
-  firstName        String?
-  lastName         String?
-  lastActive       DateTime?
-  role             Role
-  createdAt        DateTime                @default(now())
-  
+  id         String    @id @default(uuid())
+  email      String    @unique
+  password   String
+  firstName  String?
+  lastName   String?
+  lastActive DateTime?
+  role       Role
+  createdAt  DateTime  @default(now())
+
   // Relations
   teacher          Teacher?
   student          Student?
-  sentMessages     Message[]               @relation("Sender")
-  receivedMessages Message[]               @relation("Recipient")
-  
+  sentMessages     Message[] @relation("Sender")
+  receivedMessages Message[] @relation("Recipient")
+
   // Teacher relations
-  taughtGoals      LearningGoal[]          @relation("LearningGoalTeacher")
-  
+  taughtGoals LearningGoal[] @relation("LearningGoalTeacher")
+
   // Student relations
-  learningGoals    LearningGoal[]          @relation("LearningGoalStudent")
-  performanceLogs  StudentPerformanceLog[]
-  refreshTokens    RefreshToken[]
+  learningGoals   LearningGoal[]          @relation("LearningGoalStudent")
+  performanceLogs StudentPerformanceLog[]
+  refreshTokens   RefreshToken[]
 }
 
 model Teacher {
   // userId is both primary key and foreign key
-  userId   String   @id
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Relations
-  students       Student[]       @relation("TeachersAndStudents")
-  learningGoals  LearningGoal[]  @relation("LearningGoalTeacher")
-  
+  students Student[] @relation("TeachersAndStudents")
+
   @@map("teachers")
 }
 
 model Student {
   // userId is both primary key and foreign key
-  userId   String    @id
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Relations
-  teachers        Teacher[]               @relation("TeachersAndStudents")
-  badges          Badge[]
-  stories         Story[]
-  learningGoals   LearningGoal[]          @relation("LearningGoalStudent")
-  performanceLogs StudentPerformanceLog[]
-  
+  teachers Teacher[] @relation("TeachersAndStudents")
+  badges   Badge[]
+  stories  Story[]
+
   @@map("students")
 }
 
 // --- LEARNING FLOW MODELS ---
 model LearningGoal {
-  id           String           @id @default(uuid())
-  subject      String
-  setting      String
-  studentAge   Int
-  language     String           @default("Russian")
-  createdAt    DateTime         @default(now())
-  
+  id         String   @id @default(uuid())
+  subject    String
+  setting    String
+  studentAge Int
+  language   String   @default("Russian")
+  createdAt  DateTime @default(now())
+
   // Relations
-  teacherId    String
-  teacher      User             @relation("LearningGoalTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  
-  studentId    String
-  student      User             @relation("LearningGoalStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  
-  sections     ContentSection[]
-  story        Story?
-  
+  teacherId String
+  teacher   User   @relation("LearningGoalTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation("LearningGoalStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  sections ContentSection[]
+  story    Story?
+
   // --- CHARACTER FIELDS ---
-  characterPrompt  String?
-  characterImageId String? // ID изображения из Leonardo AI
-  characterGenId   String? // ID самой генерации для проверки статуса
+  characterPrompt   String?
+  characterImageId  String? // ID изображения из Leonardo AI
+  characterGenId    String? // ID самой генерации для проверки статуса
   characterImageUrl String? // Прямой URL на готовое изображение
   // ------------------------
-  
+
   // --- STORY CHAPTERS ---
   storyChapters StoryChapter[]
   // ----------------------
@@ -142,12 +139,11 @@ model Lesson {
   sectionId       String
   section         ContentSection          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   performanceLogs StudentPerformanceLog[]
-  
+
   // --- STORY CHAPTER RELATION ---
-  storyChapter    StoryChapter?
+  storyChapter StoryChapter?
   // ------------------------------
 
-  
   @@map("lessons")
 }
 
@@ -180,48 +176,48 @@ model Badge {
 }
 
 model Story {
-  id             String       @id @default(uuid())
-  text           String
-  createdAt      DateTime     @default(now())
-  
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+
   // Relations
-  learningGoalId String?      @unique
+  learningGoalId String?       @unique
   learningGoal   LearningGoal? @relation(fields: [learningGoalId], references: [id])
   studentId      String
-  student        Student      @relation(fields: [studentId], references: [userId], onDelete: Cascade)
-  
+  student        Student       @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+
   @@map("stories")
 }
 
 model StoryChapter {
-  id                      String      @id @default(uuid())
-  lessonId                String      @unique
-  lesson                  Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  learningGoalId          String
-  learningGoal            LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
-  teacherSnippetText      String?
-  teacherSnippetImageUrl  String?
+  id                        String       @id @default(uuid())
+  lessonId                  String       @unique
+  lesson                    Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  learningGoalId            String
+  learningGoal              LearningGoal @relation(fields: [learningGoalId], references: [id], onDelete: Cascade)
+  teacherSnippetText        String?
+  teacherSnippetImageUrl    String?
   teacherSnippetImagePrompt String? // Prompt used to generate the image
-  teacherSnippetStatus    String      @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, COMPLETED
-  studentSnippetText      String?
-  studentSnippetImageUrl  String?
-  studentSnippetStatus    String      @default("LOCKED") // LOCKED, DRAFT, SUBMITTED, APPROVED
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
+  teacherSnippetStatus      String       @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, COMPLETED
+  studentSnippetText        String?
+  studentSnippetImageUrl    String?
+  studentSnippetStatus      String       @default("LOCKED") // LOCKED, DRAFT, SUBMITTED, APPROVED
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 
   @@map("story_chapters")
 }
 
 model Message {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   senderId    String
   recipientId String
   content     String
-  read        Boolean  @default(false)
+  read        Boolean   @default(false)
   readAt      DateTime?
-  createdAt   DateTime @default(now())
-  sender      User     @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
-  recipient   User     @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  sender      User      @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User      @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
@@ -237,7 +233,6 @@ model TokenBlacklist {
 
 // -------------------------
 
-
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
@@ -245,6 +240,7 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("refresh_tokens")
 }
