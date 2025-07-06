@@ -85,7 +85,7 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
                         create: sectionData.lessons.map((lesson: any) => ({
                             title: lesson.title,
                             order: lesson.order,
-                            status: 'PENDING',
+                            status: 'PENDING_APPROVAL',
                             content: ''
                         }))
                     }
