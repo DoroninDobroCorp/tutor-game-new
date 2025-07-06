@@ -1,6 +1,7 @@
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useGetConnectedStudentsQuery, useCreateLearningGoalMutation } from '../../features/teacher/teacherApi';
+import { useGetConnectedStudentsQuery } from '../../features/teacher/teacherApi';
+import { useCreateLearningGoalMutation } from '../../features/goal/goalApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 

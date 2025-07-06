@@ -126,12 +126,6 @@ async function main() {
               }
             }
           ]
-        },
-        story: {
-          create: {
-            text: 'Once upon a time, a student started learning Mathematics...',
-            studentId: studentUser.id
-          }
         }
       },
       include: {
@@ -139,8 +133,7 @@ async function main() {
           include: {
             lessons: true
           }
-        },
-        story: true
+        }
       }
     });
 

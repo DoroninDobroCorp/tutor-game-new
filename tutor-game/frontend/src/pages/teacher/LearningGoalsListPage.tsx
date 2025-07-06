@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useGetLearningGoalsQuery, useDeleteLearningGoalMutation } from '../../features/teacher/teacherApi';
+import { useGetLearningGoalsQuery, useDeleteLearningGoalMutation } from '../../features/goal/goalApi';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { FiTrash2 } from 'react-icons/fi';

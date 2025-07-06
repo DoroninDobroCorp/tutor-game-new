@@ -9,9 +9,12 @@ import { errorHandler } from './middlewares/error.middleware';
 import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
 import studentRoutes from './routes/student.routes';
-import generateRoutes from './routes/generate.routes';
 import chatRoutes from './routes/chat.routes';
 import goalRoutes from './routes/goal.routes';
+import lessonRoutes from './routes/lesson.routes';
+import roadmapRoutes from './routes/roadmap.routes';
+import characterRoutes from './routes/character.routes';
+import storyRoutes from './routes/story.routes';
 import { config } from './config/env';
 import { WebSocketService } from './services/websocket.service';
 
@@ -90,9 +93,17 @@ export const createServer = () => {
   app.use('/api/auth', authRoutes);
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
-  app.use('/api/generate', generateRoutes);
   app.use('/api/chat', chatRoutes);
-  app.use('/api/goals', goalRoutes);
+
+  // НОВАЯ, ПРАВИЛЬНАЯ ГРУППИРОВКА
+  // Роуты, которые являются дочерними для "goals"
+  app.use('/api/goals', goalRoutes);         // GET /api/goals, POST /api/goals
+  app.use('/api/goals', roadmapRoutes);      // POST /api/goals/:goalId/generate-roadmap
+  app.use('/api/goals', characterRoutes);    // POST /api/goals/:goalId/generate-character
+
+  // Роуты, которые логически относятся к "lessons"
+  app.use('/api/lessons', lessonRoutes);     // POST /api/lessons/:lessonId/generate-content
+  app.use('/api/lessons', storyRoutes);      // POST /api/lessons/:lessonId/story/generate
 
   // Serve static files from frontend build
   const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');

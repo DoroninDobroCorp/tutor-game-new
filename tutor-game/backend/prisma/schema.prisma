@@ -80,7 +80,6 @@ model Student {
   // Relations
   teachers Teacher[] @relation("TeachersAndStudents")
   badges   Badge[]
-  stories  Story[]
 
   @@map("students")
 }
@@ -102,7 +101,6 @@ model LearningGoal {
   student   User   @relation("LearningGoalStudent", fields: [studentId], references: [id], onDelete: Cascade)
 
   sections ContentSection[]
-  story    Story?
 
   // --- CHARACTER FIELDS ---
   characterPrompt   String?
@@ -175,19 +173,7 @@ model Badge {
   @@map("badges")
 }
 
-model Story {
-  id        String   @id @default(uuid())
-  text      String
-  createdAt DateTime @default(now())
 
-  // Relations
-  learningGoalId String?       @unique
-  learningGoal   LearningGoal? @relation(fields: [learningGoalId], references: [id])
-  studentId      String
-  student        Student       @relation(fields: [studentId], references: [userId], onDelete: Cascade)
-
-  @@map("stories")
-}
 
 model StoryChapter {
   id                        String       @id @default(uuid())

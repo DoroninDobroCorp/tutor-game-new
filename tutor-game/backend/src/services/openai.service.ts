@@ -227,6 +227,57 @@ export const translateForImagePrompt = async (text: string): Promise<string> => 
     }
 };
 
+export const generateCharacter = async (
+    subject: string,
+    age: number,
+    setting: string,
+    basePrompt: string,
+    language: string
+): Promise<{ name: string; description: string; imagePrompt: string }> => {
+  const systemPrompt = `You are a creative writer for children's educational games. 
+Your task is to create a compelling character for a story based on a user's idea.
+The story is about "${subject}" in a "${setting}" setting for a ${age}-year-old child.
+The user's core idea for the character is: "${basePrompt}".
+Expand on this idea. The final character MUST be related to the user's core idea.
+The language of the output must be ${language}.
+
+Your response MUST BE ONLY a valid JSON object with three keys:
+1. "name": A short, catchy name for the character (string).
+2. "description": A brief, 2-3 sentence description of the character's personality and appearance (string).
+3. "imagePrompt": A detailed visual description in ENGLISH for an AI image generator, focusing on appearance, clothing, and key attributes. Use comma-separated keywords.
+
+Example for a "Math in space" theme:
+{
+  "name": "Зигги",
+  "description": "Зигги - любопытный инопланетянин с тремя глазами, который обожает считать звезды. Он носит блестящий скафандр и всегда готов к космическим приключениям.",
+  "imagePrompt": "cute alien cartoon character, three big curious eyes, shiny silver spacesuit with a star emblem, floating in space, nebula background, vibrant colors, digital art"
+}`;
+
+  const userPrompt = `Generate a character for a ${age}-year-old about ${subject} in a ${setting} world.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content received from OpenAI for character generation.');
+    }
+    
+    return JSON.parse(content);
+
+  } catch (error) {
+    console.error('Error generating character with OpenAI:', error);
+    throw new Error('Failed to generate character');
+  }
+};
+
 export const evaluateAnswer = async (question: string, studentAnswer: string, correctAnswer?: string) => {
   const systemPrompt = `You are an intelligent tutor. Evaluate the student's answer to a given question. 
   Your response MUST BE a valid JSON object with two keys: "isCorrect" (boolean) and "explanation" (a short, encouraging string explaining why the answer is right or wrong).
