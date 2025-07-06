@@ -76,6 +76,7 @@ const RoadmapEditorPage = () => {
     const [feedback, setFeedback] = useState('');
     const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
     const [isEditingTitle, setIsEditingTitle] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
+    const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
     const [showLogsModal, setShowLogsModal] = useState(false);
     const [getLogs, { data: performanceLogs, isLoading: isLoadingLogs }] = useLazyGetPerformanceLogsQuery();
     
@@ -314,6 +315,12 @@ const RoadmapEditorPage = () => {
         setRoadmap(newRoadmap);
     };
 
+    const handleSectionTitleChange = (value: string, sectionIndex: number) => {
+        const newRoadmap = [...roadmap];
+        newRoadmap[sectionIndex].title = value;
+        setRoadmap(newRoadmap);
+    };
+
     if (isLoading) {
         return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
     }
@@ -384,13 +391,33 @@ const RoadmapEditorPage = () => {
                                                     className="p-4 md:p-6 bg-white rounded-lg shadow-md"
                                                 >
                                                     <div className="flex justify-between items-center mb-4" {...provided.dragHandleProps}>
-                                                        <div className="flex items-center">
-                                                            <FiMove className="text-gray-400 mr-3 cursor-grab" />
-                                                            <h2 className="text-xl font-semibold">{section.title}</h2>
+                                                        <div className="flex items-center flex-grow">
+                                                            <FiMove className="text-gray-400 mr-3 cursor-grab flex-shrink-0" />
+                                                            {editingSectionIndex === sectionIndex ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={section.title}
+                                                                    onChange={(e) => handleSectionTitleChange(e.target.value, sectionIndex)}
+                                                                    onBlur={() => setEditingSectionIndex(null)}
+                                                                    onKeyDown={(e) => e.key === 'Enter' && setEditingSectionIndex(null)}
+                                                                    autoFocus
+                                                                    className="text-xl font-semibold border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
+                                                                />
+                                                            ) : (
+                                                                <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
+                                                                    <h2 className="text-xl font-semibold cursor-pointer">{section.title}</h2>
+                                                                    <button 
+                                                                        className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                                        title="Редактировать название"
+                                                                    >
+                                                                        <FiEdit2 />
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <button 
                                                             onClick={() => handleRemoveSection(sectionIndex)} 
-                                                            className="text-red-500 hover:text-red-700 p-1" 
+                                                            className="text-red-500 hover:text-red-700 p-1 flex-shrink-0" 
                                                             title="Удалить раздел"
                                                         >
                                                             <FiTrash2 />
