@@ -1,0 +1,140 @@
+// Файл: tutor-game/frontend/src/components/common/WebSocketManager.tsx
+// Версия: Полная, исправленная и готовая к работе
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { useAppSelector, useAppDispatch } from '../../app/hooks';
+import { addMessage } from '../../features/chat/chatSlice';
+import { SocketContext } from '../../context/SocketContext';
+import toast, { Toaster } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { StudentSubmittedLessonEvent, TeacherReviewedLessonEvent } from '../../types/websocket';
+
+export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user, token } = useAppSelector((state) => ({
+    user: state.auth.user,
+    token: state.auth.token,
+  }));
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  // Обработчик для уведомления УЧИТЕЛЯ, когда ученик сдал урок
+  const handleStudentSubmitted = useCallback((data: StudentSubmittedLessonEvent) => {
+    console.log('📬 [WebSocket] Received student_submitted_lesson:', data);
+    toast.custom(
+      (t) => (
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <span className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-lg">📚</span>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">Новый ответ от ученика</p>
+                <p className="mt-1 text-sm text-gray-500">{`Ученик ${data.studentName} ждет продолжения истории!`}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button
+              onClick={() => {
+                // Переходим прямо в редактор нужного плана
+                navigate(`/teacher/goals/${data.goalId}/edit`);
+                toast.dismiss(t.id);
+              }}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Перейти
+            </button>
+          </div>
+        </div>
+      ), { 
+        duration: Infinity, // Уведомление будет "висеть" до закрытия
+        position: 'top-right' 
+      }
+    );
+  }, [navigate]);
+
+  // Обработчик для уведомления СТУДЕНТА, когда учитель утвердил урок
+  const handleTeacherReviewed = useCallback((data: TeacherReviewedLessonEvent) => {
+    console.log('✅ [WebSocket] Received teacher_reviewed_lesson:', data);
+    toast.custom(
+      (t) => (
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
+           <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                 <span className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-lg">🎉</span>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">Вас ждет новое приключение!</p>
+                <p className="mt-1 text-sm text-gray-500">{`${data.teacherName} подготовил(а) для вас продолжение.`}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button
+              onClick={() => {
+                // Переходим на страницу приключения
+                navigate('/student/adventure');
+                toast.dismiss(t.id);
+              }}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Начать
+            </button>
+          </div>
+        </div>
+      ), { 
+        duration: Infinity, // Уведомление будет "висеть" до закрытия
+        position: 'top-right' 
+      }
+    );
+  }, [navigate]);
+
+  useEffect(() => {
+    if (user && token) {
+      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const newSocket = io(socketUrl, {
+        auth: { token },
+        transports: ['websocket'],
+      });
+
+      setSocket(newSocket);
+
+      // --- Единое место для всех слушателей ---
+      newSocket.on('connect', () => console.log('[WebSocket] Connected to server.'));
+      newSocket.on('disconnect', () => console.log('[WebSocket] Disconnected from server.'));
+
+      // Слушатель для чата
+      newSocket.on('message', (message: any) => {
+        dispatch(addMessage({ message, currentUserId: user.id }));
+      });
+
+      // Слушатель для учителя
+      newSocket.on('student_submitted_lesson', handleStudentSubmitted);
+      
+      // Слушатель для ученика
+      newSocket.on('teacher_reviewed_lesson', handleTeacherReviewed);
+      
+      // Функция очистки при размонтировании компонента
+      return () => {
+        console.log('[WebSocket] Disconnecting socket.');
+        newSocket.off('connect');
+        newSocket.off('disconnect');
+        newSocket.off('message');
+        newSocket.off('student_submitted_lesson');
+        newSocket.off('teacher_reviewed_lesson');
+        newSocket.disconnect();
+      };
+    }
+  }, [user, token, dispatch, handleStudentSubmitted, handleTeacherReviewed]);
+
+  return (
+    <SocketContext.Provider value={socket}>
+      <Toaster />
+      {children}
+    </SocketContext.Provider>
+  );
+};

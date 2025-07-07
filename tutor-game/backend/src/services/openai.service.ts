@@ -5,33 +5,6 @@ const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
 
-export const generateStory = async (prompt: string, studentLevel: number) => {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a creative storyteller that creates engaging educational stories for students. 
-          The story should be appropriate for a student with a math level of ${studentLevel}/10. 
-          Make it fun, interactive and include math problems naturally in the narrative.`,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 1000,
-    });
-
-    return completion.choices[0]?.message?.content || 'Unable to generate story';
-  } catch (error) {
-    console.error('Error generating story with OpenAI:', error);
-    throw new Error('Failed to generate story');
-  }
-};
-
 export const generateMathProblem = async (topic: string, difficulty: number) => {
   try {
     const completion = await openai.chat.completions.create({
@@ -153,14 +126,15 @@ export const generateStorySnippet = async (
     storyContext?: string
 ): Promise<string> => {
     const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
-    Your goal is to create a short story snippet (3-5 sentences) that logically continues the previous events and sets up a problem related to the new lesson topic.
+    Your task is to create a short, intriguing story snippet (3-5 sentences) for a ${studentAge}-year-old.
     
     RULES:
-    1. The story must be fun, not boring or preachy. Use unexpected twists.
-    2. The tone should be appropriate for a ${studentAge}-year-old.
-    3. If a story context is provided, you MUST reference it and build upon it. The new story must be a direct continuation.
-    4. The story MUST end with an open-ended question to the student, like "What will happen next?" or "What should the character do?"
-    5. DO NOT give the answer or the solution. Only create the narrative setup.`;
+    1. The story must be fun and unexpected, not preachy or boring. Avoid clichés. Use humor and mystery.
+    2. Your primary goal is to CREATE INTRIGUE and NARRATIVE, not to teach.
+    3. The lesson topic is "${lessonTitle}". You should subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful, but DO NOT include any direct tasks, questions, or explanations from the lesson. The story is for engagement, the tasks are separate.
+    4. If a story context is provided, you MUST reference it and build upon it. The new story must be a direct, logical continuation.
+    5. The story MUST end with an open-ended, intriguing question to the student, like "What do you think the character should do?" or "What strange thing did they find?"
+    6. Your output must be ONLY the story text. No explanations or extra text.`;
 
     let userPrompt = '';
 
@@ -275,38 +249,6 @@ Example for a "Math in space" theme:
   } catch (error) {
     console.error('Error generating character with OpenAI:', error);
     throw new Error('Failed to generate character');
-  }
-};
-
-export const evaluateAnswer = async (question: string, studentAnswer: string, correctAnswer?: string) => {
-  const systemPrompt = `You are an intelligent tutor. Evaluate the student's answer to a given question. 
-  Your response MUST BE a valid JSON object with two keys: "isCorrect" (boolean) and "explanation" (a short, encouraging string explaining why the answer is right or wrong).
-  If a correct answer is provided, the student's answer must match it. If not, evaluate the logic.`;
-  
-  let userPrompt = `Question: "${question}"\nStudent's Answer: "${studentAnswer}"`;
-  if (correctAnswer) {
-    userPrompt += `\nCorrect Answer for reference: "${correctAnswer}"`;
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      response_format: { type: "json_object" },
-    });
-    
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content in response');
-    }
-    
-    return JSON.parse(content) as { isCorrect: boolean; explanation: string };
-  } catch (error) {
-    console.error('Error evaluating answer:', error);
-    return { isCorrect: true, explanation: 'Could not evaluate. Marked as correct.' };
   }
 };
 

@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useGenerateStorySnippetMutation } from '../../features/lesson/lessonApi';
+import React, { useState } from 'react';
+import { useGenerateStoryMutation } from '../../app/api/apiSlice';
 
-const StoryGenerator = () => {
+const StoryGenerator: React.FC = () => {
   const [topic, setTopic] = useState('');
   const [story, setStory] = useState('');
   const [error, setError] = useState('');
   
-  const [generateStory, { isLoading, error: apiError }] = useGenerateStorySnippetMutation();
+  const [generateStory, { isLoading, error: apiError }] = useGenerateStoryMutation();
   
   // Clear error when topic changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (apiError) {
       setError('Failed to generate story. Please try again.');
     } else {
@@ -30,14 +30,11 @@ const StoryGenerator = () => {
       const result = await generateStory({
         prompt: topic,
         ageGroup: 'elementary',
-        subject: 'general',
-        lessonId: 'temporary-lesson-id' // Add a default lesson ID or get it from props
-      } as any).unwrap();
+        subject: 'general'
+      }).unwrap();
       
-      if (result) {
-        // Adjust based on the actual API response structure
-        const storyContent = (result as any).content || JSON.stringify(result);
-        setStory(storyContent);
+      if (result.story) {
+        setStory(result.story);
       }
     } catch (err: any) {
       const errorMessage = err.data?.message || 'Failed to generate story. Please try again.';

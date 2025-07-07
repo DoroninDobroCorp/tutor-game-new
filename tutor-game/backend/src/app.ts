@@ -15,6 +15,7 @@ import lessonRoutes from './routes/lesson.routes';
 import roadmapRoutes from './routes/roadmap.routes';
 import characterRoutes from './routes/character.routes';
 import storyRoutes from './routes/story.routes';
+import imageRoutes from './routes/image.routes';
 import { config } from './config/env';
 import { WebSocketService } from './services/websocket.service';
 
@@ -104,6 +105,9 @@ export const createServer = () => {
   // Роуты, которые логически относятся к "lessons"
   app.use('/api/lessons', lessonRoutes);     // POST /api/lessons/:lessonId/generate-content
   app.use('/api/lessons', storyRoutes);      // POST /api/lessons/:lessonId/story/generate
+  
+  // Routes for image operations
+  app.use('/api/story', imageRoutes);        // GET /api/story/generation/:generationId
 
   // Serve static files from frontend build
   const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');

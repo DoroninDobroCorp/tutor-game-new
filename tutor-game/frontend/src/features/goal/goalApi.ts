@@ -1,4 +1,5 @@
 import { apiSlice } from '../../app/api/apiSlice';
+import { toast } from 'react-hot-toast';
 
 // Types
 export interface StudentInfo {
@@ -122,12 +123,41 @@ export const goalApi = apiSlice.injectEndpoints({
         }),
 
         // Обновление учебного плана
-        updateRoadmap: builder.mutation<void, { goalId: string; roadmap: ContentSection[] }>({
+        updateRoadmap: builder.mutation<LearningGoal, { goalId: string; roadmap: ContentSection[] }>({
             query: ({ goalId, roadmap }) => ({
                 url: `/goals/${goalId}/roadmap`,
                 method: 'PUT',
                 data: { roadmap },
             }),
+            transformResponse: (response: { data: LearningGoal }) => response.data,
+            async onQueryStarted({ goalId, roadmap }, { dispatch, queryFulfilled }) {
+                // Оптимистичное обновление
+                const patchResult = dispatch(
+                    goalApi.util.updateQueryData('getLearningGoalById', goalId, (draft) => {
+                        if (draft) {
+                            draft.sections = roadmap;
+                        }
+                    })
+                );
+
+                try {
+                    // Ждем ответа от сервера
+                    const { data: updatedGoal } = await queryFulfilled;
+                    
+                    // Обновляем кэш данными с сервера
+                    dispatch(
+                        goalApi.util.updateQueryData('getLearningGoalById', goalId, (draft) => {
+                            if (draft) {
+                                Object.assign(draft, updatedGoal);
+                            }
+                        })
+                    );
+                } catch {
+                    // В случае ошибки откатываем изменения
+                    patchResult.undo();
+                    toast.error('Не удалось сохранить изменения. Пожалуйста, попробуйте снова.');
+                }
+            },
             invalidatesTags: (_, __, { goalId }) => [
                 { type: 'Goal', id: goalId },
                 { type: 'Goal', id: 'LIST' }

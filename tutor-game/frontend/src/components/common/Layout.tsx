@@ -4,12 +4,11 @@ import { Dialog, Transition } from '@headlessui/react';
 import {
   Bars3Icon,
   HomeIcon,
-  BookOpenIcon,
-  CalculatorIcon,
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
   ChartBarIcon,
   ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
@@ -26,8 +25,6 @@ interface NavigationItem {
 
 const studentNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
-  { name: 'Story Mode', href: '/student/story', icon: BookOpenIcon, current: false },
-  { name: 'Math Problems', href: '/student/math', icon: CalculatorIcon, current: false },
   {
     name: 'Chat',
     href: '/student/chat',
@@ -39,7 +36,7 @@ const studentNavigation: NavigationItem[] = [
 
 const teacherNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
-  { name: 'Учебные Планы', href: '/teacher/goals', icon: BookOpenIcon, current: false },
+  { name: 'Учебные Планы', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
   { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
   { name: 'Progress', href: '/teacher/progress', icon: ChartBarIcon, current: false },
   {

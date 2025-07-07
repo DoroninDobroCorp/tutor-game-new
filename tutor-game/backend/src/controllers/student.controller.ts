@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
-import { generateMathProblem, evaluateAnswer } from '../services/openai.service';
 import prisma from '../db';
 import { Lesson } from '@prisma/client';
 import { WebSocketService } from '../services/websocket.service';
@@ -52,142 +51,6 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   res.json({
     success: true,
     data: studentWithRelations,
-  });
-};
-
-export const setStudentGoal = async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError('Not authenticated', 401);
-  }
-
-  const { title } = req.body;
-
-  if (!title) {
-    throw new AppError('Please provide a goal title', 400);
-  }
-
-  // First try to find if a goal with this title already exists for the student
-  // First find the student to get their ID
-  const student = await prisma.student.findUnique({
-    where: { userId: req.user.userId }
-  });
-
-  if (!student) {
-    throw new AppError('Student not found', 404);
-  }
-
-  // Check if a goal with this title already exists for the student
-  const existingGoal = await prisma.learningGoal.findFirst({
-    where: {
-      studentId: student.userId,
-      subject: title
-    }
-  });
-
-  let goal;
-  if (existingGoal) {
-    // Update existing goal
-    goal = await prisma.learningGoal.update({
-      where: { id: existingGoal.id },
-      data: { subject: title }
-    });
-  } else {
-    // Create new goal with required fields
-    goal = await prisma.learningGoal.create({
-      data: {
-        subject: title,
-        setting: 'default',
-        studentAge: 10, // Default age, can be made configurable
-        studentId: student.userId,
-        teacherId: student.userId // Assuming self-teaching for now
-      }
-    });
-  }
-
-  res.json({
-    success: true,
-    data: goal,
-  });
-};
-
-export const getRoadmap = async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError('Not authenticated', 401);
-  }
-
-  // First find the student to get their ID
-  const student = await prisma.student.findUnique({
-    where: { userId: req.user.userId }
-  });
-
-  if (!student) {
-    throw new AppError('Student not found', 404);
-  }
-
-  // Get all learning goals for the student as their roadmap
-  const roadmap = await prisma.learningGoal.findMany({
-    where: { studentId: student.userId },
-    include: {
-      sections: {
-        orderBy: { order: 'asc' },
-        include: {
-          lessons: {
-            orderBy: { order: 'asc' }
-          }
-        }
-      }
-    },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  res.json({
-    success: true,
-    data: roadmap
-  });
-};
-
-export const generateMathProblemHandler = async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError('Not authenticated', 401);
-  }
-
-  const { topic, difficulty } = req.query;
-
-  if (!topic || !difficulty) {
-    throw new AppError('Please provide topic and difficulty', 400);
-  }
-
-  const problem = await generateMathProblem(
-    topic as string,
-    parseInt(difficulty as string, 10)
-  );
-
-  res.json({
-    success: true,
-    data: problem,
-  });
-};
-
-export const submitAnswer = async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError('Not authenticated', 401);
-  }
-
-  const { problemId, answer } = req.body;
-
-  if (!problemId || answer === undefined) {
-    throw new AppError('Problem ID and answer are required', 400);
-  }
-
-  // In a real implementation, you would validate the answer here
-  // For now, we'll just return a success response
-  
-  res.json({
-    success: true,
-    data: {
-      correct: true, // In a real implementation, this would be determined by validation
-      explanation: 'Great job! Your answer is correct.',
-    },
   });
 };
 
@@ -407,6 +270,7 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
         }
     } catch (error) {
         console.error('Failed to send WebSocket notification:', error);
+        // Don't fail the request if WebSocket notification fails
     }
 
     res.status(200).json({

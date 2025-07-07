@@ -1,7 +1,7 @@
 import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateStorySnippet } from '../services/openai.service';
+import { generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
 import { startImageGeneration, getGenerationResult } from '../services/leonardo.service';
 import { WebSocketService } from '../services/websocket.service';
 import fs from 'fs';
@@ -32,20 +32,19 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     const { setting, studentAge, language, characterPrompt } = learningGoal;
 
     try {
-        // Генерируем текст истории и промпт для картинки параллельно
-        const [storySnippetText, imagePromptForLeonardo] = await Promise.all([
-            generateStorySnippet(
-                lesson.title,
-                setting,
-                studentAge,
-                characterPrompt || 'a brave hero',
-                language || 'Russian',
-                refinementPrompt,
-                previousStory
-            ),
-            // В будущем можно добавить генерацию промпта через ИИ
-            Promise.resolve(`Generate an illustration for a story about ${lesson.title} in a ${setting} setting`)
-        ]);
+        // 1. First generate the story text
+        const storySnippetText = await generateStorySnippet(
+            lesson.title,
+            setting,
+            studentAge,
+            characterPrompt || 'a brave hero',
+            language || 'Russian',
+            refinementPrompt,
+            previousStory
+        );
+
+        // 2. Generate image prompt based on the actual story content
+        const imagePromptForLeonardo = await translateForImagePrompt(storySnippetText);
 
         // Запускаем генерацию картинки, но не ждем ее завершения
         const { generationId } = await startImageGeneration({ 

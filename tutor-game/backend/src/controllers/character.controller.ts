@@ -101,15 +101,6 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
     });
 };
 
-export const approveCharacterHandler = async (req: Request, res: Response) => {
-    // This handler is kept for backward compatibility but is no longer used in the flow
-    // as characters are now saved immediately during generation
-    res.status(200).json({ 
-        success: true, 
-        message: "Character approval is no longer needed - characters are saved immediately on generation" 
-    });
-};
-
 export const uploadCharacterImageHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
     const teacherId = req.user?.userId;

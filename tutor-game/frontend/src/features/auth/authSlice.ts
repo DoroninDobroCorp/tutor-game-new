@@ -69,20 +69,16 @@ export const authSlice = createSlice({
         localStorage.setItem('user', JSON.stringify(user));
       }
     );
-    // ВОТ ЭТА ЧАСТЬ - ИСПРАВЛЕНИЕ
+    // Упрощаем логику обновления токена, так как бэкенд возвращает только accessToken
     builder.addMatcher(
       authApiSlice.endpoints.refreshToken.matchFulfilled,
       (state, action) => {
-        // Мы не всегда получаем юзера в ответе на рефреш, но токен - всегда
+        // Ответ от refresh содержит только accessToken
         const { accessToken } = action.payload.data;
         state.token = accessToken;
         state.isAuthenticated = true;
         localStorage.setItem('token', accessToken);
-        // Если в ответе пришел обновленный пользователь, тоже сохраним его
-        if (action.payload.data.user) {
-            state.user = action.payload.data.user;
-            localStorage.setItem('user', JSON.stringify(action.payload.data.user));
-        }
+        // Обновление данных пользователя происходит через getProfile
       }
     )
   },
