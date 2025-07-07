@@ -1,24 +1,50 @@
-import React, { useState } from 'react';
-import { useGetMathProblemQuery, useSubmitAnswerMutation } from '../../app/api/apiSlice';
+import { useState } from 'react';
 
-const MathProblemSolver: React.FC = () => {
+const MathProblemSolver = () => {
   const [userAnswer, setUserAnswer] = useState('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showSolution, setShowSolution] = useState(false);
   
-  // Get a math problem with refetch function
-  const { 
-    data: mathProblem, 
-    isLoading: isLoadingProblem, 
-    error: problemError,
-    refetch: refetchProblem 
-  } = useGetMathProblemQuery(
-    { difficulty: 'medium' },
-    { refetchOnMountOrArgChange: true }
-  );
-  
-  // Mutation for submitting answers
-  const [submitAnswer, { isLoading: isSubmitting }] = useSubmitAnswerMutation();
+  // Mock data for math problems
+  const mockMathProblems = [
+    {
+      id: '1',
+      question: 'What is 2 + 2?',
+      answer: '4',
+      explanation: 'Adding 2 and 2 gives us 4.',
+      difficulty: 'easy',
+      topic: 'Math'
+    },
+    {
+      id: '2',
+      question: 'What is 5 * 7?',
+      answer: '35',
+      explanation: 'Multiplying 5 by 7 gives us 35.',
+      difficulty: 'medium',
+      topic: 'Math'
+    },
+    {
+      id: '3',
+      question: 'What is 100 / 4?',
+      answer: '25',
+      explanation: 'Dividing 100 by 4 gives us 25.',
+      difficulty: 'hard',
+      topic: 'Math'
+    }
+  ];
+
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
+  const mathProblem = mockMathProblems[currentProblemIndex];
+  const isLoadingProblem = false;
+  const isSubmitting = false;
+
+  const refetchProblem = () => {
+    // Cycle through problems
+    setCurrentProblemIndex((prevIndex) => (prevIndex + 1) % mockMathProblems.length);
+    setUserAnswer('');
+    setIsCorrect(null);
+    setShowSolution(false);
+  };
   
   const handleGetNewProblem = () => {
     setUserAnswer('');
@@ -27,24 +53,14 @@ const MathProblemSolver: React.FC = () => {
     refetchProblem();
   };
   
-  const handleSubmitAnswer = async (e: React.FormEvent) => {
+  const handleSubmitAnswer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userAnswer.trim() || !mathProblem) return;
+    if (!userAnswer.trim()) return;
     
-    try {
-      const result = await submitAnswer({
-        problemId: mathProblem.id,
-        answer: parseFloat(userAnswer)
-      }).unwrap();
-      
-      setIsCorrect(result.correct);
-      if (!result.correct) {
-        setShowSolution(true);
-      }
-    } catch (err) {
-      console.error('Failed to submit answer:', err);
-      // Error handling would go here
-    }
+    // Simple validation against mock data
+    const isAnswerCorrect = userAnswer.trim() === mathProblem.answer;
+    setIsCorrect(isAnswerCorrect);
+    setShowSolution(true);
   };
 
   // Show loading state
@@ -62,33 +78,7 @@ const MathProblemSolver: React.FC = () => {
     );
   }
   
-  // Show error state
-  if (problemError) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                Failed to load math problem. Please try again later.
-              </p>
-              <button
-                onClick={handleGetNewProblem}
-                className="mt-2 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Main content
 
   // Main content - show the math problem
   return (

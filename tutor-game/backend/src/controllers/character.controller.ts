@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateCharacter } from '../services/openai.service';
-import { generateImage } from '../services/leonardo.service';
+import { startImageGeneration, getGenerationResult } from '../services/leonardo.service';
 import fs from 'fs';
 
 export const generateCharacterHandler = async (req: Request, res: Response) => {
@@ -41,23 +41,43 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
     // Use the generated image prompt directly from the AI response
     const imagePrompt = characterDetails.imagePrompt;
 
-    // Generate character image using Leonardo
-    const imageResult = await generateImage({
+    // Start the image generation process
+    const { generationId } = await startImageGeneration({
         prompt: imagePrompt,
     });
     
-    // Log the generated image URL for debugging
-    console.log('[LEONARDO.AI] Generated Image URL:', imageResult.url);
+    console.log('[LEONARDO.AI] Started image generation with ID:', generationId);
     
-    if (!imageResult.url) {
-        throw new AppError("Failed to generate character image from Leonardo.", 500);
+    // Poll for the result (with a reasonable timeout)
+    const maxAttempts = 30; // 30 attempts * 2 seconds = 1 minute max wait
+    let attempts = 0;
+    let imageResult;
+    
+    while (attempts < maxAttempts) {
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+        
+        imageResult = await getGenerationResult(generationId);
+        
+        if (imageResult.status === 'COMPLETE' && imageResult.url) {
+            console.log('[LEONARDO.AI] Image generation completed successfully');
+            break;
+        } else if (imageResult.status === 'FAILED') {
+            throw new AppError("Failed to generate character image from Leonardo.", 500);
+        }
+        
+        console.log(`[LEONARDO.AI] Image generation in progress (attempt ${attempts}/${maxAttempts})`);
+    }
+    
+    if (!imageResult?.url) {
+        throw new AppError("Image generation timed out. Please try again.", 504);
     }
 
-    // Save the character data immediately
+    // Save the character data
     const updatedGoal = await prisma.learningGoal.update({
         where: { id: goalId },
         data: {
-            characterPrompt: characterDetails.name + " - " + characterDetails.description,
+            characterPrompt: `${characterDetails.name} - ${characterDetails.description}`,
             characterImageId: imageResult.imageId,
             characterGenId: imageResult.generationId,
             characterImageUrl: imageResult.url,

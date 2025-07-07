@@ -1,7 +1,6 @@
-import React from 'react';
 import { useParams } from 'react-router-dom';
 
-const StudentProgress: React.FC = () => {
+const StudentProgress = () => {
   const { studentId } = useParams<{ studentId: string }>();
   
   // Mock data - in a real app, this would come from an API

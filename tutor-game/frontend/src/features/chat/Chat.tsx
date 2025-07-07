@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { 
   setActiveChat, 
@@ -20,7 +20,7 @@ const formatTime = (date: Date | string): string => {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const Chat: React.FC = () => {
+const Chat = () => {
   const dispatch = useAppDispatch();
   const socket = useSocket();
   const user = useAppSelector((state) => state.auth.user);

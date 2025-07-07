@@ -1,30 +1,28 @@
 // Файл: tutor-game/frontend/src/pages/teacher/RoadmapEditorPage.tsx
 // Версия: Полная, с интеграцией просмотра ответов студента
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLazyGetPerformanceLogsQuery } from '../../features/teacher/teacherApi';
 import { 
-    useGetLearningGoalsQuery,
+    useGetLearningGoalByIdQuery,
     useGenerateRoadmapProposalMutation,
     useUpdateRoadmapMutation,
     type ContentSection,
     type Lesson
 } from '../../features/goal/goalApi';
+
+// Extend the Lesson type to include previousLesson for the editor
+interface LessonWithPrevious extends Lesson {
+    previousLesson?: Lesson | null;
+}
 import { CharacterEditor } from './components/CharacterEditor';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { 
-  FiArrowLeft, 
-  FiEdit2, 
-  FiPlus, 
-  FiTrash2, 
-  FiMove,
-  FiBookOpen,
-  FiEye
-} from 'react-icons/fi';
+import { FiArrowLeft, FiPlus, FiEye } from 'react-icons/fi';
 import LessonEditorModal from './LessonEditorModal';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { RoadmapSection } from './components/RoadmapSection';
+import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 
 // Тип для логов успеваемости
 interface PerformanceLog {
@@ -38,43 +36,22 @@ interface PerformanceLog {
 }
 
 
-// Компонент для отображения статуса урока
-const LessonStatusIndicator = ({ lesson }: { lesson: Lesson }) => {
-    const status = lesson.storyChapter?.teacherSnippetStatus === 'APPROVED' ? 'APPROVED' : lesson.status;
-    const statusMap = {
-        DRAFT: { color: 'bg-gray-400', title: 'Черновик: контент или история не утверждены' },
-        PENDING_APPROVAL: { color: 'bg-yellow-400', title: 'Ожидает утверждения: контент готов, нужна история' },
-        APPROVED: { color: 'bg-green-500', title: 'Готов: урок полностью утвержден и доступен студенту' },
-        COMPLETED: { color: 'bg-blue-500', title: 'Завершен: урок пройден студентом' },
-    };
-    const { color, title } = statusMap[status] || statusMap.DRAFT;
 
-    return (
-        <div className="flex items-center space-x-1.5" title={title}>
-            <span className={`w-3 h-3 rounded-full inline-block ${color}`}></span>
-            {lesson.storyChapter?.teacherSnippetStatus === 'APPROVED' && <FiBookOpen size={12} className="text-purple-600" title="Есть утвержденная история" />}
-        </div>
-    );
-};
 
 const RoadmapEditorPage = () => {
     const { goalId } = useParams<{ goalId: string }>();
     const navigate = useNavigate();
 
-    // Fetch goals data
-    const { data: goals, isLoading, error, refetch } = useGetLearningGoalsQuery(undefined, {
+    // Fetch the specific goal by ID
+    const { data: currentGoal, isLoading, error, refetch } = useGetLearningGoalByIdQuery(goalId!, {
+        skip: !goalId,
         refetchOnMountOrArgChange: true,
     });
-    
-    // Get current goal from the goals list
-    const currentGoal = useMemo(() => {
-        return goals?.find(g => g.id === goalId) || null;
-    }, [goals, goalId]);
 
     // Local state
     const [roadmap, setRoadmap] = useState<ContentSection[]>([]);
     const [feedback, setFeedback] = useState('');
-    const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+    const [editingLesson, setEditingLesson] = useState<LessonWithPrevious | null>(null);
     const [isEditingTitle, setIsEditingTitle] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
     const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
     const [showLogsModal, setShowLogsModal] = useState(false);
@@ -102,10 +79,23 @@ const RoadmapEditorPage = () => {
     }
 
     // Early return for error state (goal not found)
-    if (error || !currentGoal) {
+    if (error) {
         return (
             <div className="text-center text-red-500 p-10 bg-white rounded-lg shadow">
                 <h2 className="text-2xl font-bold">Ошибка</h2>
+                <p className="mt-2">Не удалось загрузить учебный план. Пожалуйста, попробуйте снова.</p>
+                <Link to="/teacher/goals" className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-md">
+                    Вернуться к списку планов
+                </Link>
+            </div>
+        );
+    }
+
+    // Early return if goal is not found
+    if (!isLoading && !currentGoal) {
+        return (
+            <div className="text-center text-red-500 p-10 bg-white rounded-lg shadow">
+                <h2 className="text-2xl font-bold">План не найден</h2>
                 <p className="mt-2">Учебный план с ID "{goalId}" не найден или у вас нет к нему доступа.</p>
                 <Link to="/teacher/goals" className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-md">
                     Вернуться к списку планов
@@ -179,70 +169,74 @@ const RoadmapEditorPage = () => {
             return;
         }
 
+        // Clone the roadmap to avoid mutating the state directly
+        const newRoadmap = JSON.parse(JSON.stringify(roadmap));
+
         // Handle section reordering
         if (type === 'SECTIONS') {
-            const newRoadmap = Array.from(roadmap);
-            const [movedSection] = newRoadmap.splice(source.index, 1);
-            newRoadmap.splice(destination.index, 0, movedSection);
-            setRoadmap(newRoadmap);
-            // TODO: Save the new order to the backend
+            const [reorderedItem] = newRoadmap.splice(source.index, 1);
+            newRoadmap.splice(destination.index, 0, reorderedItem);
+        }
+        // Handle lesson reordering
+        else if (type === 'LESSONS') {
+            // Get indices directly from droppableId
+            const sourceSectionIndex = parseInt(source.droppableId.replace('lessons-', ''), 10);
+            const destSectionIndex = parseInt(destination.droppableId.replace('lessons-', ''), 10);
+
+            // Validate indices (though with this approach it's unlikely to be needed)
+            if (isNaN(sourceSectionIndex) || isNaN(destSectionIndex)) return;
+
+            // Remove lesson from source section
+            const [movedLesson] = newRoadmap[sourceSectionIndex].lessons.splice(source.index, 1);
+            // Insert lesson into target section
+            newRoadmap[destSectionIndex].lessons.splice(destination.index, 0, movedLesson);
+        } else {
             return;
         }
 
-        // Handle lesson reordering within the same section
-        if (type === 'LESSONS' && source.droppableId === destination.droppableId) {
-            const sectionId = source.droppableId.replace('section-', '');
-            const sectionIndex = roadmap.findIndex(s => s.id === sectionId);
-            if (sectionIndex === -1) return;
+        // Update local state for immediate UI response
+        setRoadmap(newRoadmap);
 
-            const newRoadmap = [...roadmap];
-            const section = { ...newRoadmap[sectionIndex] };
-            const newLessons = [...(section.lessons || [])];
-            const [movedLesson] = newLessons.splice(source.index, 1);
-            newLessons.splice(destination.index, 0, movedLesson);
-            
-            section.lessons = newLessons;
-            newRoadmap[sectionIndex] = section;
-            setRoadmap(newRoadmap);
-            // TODO: Save the new order to the backend
-            return;
-        }
+        // Prepare data for saving to the server
+        const roadmapToSave = newRoadmap.map((section: ContentSection, sectionIndex: number) => ({
+            ...section,
+            order: sectionIndex, // Update section order
+            lessons: section.lessons.map((lesson: Lesson, lessonIndex: number) => ({
+                ...lesson,
+                order: lessonIndex, // Update lesson order
+            }))
+        }));
 
-        // Handle moving lessons between sections
-        if (type === 'LESSONS' && source.droppableId !== destination.droppableId) {
-            const sourceSectionId = source.droppableId.replace('section-', '');
-            const destSectionId = destination.droppableId.replace('section-', '');
-            
-            const sourceSectionIndex = roadmap.findIndex(s => s.id === sourceSectionId);
-            const destSectionIndex = roadmap.findIndex(s => s.id === destSectionId);
-            
-            if (sourceSectionIndex === -1 || destSectionIndex === -1) return;
-
-            const newRoadmap = [...roadmap];
-            const sourceSection = { ...newRoadmap[sourceSectionIndex] };
-            const destSection = { ...newRoadmap[destSectionIndex] };
-            
-            const sourceLessons = [...(sourceSection.lessons || [])];
-            const [movedLesson] = sourceLessons.splice(source.index, 1);
-            
-            const destLessons = [...(destSection.lessons || [])];
-            destLessons.splice(destination.index, 0, movedLesson);
-            
-            sourceSection.lessons = sourceLessons;
-            destSection.lessons = destLessons;
-            
-            newRoadmap[sourceSectionIndex] = sourceSection;
-            newRoadmap[destSectionIndex] = destSection;
-            
-            setRoadmap(newRoadmap);
-            // TODO: Save the new order to the backend
-        }
+        // Asynchronously save the changes
+        toast.promise(
+            updateRoadmap({ goalId: goalId!, roadmap: roadmapToSave }).unwrap(),
+            {
+                loading: 'Сохранение порядка...',
+                success: 'Порядок успешно сохранен!',
+                error: 'Ошибка при сохранении порядка.',
+            }
+        );
     };
 
     const handleSave = async () => {
         if (!goalId) return;
         try {
-            await updateRoadmap({ goalId, roadmap } as any).unwrap();
+            // Ensure we're only sending the required fields to the API
+            const roadmapForApi = roadmap.map(section => ({
+                id: section.id,
+                title: section.title,
+                order: section.order,
+                lessons: section.lessons.map(lesson => ({
+                    id: lesson.id,
+                    title: lesson.title,
+                    status: lesson.status,
+                    order: lesson.order,
+                    content: lesson.content,
+                    // Don't include storyChapter or previousLesson in the update
+                }))
+            }));
+            
+            await updateRoadmap({ goalId, roadmap: roadmapForApi }).unwrap();
             toast.success('Изменения успешно сохранены');
         } catch (error) {
             console.error('Ошибка при сохранении изменений:', error);
@@ -252,8 +246,11 @@ const RoadmapEditorPage = () => {
     
     const handleGeneratePlan = async (goalId: string) => {
         try {
-            // Using type assertion as the API expects a different type
-            await (generateRoadmap as any)({ goalId, feedback }).unwrap();
+            await generateRoadmap({
+                goalId,
+                feedback,
+                existingPlan: roadmap
+            }).unwrap();
             await refetch();
             setFeedback('');
             toast.success('План успешно обновлен с учетом ваших пожеланий');
@@ -382,116 +379,32 @@ const RoadmapEditorPage = () => {
                             {(provided) => (
                                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
                                     {roadmap.map((section, sectionIndex) => (
-                                        <Draggable key={section.id} draggableId={section.id} index={sectionIndex}>
-                                            {(provided) => (
-                                                <div 
-                                                    ref={provided.innerRef} 
-                                                    {...provided.draggableProps} 
-                                                    style={provided.draggableProps.style} 
-                                                    className="p-4 md:p-6 bg-white rounded-lg shadow-md"
-                                                >
-                                                    <div className="flex justify-between items-center mb-4" {...provided.dragHandleProps}>
-                                                        <div className="flex items-center flex-grow">
-                                                            <FiMove className="text-gray-400 mr-3 cursor-grab flex-shrink-0" />
-                                                            {editingSectionIndex === sectionIndex ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={section.title}
-                                                                    onChange={(e) => handleSectionTitleChange(e.target.value, sectionIndex)}
-                                                                    onBlur={() => setEditingSectionIndex(null)}
-                                                                    onKeyDown={(e) => e.key === 'Enter' && setEditingSectionIndex(null)}
-                                                                    autoFocus
-                                                                    className="text-xl font-semibold border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
-                                                                />
-                                                            ) : (
-                                                                <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
-                                                                    <h2 className="text-xl font-semibold cursor-pointer">{section.title}</h2>
-                                                                    <button 
-                                                                        className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                                        title="Редактировать название"
-                                                                    >
-                                                                        <FiEdit2 />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => handleRemoveSection(sectionIndex)} 
-                                                            className="text-red-500 hover:text-red-700 p-1 flex-shrink-0" 
-                                                            title="Удалить раздел"
-                                                        >
-                                                            <FiTrash2 />
-                                                        </button>
-                                                    </div>
-                                                    <Droppable droppableId={`section-${sectionIndex}`} type="LESSONS">
-                                                        {(provided) => (
-                                                            <ul 
-                                                                {...provided.droppableProps} 
-                                                                ref={provided.innerRef} 
-                                                                className="space-y-3 pl-2 min-h-[50px]"
-                                                            >
-                                                                {section.lessons.map((lesson, lessonIndex) => (
-                                                                    <Draggable key={lesson.id} draggableId={lesson.id} index={lessonIndex}>
-                                                                        {(provided) => (
-                                                                            <li 
-                                                                                ref={provided.innerRef} 
-                                                                                {...provided.draggableProps} 
-                                                                                style={provided.draggableProps.style} 
-                                                                                className="flex items-center group bg-gray-50 p-2 rounded-md"
-                                                                            >
-                                                                                <div {...provided.dragHandleProps} className="mr-2 text-gray-400 cursor-grab">
-                                                                                    <FiMove />
-                                                                                </div>
-                                                                                <LessonStatusIndicator lesson={lesson} />
-                                                                                <div className="ml-2 flex-grow">
-                                                                                    {isEditingTitle.section === sectionIndex && isEditingTitle.lesson === lessonIndex ? (
-                                                                                        <input 
-                                                                                            type="text" 
-                                                                                            value={lesson.title} 
-                                                                                            onChange={(e) => handleLessonTitleChange(e.target.value, sectionIndex, lessonIndex)} 
-                                                                                            onBlur={stopEditing} 
-                                                                                            onKeyDown={(e) => e.key === 'Enter' && stopEditing()} 
-                                                                                            autoFocus 
-                                                                                            className="border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <span>{lesson.title}</span>
-                                                                                    )}
-                                                                                </div>
-                                                                                <button 
-                                                                                    onClick={() => startEditing(sectionIndex, lessonIndex)} 
-                                                                                    className="ml-4 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                                                    title="Редактировать название"
-                                                                                >
-                                                                                    <FiEdit2 />
-                                                                                </button>
-                                                                                <button 
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        handleRemoveLesson(sectionIndex, lessonIndex);
-                                                                                    }} 
-                                                                                    className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                    title="Удалить урок"
-                                                                                >
-                                                                                    <FiTrash2 size={16} />
-                                                                                </button>
-                                                                            </li>
-                                                                        )}
-                                                                    </Draggable>
-                                                                ))}
-                                                                {provided.placeholder}
-                                                            </ul>
-                                                        )}
-                                                    </Droppable>
-                                                    <button 
-                                                        onClick={() => handleAddLesson(sectionIndex)} 
-                                                        className="flex items-center text-sm text-blue-600 hover:text-blue-800 mt-3 ml-2"
-                                                    >
-                                                        <FiPlus size={16} className="mr-1" /> Добавить урок
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </Draggable>
+                                        <RoadmapSection
+                                            key={section.id}
+                                            section={section}
+                                            sectionIndex={sectionIndex}
+                                            onRemoveSection={handleRemoveSection}
+                                            onAddLesson={handleAddLesson}
+                                            onRemoveLesson={handleRemoveLesson}
+                                            onEditLesson={(lesson, currentSectionIndex, currentLessonIndex) => {
+                                                const prevLesson = currentLessonIndex > 0
+                                                    ? roadmap[currentSectionIndex].lessons[currentLessonIndex - 1]
+                                                    : (currentSectionIndex > 0 ? 
+                                                        roadmap[currentSectionIndex - 1].lessons[roadmap[currentSectionIndex - 1].lessons.length - 1] : null);
+                                                
+                                                setEditingLesson({ 
+                                                    ...lesson, 
+                                                    previousLesson: prevLesson || null 
+                                                });
+                                            }}
+                                            onTitleChange={handleLessonTitleChange}
+                                            onSectionTitleChange={handleSectionTitleChange}
+                                            editingTitle={isEditingTitle}
+                                            editingSectionIndex={editingSectionIndex}
+                                            setEditingSectionIndex={setEditingSectionIndex}
+                                            startEditing={startEditing}
+                                            stopEditing={stopEditing}
+                                        />
                                     ))}
                                     {provided.placeholder}
                                 </div>

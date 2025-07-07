@@ -1,5 +1,3 @@
-import { FC } from 'react';
-
 type SpinnerSize = 'sm' | 'md' | 'lg';
 
 interface SpinnerProps {
@@ -13,7 +11,7 @@ const sizeMap = {
   lg: 'h-12 w-12',
 };
 
-const Spinner: FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+const Spinner = ({ size = 'md', className = '' }: SpinnerProps) => {
   const sizeClass = sizeMap[size];
   
   return (

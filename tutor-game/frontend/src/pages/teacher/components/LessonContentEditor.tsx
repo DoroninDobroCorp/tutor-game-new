@@ -6,154 +6,136 @@ import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiPlus, FiTrash2, FiMove } from 'react-icons/fi';
 
-interface Block {
-    id: string;
+// <-- ВОЗВРАЩАЕМ ТИП ДЛЯ БЛОКА
+interface LessonContentBlock {
+    id: string; // нужен для drag-n-drop
     type: 'theory' | 'practice';
+    duration: number; // <-- ВОЗВРАЩАЕМ ДЛИТЕЛЬНОСТЬ
     content: string;
 }
 
 interface LessonContentEditorProps {
     lesson: Lesson;
     onCloseModal: () => void;
-    onContentSaved?: () => void;
 }
 
-export const LessonContentEditor = ({ lesson, onCloseModal, onContentSaved }: LessonContentEditorProps) => {
-    const [blocks, setBlocks] = useState<Block[]>([]);
-    const [isEditing, setIsEditing] = useState(false);
+export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEditorProps) => {
+    // <-- ВОЗВРАЩАЕМ ВСЕ СОСТОЯНИЯ
+    const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
     
+    // <-- ВОЗВРАЩАЕМ ВСЕ ХУКИ API
     const [generateContent, { isLoading: isGenerating }] = useGenerateLessonContentMutation();
     const [updateContent, { isLoading: isSaving }] = useUpdateLessonContentMutation();
 
     useEffect(() => {
-        if (lesson.content?.blocks?.length) {
-            setBlocks(lesson.content.blocks.map((block, index) => ({
-                ...block,
-                id: `block-${Date.now()}-${index}`
-            })));
-        } else {
-            setBlocks([]);
-        }
-    }, [lesson.id, lesson.content]);
+        // Заполняем редактор контента при открытии
+        const initialBlocks = (lesson.content?.blocks || []).map((block, index) => ({
+            ...block,
+            duration: block.duration || 5, // <-- Устанавливаем длительность по умолчанию
+            id: `block-${index}-${Date.now()}`
+        }));
+        setBlocks(initialBlocks);
+    }, [lesson, lesson.content]);
 
+    // <-- ВОЗВРАЩАЕМ ВСЕ ОБРАБОТЧИКИ
     const onDragEnd = (result: DropResult) => {
         if (!result.destination) return;
         const items = Array.from(blocks);
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
         setBlocks(items);
-        setIsEditing(true);
     };
     
-    const handleBlockChange = (id: string, newContent: string) => {
-        setBlocks(blocks.map(b => b.id === id ? { ...b, content: newContent } : b));
-        setIsEditing(true);
+    const handleBlockChange = (index: number, field: keyof LessonContentBlock, value: string | number) => {
+        const newBlocks = [...blocks];
+        // Убедимся, что значение для duration всегда число
+        (newBlocks[index] as any)[field] = field === 'duration' ? Number(value) : value;
+        setBlocks(newBlocks);
     };
 
-    const addBlock = (type: Block['type']) => {
-        setBlocks([...blocks, { id: `new-${Date.now()}`, type, content: '' }]);
-        setIsEditing(true);
+    const addBlock = (type: 'theory' | 'practice') => {
+        setBlocks([...blocks, { 
+            id: `block-new-${Date.now()}`,
+            type, 
+            duration: 5, 
+            content: '' 
+        }]);
     };
 
-    const removeBlock = (id: string) => {
-        setBlocks(blocks.filter(b => b.id !== id));
-        setIsEditing(true);
+    const removeBlock = (index: number) => {
+        setBlocks(blocks.filter((_, i) => i !== index));
     };
 
     const handleGenerateContent = async () => {
         try {
-            const response = await generateContent({ lessonId: lesson.id }).unwrap();
-            if (response.data?.content?.blocks) {
-                setBlocks(response.data.content.blocks.map((b: any, i: number) => ({...b, id: `gen-${Date.now()}-${i}`})));
-                toast.success("Контент успешно сгенерирован!");
-                setIsEditing(true);
-            }
-        } catch (error) {
-            toast.error("Не удалось сгенерировать контент.");
+            const result = await generateContent({ lessonId: lesson.id }).unwrap();
+            const blocksWithIds = (result.data.content?.blocks || []).map((b: any, i: number) => ({ ...b, id: `gen-block-${i}-${Date.now()}` }));
+            setBlocks(blocksWithIds);
+            toast.success('Контент сгенерирован!');
+        } catch {
+            toast.error('Не удалось сгенерировать контент.');
         }
     };
 
     const handleSaveContent = async () => {
+        const blocksToSave = blocks.map(({ id, ...rest }) => rest); // Убираем временный id перед сохранением
         try {
-            await updateContent({ lessonId: lesson.id, content: { blocks } }).unwrap();
-            toast.success("Изменения сохранены!");
-            setIsEditing(false);
-            onContentSaved?.();
-            onCloseModal();
-        } catch (error) {
-            toast.error("Не удалось сохранить изменения.");
+            await updateContent({ lessonId: lesson.id, content: { blocks: blocksToSave } }).unwrap();
+            toast.success('Контент урока сохранен!');
+            onCloseModal(); // Закрываем модальное окно после сохранения
+        } catch {
+            toast.error('Не удалось сохранить контент.');
         }
     };
 
     return (
         <div className="rounded-xl p-3">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Редактор контента урока</h3>
-                <button
-                    onClick={handleGenerateContent}
-                    disabled={isGenerating}
-                    className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 disabled:opacity-50 flex items-center"
-                >
-                    {isGenerating ? <Spinner size="sm" className="mr-2" /> : <FiPlus className="mr-1" />}
-                    Сгенерировать с ИИ
-                </button>
-            </div>
-            
-            <div className="max-h-[50vh] overflow-y-auto pr-2">
-                <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="blocks">
-                        {(provided) => (
-                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                                {blocks.map((block, index) => (
+            <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="lesson-blocks">
+                    {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="mt-4 space-y-4 pr-2 max-h-[60vh] overflow-y-auto">
+                            {isGenerating ? (
+                                <div className="flex justify-center py-10"><Spinner /><span className="ml-2">Генерация...</span></div>
+                            ) : (
+                                blocks.map((block, index) => (
                                     <Draggable key={block.id} draggableId={block.id} index={index}>
                                         {(provided) => (
-                                            <div ref={provided.innerRef} {...provided.draggableProps} className="p-3 border rounded-md bg-white shadow-sm flex items-start gap-2">
-                                                <div {...provided.dragHandleProps} className="text-gray-400 cursor-grab p-1 pt-2">
-                                                    <FiMove />
+                                            <div ref={provided.innerRef} {...provided.draggableProps} className="p-4 rounded-md border bg-gray-50">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div {...provided.dragHandleProps} className="text-gray-400 cursor-grab"><FiMove /></div>
+                                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${block.type === 'theory' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>{block.type}</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={block.duration} 
+                                                            onChange={(e) => handleBlockChange(index, 'duration', e.target.value)}
+                                                            className="w-16 p-1 text-xs border rounded-md"
+                                                            title="Длительность в минутах"
+                                                        />
+                                                        <span className="text-xs text-gray-500">мин.</span>
+                                                    </div>
+                                                    <button onClick={() => removeBlock(index)} className="text-red-500 hover:text-red-700" title="Удалить блок"><FiTrash2 size={16} /></button>
                                                 </div>
-                                                <div className="flex-grow">
-                                                    <span className={`text-xs font-semibold ${block.type === 'theory' ? 'text-blue-600' : 'text-purple-600'}`}>{block.type.toUpperCase()}</span>
-                                                    <textarea
-                                                        value={block.content}
-                                                        onChange={(e) => handleBlockChange(block.id, e.target.value)}
-                                                        className="w-full p-2 mt-1 border rounded focus:ring-2 focus:ring-blue-500"
-                                                        rows={3}
-                                                        placeholder={`Содержимое блока "${block.type}"...`}
-                                                    />
-                                                </div>
-                                                <button onClick={() => removeBlock(block.id)} className="text-red-500 hover:text-red-700 p-1" title="Удалить блок">
-                                                    <FiTrash2 />
-                                                </button>
+                                                <textarea value={block.content} onChange={(e) => handleBlockChange(index, 'content', e.target.value)} rows={4} className="w-full p-2 border border-gray-300 rounded-md text-sm mt-2"/>
                                             </div>
                                         )}
                                     </Draggable>
-                                ))}
-                                {provided.placeholder}
-                            </div>
-                        )}
-                    </Droppable>
-                </DragDropContext>
-            </div>
-            
-            <div className="mt-4 flex justify-between items-center">
-                <div className="space-x-2">
-                    <button onClick={() => addBlock('theory')} className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Добавить теорию</button>
-                    <button onClick={() => addBlock('practice')} className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Добавить практику</button>
+                                ))
+                            )}
+                            {!isGenerating && blocks.length === 0 && (<p className="text-center text-gray-500 py-10">Пусто. Сгенерируйте контент или добавьте вручную.</p>)}
+                            {provided.placeholder}
+                        </div>
+                    )}
+                </Droppable>
+            </DragDropContext>
+            <div className="mt-6 pt-4 border-t flex justify-between items-center">
+                <div className="flex gap-2">
+                    <button onClick={() => addBlock('theory')} className="text-sm px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700">+ Теория</button>
+                    <button onClick={() => addBlock('practice')} className="text-sm px-3 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700">+ Практика</button>
                 </div>
-                <div className="space-x-2">
-                    <button onClick={onCloseModal} className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Отмена</button>
-                    <button 
-                        onClick={handleSaveContent} 
-                        disabled={!isEditing || isSaving} 
-                        className="px-4 py-2 text-white rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 flex items-center justify-center min-w-[100px]"
-                    >
-                        {isSaving ? (
-                            <span className="flex items-center">
-                                <Spinner size="sm" className="mr-2" />
-                                Сохранение...
-                            </span>
-                        ) : 'Сохранить'}
-                    </button>
+                <div className="flex gap-2">
+                     <button type="button" onClick={handleGenerateContent} disabled={isGenerating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">{isGenerating ? 'Генерация...' : 'Сгенерировать с ИИ'}</button>
+                    <button type="button" onClick={handleSaveContent} disabled={isSaving || blocks.length === 0} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">{isSaving ? 'Сохранение...' : 'Сохранить контент'}</button>
                 </div>
             </div>
         </div>

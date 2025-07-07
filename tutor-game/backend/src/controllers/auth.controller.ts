@@ -7,7 +7,7 @@ import {
   refreshTokens, 
   blacklistToken 
 } from '../services/auth.service';
-import { AppError } from '../middlewares/error.middleware';
+import { AppError } from '../utils/errors';
 import { config } from '../config/env';
 
 // Simple password validation

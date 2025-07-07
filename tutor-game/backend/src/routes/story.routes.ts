@@ -3,7 +3,8 @@ import {
   generateStorySnippetHandler, 
   regenerateStoryImageHandler, 
   approveStorySnippetHandler, 
-  approveStorySnippetWithUploadHandler 
+  approveStorySnippetWithUploadHandler,
+  checkStoryImageStatusHandler
 } from '../controllers/story.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { upload } from '../utils/fileUpload';
@@ -19,5 +20,8 @@ router.put('/lessons/:lessonId/story/approve-with-upload',
     upload.single('image'), 
     approveStorySnippetWithUploadHandler
 );
+
+// Роут для проверки статуса генерации изображения
+router.get('/story/generation/:generationId', checkStoryImageStatusHandler);
 
 export default router;

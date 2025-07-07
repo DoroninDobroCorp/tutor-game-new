@@ -11,7 +11,10 @@ interface RoadmapSectionProps {
     onRemoveLesson: (sectionIndex: number, lessonIndex: number) => void;
     onEditLesson: (lesson: Lesson, sectionIndex: number, lessonIndex: number) => void;
     onTitleChange: (value: string, sectionIndex: number, lessonIndex: number) => void;
+    onSectionTitleChange: (value: string, sectionIndex: number) => void;
     editingTitle: { section: number | null; lesson: number | null };
+    editingSectionIndex: number | null;
+    setEditingSectionIndex: (index: number | null) => void;
     startEditing: (sectionIndex: number, lessonIndex: number) => void;
     stopEditing: () => void;
 }
@@ -24,7 +27,10 @@ export const RoadmapSection = ({
     onRemoveLesson,
     onEditLesson,
     onTitleChange,
+    onSectionTitleChange,
     editingTitle,
+    editingSectionIndex,
+    setEditingSectionIndex,
     startEditing,
     stopEditing,
 }: RoadmapSectionProps) => {
@@ -38,13 +44,33 @@ export const RoadmapSection = ({
                     className="p-4 md:p-6 bg-white rounded-lg shadow-md"
                 >
                     <div className="flex justify-between items-center mb-4" {...provided.dragHandleProps}>
-                        <div className="flex items-center">
-                            <FiMove className="text-gray-400 mr-3 cursor-grab" />
-                            <h2 className="text-xl font-semibold">{section.title}</h2>
+                        <div className="flex items-center flex-grow min-w-0">
+                            <FiMove className="text-gray-400 mr-3 cursor-grab flex-shrink-0" />
+                            {editingSectionIndex === sectionIndex ? (
+                                <input
+                                    type="text"
+                                    value={section.title}
+                                    onChange={(e) => onSectionTitleChange(e.target.value, sectionIndex)}
+                                    onBlur={() => setEditingSectionIndex(null)}
+                                    onKeyDown={(e) => e.key === 'Enter' && setEditingSectionIndex(null)}
+                                    autoFocus
+                                    className="text-xl font-semibold border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
+                                />
+                            ) : (
+                                <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
+                                    <h2 className="text-xl font-semibold cursor-pointer truncate">{section.title}</h2>
+                                    <button 
+                                        className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        title="Редактировать название"
+                                    >
+                                        <FiEdit2 />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <button 
                             onClick={() => onRemoveSection(sectionIndex)} 
-                            className="text-red-500 hover:text-red-700 p-1" 
+                            className="text-red-500 hover:text-red-700 p-1 ml-2 flex-shrink-0" 
                             title="Удалить раздел"
                         >
                             <FiTrash2 />

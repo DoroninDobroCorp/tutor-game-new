@@ -33,7 +33,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
       query: (credentials) => ({
         url: '/auth/login',
         method: 'POST',
-        body: credentials,
+        data: credentials,
         credentials: 'include',
       }),
       transformResponse: (response: ApiResponse<AuthResponse>) => {
@@ -60,7 +60,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
         return {
           url: '/auth/register',
           method: 'POST',
-          body: payload,
+          data: payload,
           credentials: 'include',
         };
       },

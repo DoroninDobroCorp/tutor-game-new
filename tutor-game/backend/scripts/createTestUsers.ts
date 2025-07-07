@@ -10,7 +10,6 @@ async function main() {
     // Delete existing data
     await prisma.refreshToken.deleteMany({});
     await prisma.message.deleteMany({});
-    await prisma.story.deleteMany({});
     await prisma.studentPerformanceLog.deleteMany({});
     await prisma.lesson.deleteMany({});
     await prisma.contentSection.deleteMany({});

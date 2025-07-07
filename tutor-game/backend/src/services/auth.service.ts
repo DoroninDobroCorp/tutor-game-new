@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient, User, Role, Prisma, Student, Teacher } from '@prisma/client';
-import { AppError } from '../middlewares/error.middleware';
+import { AppError } from '../utils/errors';
 
 // Define a user type without the password
 interface SafeUser {
@@ -253,7 +253,7 @@ const verifyRefreshToken = async (token: string): Promise<TokenPayload | null> =
 };
 
 // Blacklist a token
-const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
+export const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
   await prisma.tokenBlacklist.create({
     data: { token, expiresAt },
   });

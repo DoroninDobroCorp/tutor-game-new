@@ -8,25 +8,12 @@ interface SubmitLessonPayload {
 
 export const studentApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // Check answer for a practice block
-    checkAnswer: builder.mutation<{ 
-      isCorrect: boolean; 
-      explanation: string 
-    }, { 
-      lessonId: string; 
-      blockIndex: number; 
-      studentAnswer: string 
-    }>({
-      query: ({ lessonId, ...body }) => ({
-        url: `/student/lessons/${lessonId}/check-answer`,
-        method: 'POST',
-        body,
-      }),
-    }),
-
     // Get current lesson for the student
     getCurrentLesson: builder.query<Lesson | null, void>({
-      query: () => '/student/current-lesson',
+      query: () => ({
+        url: '/student/current-lesson',
+        method: 'GET',
+      }),
       transformResponse: (response: { data: Lesson | null }) => response.data,
       // This tag will be invalidated after submitting a lesson to fetch the next one
       providesTags: (result) => 
@@ -35,10 +22,10 @@ export const studentApi = apiSlice.injectEndpoints({
 
     // Submit lesson results
     submitLesson: builder.mutation<{ success: boolean; message: string }, SubmitLessonPayload>({
-      query: ({ lessonId, ...body }) => ({
+      query: ({ lessonId, ...data }) => ({
         url: `/student/lessons/${lessonId}/submit`,
         method: 'POST',
-        body,
+        data,
       }),
       // Invalidate the current lesson to trigger a refetch
       invalidatesTags: () => [{ type: 'Student' as const, id: 'CURRENT_LESSON' }],
@@ -48,7 +35,7 @@ export const studentApi = apiSlice.injectEndpoints({
 
 export const { 
   useGetCurrentLessonQuery, 
-  useSubmitLessonMutation
+  useSubmitLessonMutation,
 } = studentApi;
 
 // Types

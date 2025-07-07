@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import { json } from 'body-parser';
 import path from 'path';
 import fs from 'fs';
-import { errorHandler } from './middlewares/error.middleware';
+import { errorHandler } from './utils/errors';
 import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
 import studentRoutes from './routes/student.routes';

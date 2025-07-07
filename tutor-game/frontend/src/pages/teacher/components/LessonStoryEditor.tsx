@@ -1,252 +1,294 @@
-import { useState, useEffect } from 'react';
-import { useGenerateStorySnippetMutation, useApproveStorySnippetMutation } from '../../../features/lesson/lessonApi';
+import { useState, useEffect, useRef } from 'react';
+import { 
+    useGenerateStorySnippetMutation, 
+    useApproveStorySnippetMutation,
+    useLazyCheckStoryImageStatusQuery
+} from '../../../features/lesson/lessonApi';
 import { Lesson } from '../../../features/goal/goalApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
-import { FiRefreshCw, FiCheck, FiX, FiMaximize2, FiImage } from 'react-icons/fi';
+import { FiRefreshCw, FiCheck, FiMaximize2 } from 'react-icons/fi';
 
 interface GeneratedStory {
-    teacherSnippetText: string;
-    teacherSnippetImageUrl?: string;
-    teacherSnippetImagePrompt?: string;
+    text: string;
+    imageUrl?: string;
+    prompt?: string;
 }
 
-interface LightboxProps {
-    src: string;
-    onClose: () => void;
+interface LessonWithPrevious extends Lesson {
+    previousLesson?: Lesson | null;
 }
-
-const Lightbox = ({ src, onClose }: LightboxProps) => {
-    if (!src) return null;
-    
-    return (
-        <div 
-            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999]"
-            onClick={onClose}
-        >
-            <button 
-                onClick={onClose} 
-                className="absolute top-4 right-4 text-white text-3xl hover:opacity-75"
-            >
-                <FiX />
-            </button>
-            <img 
-                src={src} 
-                alt="Full view" 
-                className="max-w-[90vw] max-h-[90vh] object-contain" 
-                onClick={(e) => e.stopPropagation()}
-            />
-        </div>
-    );
-};
 
 interface LessonStoryEditorProps {
-    lesson: Lesson;
+    lesson: LessonWithPrevious;
     onCloseModal: () => void;
-    onStorySaved?: () => void;
 }
 
-export const LessonStoryEditor = ({ 
-    lesson, 
-    onCloseModal,
-    onStorySaved
-}: LessonStoryEditorProps) => {
+const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => {
+    const [story, setStory] = useState<GeneratedStory>({
+        text: '',
+        imageUrl: undefined,
+        prompt: ''
+    });
     const [refinementPrompt, setRefinementPrompt] = useState('');
-    const [generatedStory, setGeneratedStory] = useState<GeneratedStory | null>(null);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-    
-    const [generateStory, { isLoading: isGenerating }] = useGenerateStorySnippetMutation();
-    const [approveStory, { isLoading: isApproving }] = useApproveStorySnippetMutation();
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isApproving, setIsApproving] = useState(false);
+    const [generationId, setGenerationId] = useState<string | null>(null);
+    const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-    // Initialize with existing story data if available
+    const [generateStory] = useGenerateStorySnippetMutation();
+    const [approveStory] = useApproveStorySnippetMutation();
+    const [checkImageStatus] = useLazyCheckStoryImageStatusQuery();
+
     useEffect(() => {
         if (lesson.storyChapter) {
-            setGeneratedStory({
-                teacherSnippetText: lesson.storyChapter.teacherSnippetText || '',
-                teacherSnippetImageUrl: lesson.storyChapter.teacherSnippetImageUrl || undefined,
-                teacherSnippetImagePrompt: lesson.storyChapter.teacherSnippetImagePrompt || ''
+            const storyChapter = lesson.storyChapter;
+            
+            setStory({
+                text: storyChapter?.teacherSnippetText || '',
+                imageUrl: storyChapter?.teacherSnippetImageUrl || undefined,
+                prompt: storyChapter?.teacherSnippetImagePrompt || ''
+            });
+        } else {
+            setStory({
+                text: '',
+                imageUrl: undefined,
+                prompt: ''
             });
         }
-    }, [lesson.id]);
+    }, [lesson]);
 
-    const handleGenerateStory = async (regenerate = false) => {
-        if (!lesson.id) return;
-        
+    // Clean up polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingInterval.current) {
+                clearInterval(pollingInterval.current);
+            }
+        };
+    }, []);
+
+    // Poll for image generation status
+    const startPolling = (id: string) => {
+        if (pollingInterval.current) {
+            clearInterval(pollingInterval.current);
+        }
+
+        pollingInterval.current = setInterval(async () => {
+            try {
+                const result = await checkImageStatus(id).unwrap();
+                
+                if (result.data?.status === 'COMPLETE' && result.data?.url) {
+                    setStory(prev => ({
+                        ...prev,
+                        imageUrl: result.data?.url || undefined
+                    }));
+                    toast.success('Изображение сгенерировано!');
+                    if (pollingInterval.current) {
+                        clearInterval(pollingInterval.current);
+                        pollingInterval.current = null;
+                    }
+                    setGenerationId(null);
+                } else if (result.data?.status === 'FAILED') {
+                    toast.error('Не удалось сгенерировать изображение');
+                    if (pollingInterval.current) {
+                        clearInterval(pollingInterval.current);
+                        pollingInterval.current = null;
+                    }
+                    setGenerationId(null);
+                }
+            } catch (error) {
+                console.error('Error checking image status:', error);
+                toast.error('Ошибка при проверке статуса генерации');
+                if (pollingInterval.current) {
+                    clearInterval(pollingInterval.current);
+                    pollingInterval.current = null;
+                }
+                setGenerationId(null);
+            }
+        }, 3000); // Poll every 3 seconds
+    };
+
+    const handleGenerateStory = async () => {
         try {
-            const response = await generateStory({
+            setIsGenerating(true);
+            // Get previous story context if available
+            const previousStory = lesson.previousLesson?.storyChapter?.studentSnippetText;
+            const result = await generateStory({
                 lessonId: lesson.id,
-                lessonTitle: lesson.title,
-                previousLessonId: (lesson as any).previousLesson?.id,
-                refinementPrompt: regenerate ? refinementPrompt : undefined
+                refinementPrompt: refinementPrompt || undefined,
+                previousStory: previousStory || undefined,
             }).unwrap();
-            
-            if (response.data) {
-                setGeneratedStory({
-                    teacherSnippetText: response.data.teacherSnippetText,
-                    teacherSnippetImageUrl: response.data.teacherSnippetImageUrl,
-                    teacherSnippetImagePrompt: response.data.teacherSnippetImagePrompt || ''
+
+            if (result.data) {
+                const responseData = result.data as {
+                    text?: string;
+                    imageUrl?: string;
+                    prompt?: string;
+                    generationId?: string;
+                };
+                
+                setStory({
+                    text: responseData.text || '',
+                    imageUrl: responseData.imageUrl,
+                    prompt: responseData.prompt || ''
                 });
                 
-                if (regenerate) {
-                    toast.success("История успешно перегенерирована!");
+                // If we have a generation ID, start polling for the image
+                if (responseData.generationId) {
+                    setGenerationId(responseData.generationId);
+                    startPolling(responseData.generationId);
+                    toast.success('Текст истории готов! Генерируем изображение...');
                 } else {
-                    toast.success("История успешно сгенерирована!");
+                    toast.success('История успешно сгенерирована!');
                 }
+                
+                setRefinementPrompt('');
             }
         } catch (error) {
-            console.error('Error generating story:', error);
-            toast.error("Не удалось сгенерировать историю. Пожалуйста, попробуйте ещё раз.");
+            console.error('Failed to generate story:', error);
+            toast.error('Не удалось сгенерировать историю. Пожалуйста, попробуйте снова.');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
     const handleApproveStory = async () => {
-        if (!lesson.id || !generatedStory) return;
-        
+        if (!story.text) {
+            toast.error('Пожалуйста, сгенерируйте историю перед утверждением.');
+            return;
+        }
+
         try {
+            setIsApproving(true);
             await approveStory({
                 lessonId: lesson.id,
-                text: generatedStory.teacherSnippetText,
-                imageUrl: generatedStory.teacherSnippetImageUrl || '',
-                imagePrompt: generatedStory.teacherSnippetImagePrompt || ''
+                text: story.text,
+                imageUrl: story.imageUrl || '',
+                prompt: story.prompt || ''
             }).unwrap();
             
-            toast.success("История успешно утверждена!");
-            onStorySaved?.();
+            toast.success('История одобрена и доступна студентам!');
+            onCloseModal();
         } catch (error) {
-            console.error('Error approving story:', error);
-            toast.error("Не удалось сохранить историю. Пожалуйста, попробуйте ещё раз.");
+            console.error('Failed to approve story:', error);
+            toast.error('Не удалось одобрить историю. Пожалуйста, попробуйте снова.');
+        } finally {
+            setIsApproving(false);
         }
     };
 
-    const isStoryApproved = lesson.storyChapter?.teacherSnippetStatus === 'APPROVED';
-    const hasGeneratedStory = !!generatedStory?.teacherSnippetText;
+    const isLoading = isGenerating || isApproving;
     
+    // Handle text changes safely
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setStory(prev => ({
+            ...prev,
+            text: e.target.value
+        }));
+    };
+
     return (
         <div className="rounded-xl p-3">
-            <h3 className="text-lg font-medium mb-4">Редактор истории</h3>
-            
-            {isStoryApproved && (
-                <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md">
-                    История для этого урока уже утверждена и доступна студенту.
+            {isLightboxOpen && story?.imageUrl && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999] cursor-pointer" 
+                    onClick={() => setIsLightboxOpen(false)}
+                >
+                    <img 
+                        src={story.imageUrl} 
+                        alt="Full view" 
+                        className="max-w-[90vw] max-h-[90vh] object-contain" 
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
             )}
             
-            <div className="space-y-4">
-                {hasGeneratedStory && (
-                    <div className="bg-white p-4 rounded-lg border">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            {generatedStory.teacherSnippetImageUrl && (
-                                <div className="md:w-1/3">
-                                    <div className="relative group">
-                                        <img 
-                                            src={generatedStory.teacherSnippetImageUrl} 
-                                            alt="Сгенерированная иллюстрация" 
-                                            className="w-full h-48 object-cover rounded-md border cursor-pointer"
-                                            onClick={() => setIsLightboxOpen(true)}
-                                        />
-                                        <button 
-                                            onClick={() => setIsLightboxOpen(true)}
-                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <FiMaximize2 size={24} />
-                                        </button>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1 text-center">
-                                        Нажмите для просмотра в полном размере
-                                    </p>
-                                </div>
-                            )}
-                            
-                            <div className={`${generatedStory.teacherSnippetImageUrl ? 'md:w-2/3' : 'w-full'}`}>
-                                <div className="bg-gray-50 p-3 rounded-md h-48 overflow-y-auto">
-                                    {generatedStory.teacherSnippetText.split('\n').map((paragraph, i) => (
-                                        <p key={i} className="mb-2">
-                                            {paragraph || <br />}
-                                        </p>
-                                    ))}
-                                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Текст истории</label>
+                    <textarea 
+                        value={story.text} 
+                        onChange={handleTextChange} 
+                        rows={10} 
+                        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Здесь появится текст истории..."
+                        disabled={isLoading}
+                    />
+                    
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Уточнение для генерации (необязательно)
+                        </label>
+                        <input
+                            type="text"
+                            value={refinementPrompt}
+                            onChange={e => setRefinementPrompt(e.target.value)}
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Например: сделай смешнее, добавь дракона..."
+                            disabled={isLoading}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 text-center mb-2">Изображение</label>
+                    <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                        {generationId ? (
+                            <div className="flex flex-col items-center">
+                                <Spinner size="lg" />
+                                <p className="mt-2 text-gray-600">Генерируем изображение...</p>
                             </div>
-                        </div>
-                        
-                        {!isStoryApproved && (
-                            <div className="mt-4 pt-4 border-t">
-                                <h4 className="text-sm font-medium mb-2">Хотите что-то изменить?</h4>
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <input
-                                        type="text"
-                                        value={refinementPrompt}
-                                        onChange={(e) => setRefinementPrompt(e.target.value)}
-                                        placeholder="Например: сделай историю короче, добавь больше диалогов..."
-                                        className="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                    />
-                                    <button
-                                        onClick={() => handleGenerateStory(true)}
-                                        disabled={isGenerating}
-                                        className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center justify-center whitespace-nowrap"
-                                    >
-                                        {isGenerating ? (
-                                            <Spinner size="sm" className="mr-2" />
-                                        ) : (
-                                            <FiRefreshCw size={16} className="mr-2" />
-                                        )}
-                                        Перегенерировать
-                                    </button>
-                                </div>
+                        ) : story?.imageUrl ? (
+                            <div className="relative w-full h-full">
+                                <img
+                                    src={story.imageUrl}
+                                    alt="Story illustration"
+                                    className="w-full h-full object-cover rounded-lg"
+                                />
+                                <button
+                                    onClick={() => setIsLightboxOpen(true)}
+                                    className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-75 transition"
+                                >
+                                    <FiMaximize2 size={16} />
+                                </button>
                             </div>
+                        ) : (
+                            <span className="text-gray-400">Изображение появится здесь</span>
                         )}
                     </div>
-                )}
+                </div>
                 
-                {!hasGeneratedStory && (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                        <FiImage size={32} className="mx-auto text-gray-400 mb-3" />
-                        <p className="text-gray-500 mb-4">История для этого урока ещё не создана</p>
-                        <button
-                            onClick={() => handleGenerateStory(false)}
-                            disabled={isGenerating}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center mx-auto"
-                        >
-                            {isGenerating ? (
-                                <Spinner size="sm" className="mr-2" />
-                            ) : (
-                                <FiRefreshCw size={16} className="mr-2" />
-                            )}
-                            Сгенерировать историю
-                        </button>
-                    </div>
-                )}
-            </div>
-            
-            <div className="mt-6 pt-4 border-t flex justify-between">
-                <button
-                    onClick={onCloseModal}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                    Назад
-                </button>
-                
-                {hasGeneratedStory && !isStoryApproved && (
-                    <button
-                        onClick={handleApproveStory}
-                        disabled={isApproving}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+                <div className="flex gap-3">
+                    <button 
+                        onClick={handleGenerateStory} 
+                        disabled={isLoading} 
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isGenerating ? (
+                            <Spinner size="sm" />
+                        ) : (
+                            <FiRefreshCw size={16} />
+                        )}
+                        <span>Сгенерировать</span>
+                    </button>
+                    
+                    <button 
+                        onClick={handleApproveStory} 
+                        disabled={isLoading || !story?.text} 
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
                     >
                         {isApproving ? (
-                            <Spinner size="sm" className="mr-2" />
+                            <Spinner size="sm" />
                         ) : (
-                            <FiCheck size={16} className="mr-2" />
+                            <FiCheck size={16} />
                         )}
-                        Утвердить историю
+                        <span>Утвердить</span>
                     </button>
-                )}
+                </div>
             </div>
-            
-            {isLightboxOpen && generatedStory?.teacherSnippetImageUrl && (
-                <Lightbox 
-                    src={generatedStory.teacherSnippetImageUrl} 
-                    onClose={() => setIsLightboxOpen(false)} 
-                />
-            )}
         </div>
     );
 };
+
+export default LessonStoryEditor;

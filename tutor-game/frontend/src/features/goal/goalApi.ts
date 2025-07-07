@@ -1,5 +1,4 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import apiClient from '../../api/client';
 
 // Types
 export interface StudentInfo {
@@ -61,7 +60,10 @@ export const goalApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
         // Получение всех целей обучения
         getLearningGoals: builder.query<LearningGoal[], void>({
-            query: () => '/goals',
+            query: () => ({
+                url: '/goals',
+                method: 'GET'
+            }),
             transformResponse: (response: { data: LearningGoal[] }) => response.data,
             providesTags: (result) => 
                 result 
@@ -71,13 +73,23 @@ export const goalApi = apiSlice.injectEndpoints({
                     ]
                     : [{ type: 'Goal', id: 'LIST' }],
         }),
+        
+        // Получение цели обучения по ID
+        getLearningGoalById: builder.query<LearningGoal, string>({
+            query: (goalId) => ({
+                url: `/goals/${goalId}`,
+                method: 'GET',
+            }),
+            transformResponse: (response: { data: LearningGoal }) => response.data,
+            providesTags: (_result, _error, id) => [{ type: 'Goal', id }],
+        }),
 
         // Создание новой цели обучения
         createLearningGoal: builder.mutation<LearningGoal, { subject: string; setting: string; studentAge: number }>({
-            query: (body) => ({
+            query: (data) => ({
                 url: '/goals',
                 method: 'POST',
-                body
+                data
             }),
             transformResponse: (response: { data: LearningGoal }) => response.data,
             invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
@@ -96,11 +108,17 @@ export const goalApi = apiSlice.injectEndpoints({
         }),
 
         // Генерация предложения по учебному плану
-        generateRoadmapProposal: builder.mutation<RoadmapProposal[], { goalId: string }>({
-            query: ({ goalId }) => ({
-                url: `/goals/${goalId}/roadmap/proposal`,
+        generateRoadmapProposal: builder.mutation<RoadmapProposal[], { 
+            goalId: string; 
+            existingPlan?: ContentSection[]; 
+            feedback?: string 
+        }>({
+            query: ({ goalId, ...data }) => ({
+                url: `/goals/${goalId}/generate-roadmap`,
                 method: 'POST',
+                data,
             }),
+            transformResponse: (response: { data: RoadmapProposal[] }) => response.data,
         }),
 
         // Обновление учебного плана
@@ -108,7 +126,7 @@ export const goalApi = apiSlice.injectEndpoints({
             query: ({ goalId, roadmap }) => ({
                 url: `/goals/${goalId}/roadmap`,
                 method: 'PUT',
-                body: { roadmap },
+                data: { roadmap },
             }),
             invalidatesTags: (_, __, { goalId }) => [
                 { type: 'Goal', id: goalId },
@@ -121,7 +139,7 @@ export const goalApi = apiSlice.injectEndpoints({
             query: ({ goalId, prompt }) => ({
                 url: `/goals/${goalId}/generate-character`,
                 method: 'POST',
-                body: { prompt },
+                data: { prompt },
             }),
             transformResponse: (response: { data: LearningGoal }) => response.data,
             // Автоматически обновляет кэш при успешной мутации
@@ -136,7 +154,7 @@ export const goalApi = apiSlice.injectEndpoints({
             query: ({ goalId, isApproved }) => ({
                 url: `/goals/${goalId}/character/approve`,
                 method: 'POST',
-                body: { isApproved },
+                data: { isApproved },
             }),
             invalidatesTags: (_, __, { goalId }) => [
                 { type: 'Goal', id: goalId },
@@ -146,33 +164,22 @@ export const goalApi = apiSlice.injectEndpoints({
 
         // Загрузка своего изображения для персонажа
         uploadCharacterImage: builder.mutation<LearningGoal, { goalId: string; image: File; prompt?: string }>({
-            queryFn: async ({ goalId, image, prompt }, _queryApi, _extraOptions) => {
+            query: ({ goalId, image, prompt }) => {
                 const formData = new FormData();
                 formData.append('image', image);
                 if (prompt) {
                     formData.append('prompt', prompt);
                 }
-
-                try {
-                    // Используем настроенный apiClient, который уже умеет добавлять токен
-                    const response = await apiClient.post(`/goals/${goalId}/upload-character`, formData, {
-                        headers: {
-                            'Content-Type': 'multipart/form-data',
-                        },
-                    });
-                    return { data: response.data.data };
-                } catch (error: any) {
-                    return {
-                        error: {
-                            status: error.response?.status,
-                            data: error.response?.data || error.message,
-                        },
-                    };
-                }
+                
+                return {
+                    url: `/goals/${goalId}/upload-character`,
+                    method: 'POST',
+                    data: formData,
+                    isFormData: true // Add this flag to handle FormData properly
+                };
             },
-            // invalidatesTags остается таким же, он сработает после успешного выполнения queryFn
+            transformResponse: (response: { data: LearningGoal }) => response.data,
             invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Goal', id: goalId }],
-            // Optimistic update to show the loading state
             async onQueryStarted({ goalId }, { dispatch, queryFulfilled }) {
                 const patchResult = dispatch(
                     goalApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
@@ -194,6 +201,7 @@ export const goalApi = apiSlice.injectEndpoints({
 
 export const {
     useGetLearningGoalsQuery,
+    useGetLearningGoalByIdQuery,
     useCreateLearningGoalMutation,
     useDeleteLearningGoalMutation,
     useGenerateRoadmapProposalMutation,

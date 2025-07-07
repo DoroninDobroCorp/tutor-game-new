@@ -7,9 +7,9 @@ import {
   submitAnswer,
   getCurrentLessonHandler,
   submitLessonHandler,
-  checkAnswerHandler,
 } from '../controllers/student.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { asyncHandler } from '../utils/errors';
 
 const router = Router();
 
@@ -17,17 +17,18 @@ const router = Router();
 router.use(authenticate);
 
 // Student profile routes
-router.get('/profile', getStudentProfile);
-router.post('/goal', setStudentGoal);
-router.get('/roadmap', getRoadmap);
+router.post('/goal', asyncHandler(setStudentGoal));
+router.get('/roadmap', asyncHandler(getRoadmap));
 
-// Math problem routes
-router.get('/math-problem', generateMathProblemHandler);
-router.post('/submit-answer', submitAnswer);
+// Math problem routes (mock routes)
+router.get('/math-problem', asyncHandler(generateMathProblemHandler));
+router.post('/submit-answer', asyncHandler(submitAnswer));
 
 // Adventure routes
-router.get('/current-lesson', getCurrentLessonHandler);
-router.post('/lessons/:lessonId/check-answer', authorize('STUDENT'), checkAnswerHandler);
-router.post('/lessons/:lessonId/submit', authorize('STUDENT'), submitLessonHandler);
+router.get('/current-lesson', asyncHandler(getCurrentLessonHandler));
+router.post('/lessons/:lessonId/submit', authorize('STUDENT'), asyncHandler(submitLessonHandler));
+
+// Keep profile route at the end to avoid route conflicts
+router.get('/profile', asyncHandler(getStudentProfile));
 
 export default router;

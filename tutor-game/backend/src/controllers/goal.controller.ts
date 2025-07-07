@@ -82,6 +82,49 @@ export const getGoalsHandler = async (req: Request, res: Response) => {
     res.json({ success: true, data: goals });
 };
 
+export const getGoalByIdHandler = async (req: Request, res: Response) => {
+    const { goalId } = req.params;
+    const teacherId = req.user?.userId;
+
+    if (!teacherId) {
+        throw new AppError('User not authenticated', 401);
+    }
+
+    const goal = await prisma.learningGoal.findFirst({
+        where: { 
+            id: goalId,
+            teacherId
+        },
+        include: {
+            student: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                }
+            },
+            sections: {
+                include: {
+                    lessons: {
+                        orderBy: { order: 'asc' },
+                        include: {
+                            storyChapter: true
+                        }
+                    }
+                },
+                orderBy: { order: 'asc' }
+            }
+        }
+    });
+
+    if (!goal) {
+        throw new AppError('Goal not found or access denied', 404);
+    }
+
+    res.json({ success: true, data: goal });
+};
+
 export const deleteGoalHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
     const teacherId = req.user?.userId;

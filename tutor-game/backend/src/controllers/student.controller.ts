@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AppError } from '../middlewares/error.middleware';
+import { AppError } from '../utils/errors';
 import { generateMathProblem, evaluateAnswer } from '../services/openai.service';
 import prisma from '../db';
 import { Lesson } from '@prisma/client';
@@ -20,13 +20,9 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   }
 
   // Then get related data in separate queries for better type safety
-  const [badges, stories, learningGoals] = await Promise.all([
+  const [badges, learningGoals] = await Promise.all([
     prisma.badge.findMany({
       where: { studentId: student.userId }
-    }),
-    prisma.story.findMany({
-      where: { studentId: student.userId },
-      orderBy: { createdAt: 'asc' }
     }),
     prisma.learningGoal.findMany({
       where: { studentId: student.userId },
@@ -50,7 +46,6 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   const studentWithRelations = {
     ...student,
     badges,
-    stories,
     learningGoals
   };
 
@@ -420,67 +415,4 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
     });
 };
 
-export const checkAnswerHandler = async (req: Request, res: Response) => {
-    const studentId = req.user?.userId;
-    if (!studentId) {
-        throw new AppError('Not authenticated', 401);
-    }
 
-    const { lessonId } = req.params;
-    const { blockIndex, studentAnswer } = req.body;
-
-    if (blockIndex === undefined || !studentAnswer) {
-        throw new AppError('Block index and student answer are required', 400);
-    }
-
-    const lesson = await prisma.lesson.findUnique({
-        where: { id: lessonId },
-        select: { content: true }
-    });
-
-    if (!lesson || !lesson.content) {
-        throw new AppError('Lesson or lesson content not found', 404);
-    }
-    
-    // Получаем вопрос из JSON-контента урока
-    const questionBlock = (lesson.content as any)?.blocks?.[blockIndex];
-    if (!questionBlock || questionBlock.type !== 'practice') {
-        throw new AppError('Practice block not found at the specified index', 404);
-    }
-
-    const question = questionBlock.content;
-
-    // Вызываем сервис OpenAI для оценки ответа
-    const evaluation = await evaluateAnswer(question, studentAnswer);
-
-    // Логируем попытку студента в базу данных
-    await prisma.$executeRaw`
-        INSERT INTO student_performance_logs (
-            id, 
-            student_id, 
-            lesson_id, 
-            block_index, 
-            block_type, 
-            answer, 
-            is_correct, 
-            ai_note, 
-            question
-        ) VALUES (
-            gen_random_uuid(),
-            ${studentId}::uuid,
-            ${lessonId}::uuid,
-            ${blockIndex},
-            'practice',
-            ${studentAnswer},
-            ${evaluation.isCorrect},
-            ${evaluation.explanation},
-            ${question || null}
-        )
-    `;
-
-    // Отправляем результат оценки на фронтенд
-    res.json({
-        success: true,
-        data: evaluation
-    });
-};

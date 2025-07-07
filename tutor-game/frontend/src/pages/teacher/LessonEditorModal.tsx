@@ -4,7 +4,7 @@ import { FiX } from 'react-icons/fi';
 // Импортируем тип Lesson из центрального файла goalApi.ts
 import { type Lesson } from '../../features/goal/goalApi';
 import { LessonContentEditor } from './components/LessonContentEditor';
-import { LessonStoryEditor } from './components/LessonStoryEditor';
+import LessonStoryEditor from './components/LessonStoryEditor';
 
 // Lightbox component for image preview
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
@@ -89,15 +89,13 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                         <Tab.Panel>
                                             <LessonContentEditor 
                                                 lesson={lesson} 
-                                                onCloseModal={onClose} 
-                                                onContentSaved={() => {}} 
+                                                onCloseModal={onClose}
                                             />
                                         </Tab.Panel>
                                         <Tab.Panel>
                                             <LessonStoryEditor 
                                                 lesson={lesson}
                                                 onCloseModal={onClose}
-                                                onStorySaved={() => {}}
                                             />
                                         </Tab.Panel>
                                     </Tab.Panels>
