@@ -1,17 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
 import { authApiSlice } from './authApi';
-
-export type UserRole = 'student' | 'teacher';
-
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  avatar?: string;
-}
+import type { User } from '../../types/models';
 
 export interface AuthState {
   user: User | null;

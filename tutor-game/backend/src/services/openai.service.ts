@@ -131,16 +131,17 @@ export const generateStorySnippet = async (
     RULES:
     1. The story must be fun and unexpected, not preachy or boring. Avoid clichés. Use humor and mystery.
     2. Your primary goal is to CREATE INTRIGUE and NARRATIVE, not to teach.
-    3. The lesson topic is "${lessonTitle}". You should subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful, but DO NOT include any direct tasks, questions, or explanations from the lesson. The story is for engagement, the tasks are separate.
-    4. If a story context is provided, you MUST reference it and build upon it. The new story must be a direct, logical continuation.
+    3. The lesson topic is "${lessonTitle}". You should subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful, but DO NOT include any direct tasks, questions, or explanations.
+    4. If a story context is provided, you MUST use it as a basis. The student's response in the context is the MOST IMPORTANT part. The new story must be a direct, logical continuation of the student's action or idea.
     5. The story MUST end with an open-ended, intriguing question to the student, like "What do you think the character should do?" or "What strange thing did they find?"
     6. Your output must be ONLY the story text. No explanations or extra text.`;
 
     let userPrompt = '';
 
     if (storyContext) {
-        userPrompt += `This is what happened before:\n---\n${storyContext}\n---\n`;
-        userPrompt += `Now, continue the story, naturally leading into the new lesson: "${lessonTitle}".`;
+        // Context already includes teacher's text and student's response
+        userPrompt += `${storyContext}\n\n`;
+        userPrompt += `Based on the student's response, continue the story, naturally leading into the new lesson: "${lessonTitle}".`;
     } else {
         userPrompt = `Lesson Title: "${lessonTitle}"
         Story Setting: "${setting}"

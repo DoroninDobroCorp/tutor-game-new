@@ -17,7 +17,7 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     const teacherId = req.user?.userId;
     if (!teacherId) throw new AppError('Unauthorized', 401);
 
-    const { previousStory, refinementPrompt } = req.body;
+    const { refinementPrompt } = req.body;
 
     const lesson = await prisma.lesson.findFirst({
         where: { id: lessonId, section: { learningGoal: { teacherId } } },
@@ -31,6 +31,35 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     const { learningGoal } = lesson.section;
     const { setting, studentAge, language, characterPrompt } = learningGoal;
 
+    // Get all lessons for this goal in order
+    const allGoalSections = await prisma.contentSection.findMany({
+        where: { learningGoalId: learningGoal.id },
+        orderBy: { order: 'asc' },
+        include: {
+            lessons: {
+                orderBy: { order: 'asc' },
+                include: { storyChapter: true }
+            }
+        }
+    });
+
+    const allLessons = allGoalSections.flatMap(section => section.lessons);
+    const currentLessonIndex = allLessons.findIndex(l => l.id === lessonId);
+    
+    let storyContext: string | undefined = undefined;
+
+    // If this is not the first lesson, find the previous one and its context
+    if (currentLessonIndex > 0) {
+        const previousLesson = allLessons[currentLessonIndex - 1];
+        if (previousLesson?.storyChapter) {
+            const { teacherSnippetText, studentSnippetText } = previousLesson.storyChapter;
+            storyContext = `КОНТЕКСТ ПРЕДЫДУЩЕГО ШАГА:\n`;
+            if (teacherSnippetText) storyContext += `Учитель написал: "${teacherSnippetText}"\n`;
+            if (studentSnippetText) storyContext += `Ученик ответил: "${studentSnippetText}"\n`;
+            storyContext += `---`;
+        }
+    }
+
     try {
         // 1. First generate the story text
         const storySnippetText = await generateStorySnippet(
@@ -40,16 +69,17 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             characterPrompt || 'a brave hero',
             language || 'Russian',
             refinementPrompt,
-            previousStory
+            storyContext
         );
 
         // 2. Generate image prompt based on the actual story content
         const imagePromptForLeonardo = await translateForImagePrompt(storySnippetText);
 
-        // Запускаем генерацию картинки, но не ждем ее завершения
+        // Запускаем генерацию картинки, передавая ID изображения персонажа
         const { generationId } = await startImageGeneration({ 
-            prompt: imagePromptForLeonardo
-            // modelId можно добавить, когда будет в модели
+            prompt: imagePromptForLeonardo,
+            // Достаем ID картинки персонажа из цели обучения и передаем его
+            characterImageId: learningGoal.characterImageId 
         });
 
         res.json({ 

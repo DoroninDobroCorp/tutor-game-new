@@ -1,24 +1,5 @@
 import { apiSlice } from '../../app/api/apiSlice';
-
-// Types
-export interface StudentInfo {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-}
-
-// Types for performance logs
-export interface PerformanceLog {
-    id: string;
-    question?: string | null;
-    answer: string;
-    isCorrect: boolean | null;
-    createdAt: string;
-    lesson: {
-        title: string;
-    };
-}
+import type { StudentInfo, PerformanceLog } from '../../types/models';
 
 // API Slice
 export const teacherApi = apiSlice.injectEndpoints({

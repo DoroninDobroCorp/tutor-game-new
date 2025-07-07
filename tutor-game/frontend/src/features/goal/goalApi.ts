@@ -1,61 +1,10 @@
 import { apiSlice } from '../../app/api/apiSlice';
 import { toast } from 'react-hot-toast';
-
-// Types
-export interface StudentInfo {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-}
-
-export interface StoryChapter {
-    id: string;
-    teacherSnippetText: string;
-    studentSnippetText: string;
-    teacherSnippetImageUrl: string;
-    teacherSnippetImagePrompt: string | null;
-    teacherSnippetStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
-}
-
-export interface Lesson {
-    id: string;
-    title: string;
-    status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
-    order: number;
-    content?: { blocks: any[] } | null;
-    storyChapter?: StoryChapter | null;
-    previousLesson?: Lesson | null;
-}
-
-export interface ContentSection {
-    id: string;
-    title: string;
-    order: number;
-    lessons: Lesson[];
-}
-
-export interface LearningGoal {
-    id: string; 
-    subject: string; 
-    setting: string; 
-    studentAge: number; 
-    studentId: string;
-    student: StudentInfo;
-    sections: ContentSection[];
-    characterImageUrl?: string | null;
-    characterDescription?: string | null;
-    characterStatus?: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
-    characterGenerationId?: string | null;
-    imageUrl?: string | null;
-    description?: string | null;
-    generationId?: string | null;
-}
-
-export interface RoadmapProposal {
-    sectionTitle: string;
-    lessons: string[];
-}
+import type { 
+    LearningGoal,
+    RoadmapProposal,
+    ContentSection
+} from '../../types/models';
 
 export const goalApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
@@ -215,7 +164,8 @@ export const goalApi = apiSlice.injectEndpoints({
                     goalApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
                         const goal = draft?.find(g => g.id === goalId);
                         if (goal) {
-                            goal.characterStatus = 'PENDING_APPROVAL';
+                            // Update the character prompt status instead of characterStatus
+                            goal.characterPrompt = 'PENDING_APPROVAL';
                         }
                     })
                 );

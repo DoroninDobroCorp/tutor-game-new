@@ -8,49 +8,48 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   if (!req.user) {
     throw new AppError('Not authenticated', 401);
   }
+  const studentUserId = req.user.userId;
 
-  // First get the student with basic info
-  const student = await prisma.student.findUnique({
-    where: { userId: req.user.userId }
+  // Fetch user with all related student data in a single query
+  const userWithProfile = await prisma.user.findUnique({
+    where: { id: studentUserId },
+    include: {
+      student: { // Include student profile
+        include: {
+          badges: true, // Include badges
+        },
+      },
+      learningGoals: { // Include all learning goals for this student
+        include: {
+          sections: {
+            include: {
+              lessons: true,
+            },
+            orderBy: { order: 'asc' },
+          },
+          storyChapters: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
   });
 
-  if (!student) {
-    throw new AppError('Student not found', 404);
+  if (!userWithProfile || !userWithProfile.student) {
+    throw new AppError('Student profile not found', 404);
   }
 
-  // Then get related data in separate queries for better type safety
-  const [badges, learningGoals] = await Promise.all([
-    prisma.badge.findMany({
-      where: { studentId: student.userId }
-    }),
-    prisma.learningGoal.findMany({
-      where: { studentId: student.userId },
-      include: {
-        sections: {
-          include: {
-            lessons: true
-          },
-          orderBy: { order: 'asc' }
-        },
-        storyChapters: true
-      }
-    })
-  ]);
-
-  if (!student) {
-    throw new AppError('Student not found', 404);
-  }
-
-  // Combine the data
-  const studentWithRelations = {
-    ...student,
-    badges,
-    learningGoals
+  // Prepare response data
+  const responseData = {
+    ...userWithProfile, // Include id, email, firstName, lastName, role
+    password: '', // Clear password for security
+    badges: userWithProfile.student.badges,
+    learningGoals: userWithProfile.learningGoals,
   };
+  delete responseData.password; // Ensure password is not sent to client
 
   res.json({
     success: true,
-    data: studentWithRelations,
+    data: responseData,
   });
 };
 
@@ -279,4 +278,47 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
     });
 };
 
+export const getStoryHistoryHandler = async (req: Request, res: Response) => {
+    const studentId = req.user?.userId;
+    const { goalId } = req.params;
+
+    if (!studentId) throw new AppError('Not authenticated', 401);
+    if (!goalId) throw new AppError('Goal ID is required', 400);
+
+    // Verify the goal belongs to this student
+    const goal = await prisma.learningGoal.findFirst({
+        where: { id: goalId, studentId },
+        select: { id: true }
+    });
+
+    if (!goal) {
+        throw new AppError('Goal not found or access denied', 404);
+    }
+
+    const storyChapters = await prisma.storyChapter.findMany({
+        where: {
+            learningGoalId: goalId,
+            // Only select approved teacher snippets
+            teacherSnippetStatus: 'APPROVED',
+        },
+        select: {
+            id: true,
+            teacherSnippetText: true,
+            teacherSnippetImageUrl: true,
+            studentSnippetText: true,
+            // studentSnippetImageUrl: true, // Uncomment if you generate images for student responses
+            lesson: { // Include lesson to get its title
+                select: {
+                    title: true,
+                    order: true
+                }
+            }
+        },
+        orderBy: [
+            { lesson: { order: 'asc' } }
+        ],
+    });
+
+    res.json({ success: true, data: storyChapters });
+};
 

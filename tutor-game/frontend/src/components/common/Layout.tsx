@@ -3,6 +3,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import {
   Bars3Icon,
+  BookOpenIcon,
   HomeIcon,
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
@@ -25,10 +26,11 @@ interface NavigationItem {
 
 const studentNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
+  { name: 'My Adventures', href: '/student/stories', icon: BookOpenIcon, current: false },
   {
     name: 'Chat',
     href: '/student/chat',
-    icon: UserGroupIcon,
+    icon: ChatBubbleLeftEllipsisIcon,
     current: false,
     showBadge: true,
   },
