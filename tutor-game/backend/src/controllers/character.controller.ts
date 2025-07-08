@@ -2,8 +2,9 @@ import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateCharacter } from '../services/openai.service';
-import { startImageGeneration, getGenerationResult } from '../services/leonardo.service';
+import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
 import fs from 'fs';
+import path from 'path';
 
 export const generateCharacterHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
@@ -110,34 +111,42 @@ export const uploadCharacterImageHandler = async (req: Request, res: Response) =
         throw new AppError('Image file is required', 400);
     }
 
-    // Check if the goal exists and belongs to the teacher
-    const goal = await prisma.learningGoal.findFirst({
-        where: { id: goalId, teacherId },
-    });
+    try {
+        const goal = await prisma.learningGoal.findFirst({
+            where: { id: goalId, teacherId },
+        });
 
-    if (!goal) {
-        // If goal not found, delete the uploaded file to avoid cluttering the disk
-        fs.unlinkSync(file.path);
-        throw new AppError('Learning Goal not found or access denied', 404);
-    }
-
-    // Form the web-accessible path
-    const imageUrl = `/uploads/${file.filename}`;
-
-    // Update the database record
-    const updatedGoal = await prisma.learningGoal.update({
-        where: { id: goalId },
-        data: {
-            characterImageUrl: imageUrl,
-            characterPrompt: req.body.prompt || 'Uploaded image',
-            // Reset generation IDs since this is not a generated image
-            characterImageId: null, 
-            characterGenId: null,
+        if (!goal) {
+            throw new AppError('Learning Goal not found or access denied', 404);
         }
-    });
 
-    res.json({
-        success: true,
-        data: updatedGoal
-    });
+        // Form the web-accessible path for display
+        const displayImageUrl = `/uploads/${file.filename}`;
+
+        // Update the database record with only the local file path
+        const updatedGoal = await prisma.learningGoal.update({
+            where: { id: goalId },
+            data: {
+                characterImageUrl: displayImageUrl,
+                characterImageId: null, // We'll upload to Leonardo when needed
+                characterPrompt: req.body.prompt || 'Uploaded character image',
+                characterGenId: null, // Reset generation ID since this is an upload
+            }
+        });
+
+        // Keep the file for future use
+        // fs.unlinkSync(file.path); // <--- Don't delete the file, we need it for future generations
+
+        res.json({
+            success: true,
+            data: updatedGoal
+        });
+    } catch (error) {
+        // Clean up the uploaded file if there's an error
+        if (file && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+        }
+        // Re-throw the error to be handled by the global error handler
+        throw error;
+    }
 };
