@@ -79,12 +79,12 @@ export default function CreateGoalPage() {
                     <input 
                         type="number" 
                         id="studentAge" 
-                        {...register('studentAge', { required: true, min: 4, max: 18, valueAsNumber: true })} 
+                        {...register('studentAge', { required: true, min: 4, valueAsNumber: true })} 
                         className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                     />
                     {errors.studentAge && (
                         <p className="mt-1 text-sm text-red-600">
-                            Возраст должен быть от 4 до 18 лет
+                            Возраст должен быть не менее 4 лет
                         </p>
                     )}
                 </div>
