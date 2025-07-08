@@ -1,0 +1,31 @@
+{"level":"info","message":"Login attempt for email: bvn@nbv.fg from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T10:52:28.917Z"}
+{"level":"info","message":"Login attempt for email: mamalamapanor34ama@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T10:54:33.178Z"}
+{"level":"info","message":"Login attempt for email: mamalamapanor34ama@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T10:55:12.757Z"}
+{"level":"info","message":"Login attempt for email: mamalamapanor34ama@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:39:40.699Z"}
+{"level":"info","message":"Login attempt for email: mamalamapanor34ama@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:41:01.402Z"}
+{"level":"info","message":"Login attempt for email: bvn@nbv.fg from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:42:05.431Z"}
+{"level":"info","message":"Login attempt for email: mamalamapanor34ama@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:42:07.998Z"}
+{"level":"info","message":"Registration attempt for email: doronindobro@gmail.com, role: TEACHER","service":"tutor-game-api","timestamp":"2025-07-05T13:43:16.535Z"}
+{"level":"info","message":"User registered successfully: b770fc63-f65f-4b19-bca7-bb7a5e6d6f23","service":"tutor-game-api","timestamp":"2025-07-05T13:43:16.837Z"}
+{"level":"info","message":"Registration attempt for email: MayaDoronina@gmail.com, role: STUDENT","service":"tutor-game-api","timestamp":"2025-07-05T13:43:40.438Z"}
+{"level":"info","message":"User registered successfully: 18b15a60-8739-4a0e-8a55-c35f01cebce6","service":"tutor-game-api","timestamp":"2025-07-05T13:43:40.756Z"}
+{"level":"info","message":"Login attempt for email: DoroninDobro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:47:48.191Z"}
+{"level":"info","message":"Registration attempt for email: doronindobro@gmail.com, role: TEACHER","service":"tutor-game-api","timestamp":"2025-07-05T13:48:02.381Z"}
+{"level":"warn","message":"Registration failed - user already exists: doronindobro@gmail.com","service":"tutor-game-api","timestamp":"2025-07-05T13:48:02.384Z"}
+{"level":"error","message":"Registration error: User with this email already exists","service":"tutor-game-api","stack":"Error: User with this email already exists\n    at register (/Users/vladimirdoronin/VovkaNowEngineer/tutor-game-new/tutor-game/backend/src/services/auth.service.ts:100:13)\n    at registerHandler (/Users/vladimirdoronin/VovkaNowEngineer/tutor-game-new/tutor-game/backend/src/controllers/auth.controller.ts:57:49)","statusCode":400,"timestamp":"2025-07-05T13:48:02.386Z"}
+{"level":"info","message":"Registration attempt for email: doronindosbro@gmail.com, role: TEACHER","service":"tutor-game-api","timestamp":"2025-07-05T13:48:13.666Z"}
+{"level":"info","message":"User registered successfully: cc8c9b11-881a-4270-8855-c46a5c7fd0b1","service":"tutor-game-api","timestamp":"2025-07-05T13:48:13.985Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T13:54:18.723Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:03:20.187Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:03:27.983Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:09:35.054Z"}
+{"level":"info","message":"Login attempt for email: bvsn@nbv.fg from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:09:47.894Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:09:56.011Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:19:35.576Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:23:58.506Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:24:05.486Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:31:24.569Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:31:33.350Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T14:39:06.636Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T20:16:12.236Z"}
+{"level":"info","message":"Login attempt for email: doronindosbro@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-05T20:16:17.581Z"}
