@@ -14,11 +14,7 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   const userWithProfile = await prisma.user.findUnique({
     where: { id: studentUserId },
     include: {
-      student: { // Include student profile
-        include: {
-          badges: true, // Include badges
-        },
-      },
+      student: true,
       learningGoals: { // Include all learning goals for this student
         include: {
           sections: {
@@ -42,7 +38,6 @@ export const getStudentProfile = async (req: Request, res: Response) => {
   const responseData = {
     ...userWithProfile, // Include id, email, firstName, lastName, role
     password: '', // Clear password for security
-    badges: userWithProfile.student.badges,
     learningGoals: userWithProfile.learningGoals,
   };
   delete responseData.password; // Ensure password is not sent to client
@@ -321,4 +316,3 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: storyChapters });
 };
-

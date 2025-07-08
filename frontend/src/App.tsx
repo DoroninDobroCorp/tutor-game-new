@@ -20,7 +20,6 @@ import TeacherDashboard from './pages/teacher/TeacherDashboard';
 
 import StudentAdventurePage from './pages/student/StudentAdventurePage';
 import StudentStoriesListPage from './pages/student/StudentStoriesListPage';
-import StudentProgress from './pages/teacher/StudentProgress';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 import StudentsPage from './features/teacher/StudentsPage';
@@ -75,8 +74,6 @@ function App() {
             <Route path="goals/:goalId/edit" element={<RoadmapEditorPage />} />
             <Route path="" element={<TeacherDashboard />} />
             <Route path="students" element={<StudentsPage />} />
-            <Route path="students/:studentId" element={<StudentProgress />} />
-            <Route path="progress" element={<div>Progress Overview Page</div>} />
             <Route path="chat" element={<ChatPage />} />
           </Route>
           

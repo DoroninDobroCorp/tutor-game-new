@@ -29,11 +29,6 @@ enum LessonStatus {
   COMPLETED
 }
 
-enum BadgeStatus {
-  HIDDEN
-  ACTIVE
-  EARNED
-}
 
 // --- CORE MODELS ---
 model User {
@@ -79,7 +74,6 @@ model Student {
 
   // Relations
   teachers Teacher[] @relation("TeachersAndStudents")
-  badges   Badge[]
 
   @@map("students")
 }
@@ -163,14 +157,6 @@ model StudentPerformanceLog {
 }
 
 // --- OTHER MODELS ---
-model Badge {
-  id        String      @id @default(uuid())
-  studentId String
-  student   Student     @relation(fields: [studentId], references: [userId], onDelete: Cascade)
-  title     String
-  status    BadgeStatus
-
-  @@map("badges")
 }
 
 

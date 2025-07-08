@@ -2,7 +2,7 @@
 import os
 
 # --- Настройки ---
-MAX_CHARS = 750000  # можно менять
+MAX_CHARS = 7500000  # можно менять
 OUTPUT_PREFIX = "message_"
 FINISH_INSTRUCTION = "ГПТ, Я ЕЩЕ НЕ ЗАКОНЧИЛ - ПРОСТО КОРОТКО ОТВЕТЬ ОК И ВСЕ!!!"
 BASE_DIR = os.getcwd()  # корневая папка — та, где запущен скрипт

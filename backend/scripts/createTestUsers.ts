@@ -1,4 +1,4 @@
-import { PrismaClient, Role, LessonType, LessonStatus, BadgeStatus } from '@prisma/client';
+import { PrismaClient, Role, LessonType, LessonStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -11,10 +11,10 @@ async function main() {
     await prisma.refreshToken.deleteMany({});
     await prisma.message.deleteMany({});
     await prisma.studentPerformanceLog.deleteMany({});
+    await prisma.storyChapter.deleteMany({});
     await prisma.lesson.deleteMany({});
     await prisma.contentSection.deleteMany({});
     await prisma.learningGoal.deleteMany({});
-    await prisma.badge.deleteMany();
     
     // Delete teachers and students (this will cascade to users due to onDelete: Cascade)
     await prisma.teacher.deleteMany({});
@@ -137,16 +137,6 @@ async function main() {
     });
 
     console.log('✅ Created sample learning goal with sections and lessons');
-
-    // --- Create a sample badge for the student ---
-    await prisma.badge.create({
-      data: {
-        title: 'Math Beginner',
-        status: BadgeStatus.EARNED,
-        studentId: studentUser.id
-      }
-    });
-    console.log('✅ Created sample badge for the student');
 
     console.log('\n✅ Test data created successfully!');
     console.log('\nYou can now log in with these credentials:');

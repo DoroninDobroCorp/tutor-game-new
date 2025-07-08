@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { Link } from 'react-router-dom';
 import { useConnectStudentMutation, useGetConnectedStudentsQuery } from './teacherApi';
 
 interface ConnectStudentForm {
@@ -92,8 +91,8 @@ export default function StudentsPage() {
               aria-hidden="true"
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLineCap="round"
+                strokeLineJoin="round"
                 strokeWidth={1.5}
                 d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
               />
@@ -125,9 +124,9 @@ export default function StudentsPage() {
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <ul className="divide-y divide-gray-200">
             {students.map((student) => (
-              <div key={student.id} className="px-6 py-4 hover:bg-gray-50">
+              <li key={student.id} className="px-6 py-4 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -144,18 +143,10 @@ export default function StudentsPage() {
                       <p className="text-sm text-gray-500">{student.email}</p>
                     </div>
                   </div>
-                  <div className="flex space-x-3">
-                    <Link
-                      to={`/teacher/students/${student.id}`}
-                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                    >
-                      View Progress
-                    </Link>
-                  </div>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>

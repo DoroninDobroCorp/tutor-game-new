@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
-import { BookOpenIcon, AcademicCapIcon, LightBulbIcon, ChartBarIcon } from '@/components/icons';
+import { BookOpenIcon, AcademicCapIcon, LightBulbIcon } from '@/components/icons';
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
@@ -104,12 +104,6 @@ export default function HomePage() {
                   description:
                     'Get instant feedback on your answers with detailed explanations to help you learn from mistakes.',
                   icon: LightBulbIcon,
-                },
-                {
-                  name: 'Progress Tracking',
-                  description:
-                    'Monitor your improvement over time with detailed progress reports and achievement badges.',
-                  icon: ChartBarIcon,
                 },
               ].map((feature) => (
                 <div key={feature.name} className="relative pl-16">

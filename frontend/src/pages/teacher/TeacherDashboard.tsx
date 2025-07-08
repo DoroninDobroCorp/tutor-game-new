@@ -21,7 +21,6 @@ export default function TeacherDashboard() {
           Выберите раздел для управления учебным процессом.
         </p>
         
-        {/* Здесь теперь 4 карточки, включая "Учебные планы" */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link 
             to="/teacher/students" 
@@ -31,7 +30,7 @@ export default function TeacherDashboard() {
             <p className="text-sm text-gray-500">Просмотр и добавление ваших студентов</p>
           </Link>
           
-          <Link 
+          <Link
             to="/teacher/goals" 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
@@ -39,21 +38,14 @@ export default function TeacherDashboard() {
             <p className="text-sm text-gray-500">Создание и редактирование планов обучения</p>
           </Link>
           
-          <Link 
-            to="/teacher/chat" 
+          <Link
+            to="/teacher/chat"
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
             <h3 className="font-medium text-lg">💬 Чат с учениками</h3>
             <p className="text-sm text-gray-500">Общение и поддержка студентов</p>
           </Link>
 
-          <Link 
-            to="/teacher/progress" 
-            className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <h3 className="font-medium text-lg">📊 Прогресс студентов</h3>
-            <p className="text-sm text-gray-500">Анализ успеваемости (в разработке)</p>
-          </Link>
         </div>
       </div>
     </div>

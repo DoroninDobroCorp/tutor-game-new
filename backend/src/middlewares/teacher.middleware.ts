@@ -1,19 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { Student, RoadmapEntry, Badge, Story } from '@prisma/client';
+import { Student } from '@prisma/client';
 import prisma from '../db';
 import { AppError } from '../utils/errors';
 
-type StudentWithRelations = Student & {
-  goals?: any[];
-  roadmaps?: RoadmapEntry[];
-  badges?: Badge[];
-  stories?: (Story & { images: any[] })[];
-};
 
 declare global {
   namespace Express {
     interface Request {
-      student?: StudentWithRelations;
+      student?: Student;
     }
   }
 }
@@ -42,6 +36,6 @@ export const checkStudentAccess = async (req: Request, res: Response, next: Next
   }
   
   // Attach student to request for later use in controllers
-  req.student = student as StudentWithRelations;
+  req.student = student;
   next();
 };

@@ -7,7 +7,6 @@ import {
   HomeIcon,
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
-  ChartBarIcon,
   ChatBubbleLeftEllipsisIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
@@ -40,11 +39,10 @@ const teacherNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
   { name: 'Учебные Планы', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
   { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
-  { name: 'Progress', href: '/teacher/progress', icon: ChartBarIcon, current: false },
   {
     name: 'Chat',
     href: '/teacher/chat',
-    icon: UserGroupIcon,
+    icon: ChatBubbleLeftEllipsisIcon,
     current: false,
     showBadge: true,
   },
