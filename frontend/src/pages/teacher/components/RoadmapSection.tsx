@@ -1,5 +1,5 @@
 import { Droppable, Draggable } from '@hello-pangea/dnd';
-import { ContentSection, Lesson } from '../../../features/goal/goalApi';
+import { ContentSection, Lesson } from '../../../types/models';
 import { FiMove, FiTrash2, FiPlus, FiEdit2, FiSettings } from 'react-icons/fi';
 import { LessonStatusIndicator } from './LessonStatusIndicator';
 
@@ -58,13 +58,13 @@ export const RoadmapSection = ({
                                 />
                             ) : (
                                 <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
-                                    <h2 className="text-xl font-semibold cursor-pointer truncate">{section.title}</h2>
                                     <button 
-                                        className="ml-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        className="mr-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
                                         title="Редактировать название"
                                     >
                                         <FiEdit2 />
                                     </button>
+                                    <h2 className="text-xl font-semibold cursor-pointer truncate">{section.title}</h2>
                                 </div>
                             )}
                         </div>
@@ -103,7 +103,7 @@ export const RoadmapSection = ({
                                                 
                                                 <LessonStatusIndicator lesson={lesson} />
                                                 
-                                                <div className="ml-2 flex-grow">
+                                                <div className="ml-2 flex-grow min-w-0">
                                                     {editingTitle.section === sectionIndex && editingTitle.lesson === lessonIndex ? (
                                                         <input 
                                                             type="text" 
@@ -115,19 +115,19 @@ export const RoadmapSection = ({
                                                             className="border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
                                                         />
                                                     ) : (
-                                                        <span className="cursor-pointer" onClick={() => startEditing(sectionIndex, lessonIndex)}>
-                                                            {lesson.title}
-                                                        </span>
+                                                        <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, lessonIndex)}>
+                                                            <button 
+                                                                className="mr-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                title="Редактировать название"
+                                                            >
+                                                                <FiEdit2 size={14} />
+                                                            </button>
+                                                            <span className="cursor-pointer truncate">
+                                                                {lesson.title}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                
-                                                <button 
-                                                    onClick={() => startEditing(sectionIndex, lessonIndex)}
-                                                    className="ml-4 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Редактировать название"
-                                                >
-                                                    <FiEdit2 />
-                                                </button>
                                                 
                                                 <button 
                                                     onClick={() => onEditLesson(lesson, sectionIndex, lessonIndex)}
