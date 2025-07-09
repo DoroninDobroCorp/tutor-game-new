@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRegisterMutation } from '@/features/auth/authApi';
 import { toast } from 'react-hot-toast';
+import { useAppSelector } from '@/app/hooks';
+import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
+
 
 const registerSchema = z
   .object({
@@ -27,6 +30,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const user = useAppSelector(selectCurrentUser);
+
   const {
     register,
     handleSubmit,
@@ -38,6 +44,14 @@ export default function RegisterPage() {
       role: 'student',
     },
   });
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      toast.success('Registration successful! Redirecting...');
+      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      navigate(targetPath, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (formData: RegisterFormData) => {
     try {
@@ -52,19 +66,12 @@ export default function RegisterPage() {
       };
 
       await registerUser(registrationData).unwrap();
-      
-      // The auth state will be updated by the extraReducers in authSlice
-      // Navigate to the appropriate dashboard based on user role
-      const targetPath = registrationData.role === 'teacher' ? '/teacher' : '/student';
-      navigate(targetPath);
-      
-      toast.success('Registration successful! Welcome!');
+
     } catch (error: unknown) {
       console.error('Registration error:', error);
       let errorMessage = 'Registration failed. Please try again.';
       
       if (error && typeof error === 'object') {
-        // Handle RTK Query error
         if ('status' in error && 'data' in error) {
           const data = error.data as { message?: string };
           errorMessage = data?.message || errorMessage;

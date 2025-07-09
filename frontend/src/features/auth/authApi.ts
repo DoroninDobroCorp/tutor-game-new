@@ -36,6 +36,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
         data: credentials,
         credentials: 'include',
       }),
+      invalidatesTags: ['User'],
       transformResponse: (response: ApiResponse<AuthResponse>) => {
         if (!response.data?.user || !response.data?.accessToken) {
           throw new Error('Invalid server response');
@@ -64,6 +65,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
           credentials: 'include',
         };
       },
+      invalidatesTags: ['User'],
       transformResponse: (response: ApiResponse<AuthResponse>) => {
         if (!response.data?.user || !response.data?.accessToken) {
           throw new Error('Invalid server response');

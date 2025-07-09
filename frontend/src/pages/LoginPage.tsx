@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useLoginMutation } from '@/features/auth/authApi'; 
+import { useLoginMutation } from '@/features/auth/authApi';
 import { toast } from 'react-hot-toast';
+import { useAppSelector } from '@/app/hooks';
+import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,7 +19,10 @@ export default function LoginPage() {
   const [login, { isLoading }] = useLoginMutation();
   const navigate = useNavigate();
   const [error, setError] = useState('');
-  
+
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const user = useAppSelector(selectCurrentUser);
+
   const {
     register,
     handleSubmit,
@@ -26,30 +31,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      toast.success('Login successful! Redirecting...');
+      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      navigate(targetPath, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
-      // Call the API - the auth state will be updated by the extraReducers in authSlice
-      const result = await login(data).unwrap();
-      
-      // With our API setup, we should always have data if we get here
-      if (!result.data) {
-        throw new Error('Login failed: No user data received');
-      }
-
-      const { user } = result.data;
-      
-      // Navigate to the appropriate dashboard based on user role
-      const targetPath = user.role === 'teacher' ? '/teacher' : '/student';
-      navigate(targetPath);
-      
-      toast.success('Login successful!');
-
+      // Call the API and let the useEffect handle navigation
+      await login(data).unwrap();
     } catch (error: unknown) {
       let errorMessage = 'Login failed. Please check your credentials.';
-      
+
       if (error && typeof error === 'object') {
-        // Handle RTK Query error
         if ('status' in error && 'data' in error) {
           const data = error.data as { message?: string };
           errorMessage = data?.message || errorMessage;
@@ -57,7 +55,7 @@ export default function LoginPage() {
           errorMessage = String(error.message);
         }
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage);
     }

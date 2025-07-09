@@ -10,10 +10,15 @@ export interface AuthState {
 }
 
 // ✅ Начальное состояние теперь ЕДИНСТВЕННЫЙ источник правды при запуске.
+// Добавлено чтение пользователя из localStorage для более быстрой гидратации состояния
+const storedUserItem = localStorage.getItem('user');
+const initialUser: User | null = storedUserItem ? JSON.parse(storedUserItem) : null;
+const storedToken = localStorage.getItem('token');
+
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token'), // Пытаемся взять токен из localStorage
-  isAuthenticated: !!localStorage.getItem('token'), // Начальный статус зависит от наличия токена
+  user: initialUser, // Пытаемся взять пользователя из localStorage
+  token: storedToken, // Пытаемся взять токен из localStorage
+  isAuthenticated: !!storedToken, // Начальный статус зависит от наличия токена
 };
 
 export const authSlice = createSlice({
@@ -32,6 +37,8 @@ export const authSlice = createSlice({
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+      // Также обновим localStorage, чтобы он был синхронизирован
+      localStorage.setItem('user', JSON.stringify(action.payload));
     },
   },
   // ✅ Автоматически обновляем стейт после запросов
@@ -70,7 +77,7 @@ export const authSlice = createSlice({
         localStorage.setItem('token', accessToken);
         // Обновление данных пользователя происходит через getProfile
       }
-    )
+    );
   },
 });
 

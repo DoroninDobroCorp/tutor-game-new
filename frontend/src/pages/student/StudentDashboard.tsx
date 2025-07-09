@@ -1,14 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
 import { useGetStudentProfileQuery } from '../../features/student/studentApi';
-import type { LearningGoal } from '../../types/models'; // <-- Исправленный импорт типа
+import type { LearningGoal } from '../../types/models';
 import Spinner from '../../components/common/Spinner';
 
 export default function StudentDashboard() {
   const { user } = useAppSelector((state) => state.auth);
-  const { data: profile, isLoading, isError } = useGetStudentProfileQuery();
+  const { data: profile, isLoading, isError } = useGetStudentProfileQuery(undefined, {
+    skip: !user, // Skip the query if user is not yet available in the redux state
+  });
   
-  if (isLoading) {
+  // Show spinner while the user data is being populated or the query is running
+  if (isLoading || !user) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
