@@ -9,6 +9,7 @@ import {
   ArrowRightOnRectangleIcon,
   ChatBubbleLeftEllipsisIcon,
   DocumentTextIcon,
+  ChevronDoubleLeftIcon, // Added for toggle
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
@@ -54,6 +55,7 @@ function classNames(...classes: (string | boolean | undefined)[]): string {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for desktop sidebar
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -195,20 +197,36 @@ export default function Layout() {
             </Dialog>
           </Transition.Root>
 
-          {/* Desktop sidebar */}
-          <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-4">
-              <div className="flex h-16 shrink-0 items-center">
-                <Link to="/" className="text-2xl font-bold text-white">Tutor Game</Link>
+          {/* Desktop sidebar - MODIFIED */}
+          <div className={classNames(
+            'hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out',
+            isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
+          )}>
+            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-4 pb-4">
+              <div className="flex h-16 shrink-0 items-center justify-between px-2">
+                <Link to="/" className={classNames(
+                  'text-xl font-bold text-white whitespace-nowrap transition-opacity duration-200',
+                  isSidebarCollapsed && 'opacity-0 w-0'
+                )}>
+                  Tutor Game
+                </Link>
+                <button
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    className="text-indigo-200 hover:text-white p-2"
+                    title={isSidebarCollapsed ? "Развернуть панель" : "Свернуть панель"}
+                >
+                    <ChevronDoubleLeftIcon className={classNames("h-6 w-6 transition-transform duration-300", isSidebarCollapsed && "rotate-180")}/>
+                </button>
               </div>
               <nav className="flex flex-1 flex-col">
                 <ul role="list" className="flex flex-1 flex-col gap-y-7">
                   <li>
                     <ul role="list" className="-mx-2 space-y-1">
                       {navigation.map((item) => (
-                        <li key={item.name}>
+                        <li key={item.name} className="relative">
                           <Link
                             to={item.href}
+                            title={isSidebarCollapsed ? item.name : undefined}
                             className={classNames(
                               item.current
                                 ? 'bg-indigo-700 text-white'
@@ -216,8 +234,10 @@ export default function Layout() {
                               'group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6'
                             )}
                           >
-                            {/* Block 1: Icon and Name */}
-                            <div className="flex items-center gap-x-3">
+                            <div className={classNames(
+                                'flex items-center gap-x-3',
+                                isSidebarCollapsed && 'justify-center w-full'
+                            )}>
                               <item.icon
                                 className={classNames(
                                   item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
@@ -225,30 +245,36 @@ export default function Layout() {
                                 )}
                                 aria-hidden="true"
                               />
-                              {item.name}
+                               <span className={classNames(isSidebarCollapsed && 'hidden')}>{item.name}</span>
                             </div>
 
-                            {/* Block 2: Notification Badge */}
-                            {item.showBadge && totalUnreadCount > 0 && (
-                              <span className="inline-block rounded-full bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white">
-                                {totalUnreadCount}
-                              </span>
+                            {item.showBadge && totalUnreadCount > 0 && !isSidebarCollapsed && (
+                                <span className="inline-block rounded-full bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white">
+                                    {totalUnreadCount}
+                                </span>
                             )}
                           </Link>
+                          {item.showBadge && totalUnreadCount > 0 && isSidebarCollapsed && (
+                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-indigo-600" />
+                          )}
                         </li>
                       ))}
                     </ul>
                   </li>
                   <li className="mt-auto">
-                    <div className="text-xs font-semibold leading-6 text-indigo-200">
+                    <div className={classNames('px-2 text-xs font-semibold leading-6 text-indigo-200 truncate', isSidebarCollapsed && 'hidden')}>
                       {user?.email}
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="mt-2 flex items-center gap-x-2 text-sm font-medium text-indigo-200 hover:text-white"
+                      title={isSidebarCollapsed ? 'Sign out' : undefined}
+                      className={classNames(
+                          'mt-2 flex w-full items-center gap-x-2 rounded-md p-2 text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-700',
+                          isSidebarCollapsed && 'justify-center'
+                      )}
                     >
-                      <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                      Sign out
+                      <ArrowRightOnRectangleIcon className="h-5 w-5 shrink-0" />
+                      <span className={classNames(isSidebarCollapsed && 'hidden')}>Sign out</span>
                     </button>
                   </li>
                 </ul>
@@ -258,8 +284,8 @@ export default function Layout() {
         </>
       )}
 
-      {/* Main content */}
-      <div className={isAuthenticated ? "lg:pl-72" : ""}>
+      {/* Main content - MODIFIED */}
+      <div className={classNames('transition-all duration-300 ease-in-out', isAuthenticated ? (isSidebarCollapsed ? "lg:pl-20" : "lg:pl-72") : "")}>
         {/* Header */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           {isAuthenticated && (
