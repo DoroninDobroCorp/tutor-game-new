@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useGenerateLessonContentMutation, useUpdateLessonContentMutation } from '../../../features/lesson/lessonApi';
 import { type Lesson } from '../../../types/models';
@@ -24,7 +24,15 @@ interface LessonContentEditorProps {
 }
 
 export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEditorProps) => {
-    const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
+    const formRef = useRef<HTMLFormElement>(null);
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (userMessage.trim()) {
+                formRef.current?.requestSubmit();
+            }
+        }
+    };    const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [userMessage, setUserMessage] = useState('');
     
@@ -147,9 +155,9 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                     ))}
                     {isGenerating && <div className="text-sm p-2 rounded-lg bg-blue-100" style={{ maxWidth: '85%' }}><Spinner size="sm" /></div>}
                 </div>
-                <form onSubmit={handleGenerateContent} className="flex gap-2">
-                    <input type="text" value={userMessage} onChange={e => setUserMessage(e.target.value)} placeholder="Попросить ИИ переделать контент..." className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                    <button type="submit" disabled={isGenerating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"><FiSend /></button>
+                <form ref={formRef} onSubmit={handleGenerateContent} className="flex gap-2">
+                    <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={blocks.length > 0 ? "Попросить ИИ переделать контент..." : "Попросить ИИ сделать контент..."} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    <button type="submit" disabled={isGenerating || !userMessage.trim()} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"><FiSend /></button>
                 </form>
             </div>
             

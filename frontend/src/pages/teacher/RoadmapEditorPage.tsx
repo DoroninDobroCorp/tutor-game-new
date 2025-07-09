@@ -54,7 +54,16 @@ const RoadmapEditorPage = () => {
     const [generateRoadmap, { isLoading: isGenerating }] = useGenerateRoadmapProposalMutation();
     const [updateRoadmap, { isLoading: isSaving }] = useUpdateRoadmapMutation();
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (userMessage.trim()) {
+                formRef.current?.requestSubmit();
+            }
+        }
+    };
     useEffect(() => {
         if (currentGoal?.sections) {
             setRoadmap(JSON.parse(JSON.stringify(currentGoal.sections)));
@@ -225,11 +234,10 @@ const RoadmapEditorPage = () => {
                         ))}
                         {isGenerating && <div className="p-3 rounded-lg bg-gray-200 self-start mr-auto"><Spinner size="sm" /></div>}
                     </div>
-                    <form onSubmit={handleGeneratePlan} className="flex gap-2">
-                        <input type="text" value={userMessage} onChange={e => setUserMessage(e.target.value)} placeholder="Попросить ИИ изменить план..." className="flex-grow px-3 py-2 border border-gray-300 rounded-md" />
-                        <button type="submit" disabled={isGenerating} className="p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
-                    </form>
-                </div>
+                    <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
+                        <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Попросить ИИ изменить план..." className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <button type="submit" disabled={isGenerating || !userMessage.trim()} className="p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                    </form>                </div>
             </div>
             
             {showLogsModal && (
