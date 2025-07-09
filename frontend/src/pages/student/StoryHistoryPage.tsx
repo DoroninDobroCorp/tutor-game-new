@@ -35,7 +35,6 @@ const StoryHistoryPage = () => {
                                 Глава {index + 1}: {chapter.lesson.title}
                             </h2>
                             
-                            {/* Teacher's Block */}
                             {chapter.teacherSnippetText && (
                                 <div className="flex flex-col md:flex-row gap-6 items-start mb-6">
                                     {chapter.teacherSnippetImageUrl && (
@@ -52,11 +51,17 @@ const StoryHistoryPage = () => {
                                 </div>
                             )}
 
-                            {/* Student's Response */}
                             {chapter.studentSnippetText && (
-                                <div className="flex justify-end">
-                                    <div className="w-full md:w-3/4 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-400">
+                                <div className="flex justify-end mt-4">
+                                    <div className="w-full md:w-5/6 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-400">
                                         <p className="font-semibold text-blue-800">Ваш ответ:</p>
+                                         {chapter.studentSnippetImageUrl && (
+                                            <img
+                                                src={chapter.studentSnippetImageUrl}
+                                                alt="Your submitted image"
+                                                className="mt-2 w-full md:w-1/2 rounded-lg shadow-md object-cover"
+                                            />
+                                        )}
                                         <p className="mt-2 text-gray-800 leading-relaxed">{chapter.studentSnippetText}</p>
                                     </div>
                                 </div>

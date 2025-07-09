@@ -7,6 +7,7 @@ import {
 } from '../controllers/student.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../utils/errors';
+import { upload } from '../utils/fileUpload';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.use(authenticate);
 
 // Adventure routes
 router.get('/current-lesson', asyncHandler(getCurrentLessonHandler));
-router.post('/lessons/:lessonId/submit', authorize('STUDENT'), asyncHandler(submitLessonHandler));
+router.post('/lessons/:lessonId/submit', authorize('STUDENT'), upload.single('image'), asyncHandler(submitLessonHandler));
 
 // Story history
 router.get('/story/:goalId', authorize('STUDENT'), asyncHandler(getStoryHistoryHandler));

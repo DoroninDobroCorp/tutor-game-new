@@ -3,29 +3,28 @@ import { useGetCurrentLessonQuery, useSubmitLessonMutation } from '../../feature
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { FiUpload, FiX } from 'react-icons/fi';
 
 export default function StudentAdventurePage() {
     const navigate = useNavigate();
-    const { data: lesson, isLoading, isError } = useGetCurrentLessonQuery();
+    const { data: lesson, isLoading, isError, refetch } = useGetCurrentLessonQuery();
     const [submitLesson, { isLoading: isSubmitting }] = useSubmitLessonMutation();
 
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
-    // Единое состояние для всех ответов на практику. Ключ - индекс блока, значение - ответ.
     const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
-    // Отдельное состояние для финального ответа на историю.
     const [storyResponse, setStoryResponse] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
 
     const blocks = lesson?.content?.blocks || [];
     const currentBlock = blocks[currentBlockIndex];
-    // Состояние, когда студент прошел все блоки контента и готов отвечать на историю.
     const isContentViewFinished = currentBlockIndex >= blocks.length;
 
-    // Сбрасываем состояния при загрузке нового урока
     useEffect(() => {
         if (lesson) {
             setCurrentBlockIndex(0);
             setPracticeAnswers({});
             setStoryResponse('');
+            setImageFile(null);
         }
     }, [lesson]);
     
@@ -38,14 +37,18 @@ export default function StudentAdventurePage() {
 
     const handleNextBlock = () => {
         if (!currentBlock) return;
-
-        // Если это блок практики, убедимся, что на него дан ответ.
         if (currentBlock.type === 'practice' && !practiceAnswers[currentBlockIndex]?.trim()) {
             toast.error('Пожалуйста, введите ответ, чтобы продолжить.');
             return;
         }
-
         setCurrentBlockIndex(prev => prev + 1);
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+        }
     };
 
     const handleSubmitLesson = async () => {
@@ -54,36 +57,38 @@ export default function StudentAdventurePage() {
             return;
         }
 
-        // Собираем ответы только от практических блоков в правильном порядке
         const orderedPracticeAnswers = blocks
             .map((block, index) => ({ block, index }))
             .filter(({ block }) => block.type === 'practice')
-            .map(({ index }) => practiceAnswers[index] || ''); // Берем ответ по индексу или пустую строку
+            .map(({ index }) => practiceAnswers[index] || '');
+
+        const formData = new FormData();
+        formData.append('studentResponseText', storyResponse);
+        formData.append('answers', JSON.stringify(orderedPracticeAnswers));
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
 
         try {
             await submitLesson({
                 lessonId: lesson.id,
-                answers: orderedPracticeAnswers,
-                studentResponseText: storyResponse,
+                formData: formData,
             }).unwrap();
             
-            toast.success("Отлично! Урок завершен. Загружаем следующий...", { duration: 2000 });
-            // RTK Query автоматически вызовет `getCurrentLesson` благодаря invalidatesTags.
-            // Нам не нужно ничего делать вручную.
+            toast.success("Отлично! Урок завершен. Загружаем следующий...", { duration: 3000 });
+            // The query will refetch automatically due to invalidation.
         } catch (err) {
             console.error('Error submitting lesson:', err);
             toast.error("Не удалось завершить урок.");
         }
     };
     
-    // --- РЕНДЕР КОМПОНЕНТА ---
-
     if (isLoading) {
         return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
     }
 
     if (isError) {
-        return <div className="text-center text-red-500 p-10">Ошибка загрузки урока. Пожалуйста, обновите страницу.</div>;
+        return <div className="text-center text-red-500 p-10">Ошибка загрузки урока. Пожалуйста, <button onClick={() => refetch()} className="underline">обновите</button>.</div>;
     }
 
     if (!lesson) {
@@ -100,7 +105,6 @@ export default function StudentAdventurePage() {
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
             <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
 
-            {/* БЛОК 1: Отображение контента урока (пошагово) */}
             {!isContentViewFinished && currentBlock && (
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
@@ -119,6 +123,21 @@ export default function StudentAdventurePage() {
                                     onChange={(e) => handleAnswerChange(e.target.value)}
                                     placeholder="Введите ваш ответ здесь..."
                                 />
+                                <div className="mt-4">
+                                    <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md cursor-pointer hover:bg-gray-300">
+                                        <FiUpload />
+                                        <span>{imageFile ? 'Изменить фото' : 'Прикрепить фото'}</span>
+                                    </label>
+                                    <input id="image-upload" type="file" className="hidden" onChange={handleFileSelect} accept="image/png, image/jpeg, image/webp" />
+                                    {imageFile && (
+                                    <div className="mt-2 relative inline-block align-middle ml-4">
+                                        <img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-20 w-20 object-cover rounded-md border-2 border-white shadow-sm" />
+                                        <button onClick={() => setImageFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 leading-none shadow-md hover:bg-red-600">
+                                            <FiX size={12} />
+                                        </button>
+                                    </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -130,17 +149,16 @@ export default function StudentAdventurePage() {
                 </div>
             )}
 
-            {/* БЛОК 2: Отображение истории и финальная отправка */}
             {isContentViewFinished && (
                  <div className="bg-indigo-50 rounded-lg shadow-md p-6">
                      <h2 className="text-2xl font-bold text-indigo-700 mb-4">Продолжение истории...</h2>
                      {lesson.storyChapter ? (
                          <>
-                             <div className="flex flex-col md:flex-row gap-6 items-center">
-                                 <p className="flex-1 text-gray-700 leading-relaxed italic">{lesson.storyChapter.teacherSnippetText}</p>
+                             <div className="flex flex-col md:flex-row gap-6 items-start">
                                  {lesson.storyChapter.teacherSnippetImageUrl && (
                                      <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>
                                  )}
+                                 <p className="flex-1 text-gray-700 leading-relaxed italic">{lesson.storyChapter.teacherSnippetText}</p>
                              </div>
                              <div className="mt-6">
                                  <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">

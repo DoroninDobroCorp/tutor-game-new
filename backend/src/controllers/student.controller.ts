@@ -1,8 +1,13 @@
-import { Request, Response } from 'express';
+import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { Lesson } from '@prisma/client';
 import { WebSocketService } from '../services/websocket.service';
+
+// Расширяем Request, чтобы он мог содержать файл
+interface Request extends ExpressRequest {
+    file?: Express.Multer.File;
+    user?: { userId: string; role: string; };
+}
 
 export const getStudentProfile = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -56,9 +61,8 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
 
   // Find the first lesson that:
   // 1. Belongs to the current student (through LearningGoal)
-  // 2. Has content status 'APPROVED'
-  // 3. Has story chapter status 'APPROVED'
-  // 4. Does NOT have status 'COMPLETED'
+  // 2. Has story chapter status 'APPROVED'
+  // 3. Does NOT have status 'COMPLETED'
   const currentLesson = await prisma.lesson.findFirst({
     where: {
       section: {
@@ -66,7 +70,6 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
           studentId: studentId,
         },
       },
-      status: 'APPROVED', // The lesson itself must be 'APPROVED'
       storyChapter: {
         teacherSnippetStatus: 'APPROVED',
       },
@@ -99,12 +102,11 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
 
   res.json({ success: true, data: currentLesson });
 };
-// ... (rest of the code remains the same)
 
 export const submitLessonHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
     const studentId = req.user?.userId;
-    const { answers = [], studentResponseText } = req.body;
+    const { studentResponseText } = req.body;
     
     if (!studentId) throw new AppError('Not authenticated', 401);
     if (!studentResponseText) throw new AppError('Story continuation is required', 400);
@@ -181,20 +183,18 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
         if (!teacher?.user || !student?.user) {
             throw new AppError('Teacher or student not found', 404);
         }
-        
-        if (!teacher || !student || !goalId) {
-            throw new AppError('Invalid lesson configuration', 400);
-        }
+
+        // Parse answers from stringified JSON
+        const answers = JSON.parse(req.body.answers || '[]');
 
         // Save practice answers to log
-        if (Array.isArray(answers)) {
+        if (Array.isArray(answers) && answers.length > 0) {
             const practiceBlocks = ((lesson.content as any)?.blocks || [])
                 .map((block: any, index: number) => ({ ...block, originalIndex: index }))
                 .filter((block: any) => block.type === 'practice');
 
             for (let i = 0; i < answers.length; i++) {
                 if (practiceBlocks[i]) {
-                    // Using raw SQL to avoid Prisma type issues with mapped fields
                     await tx.$executeRaw`
                         INSERT INTO student_performance_logs (
                             id, 
@@ -218,14 +218,25 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
             }
         }
 
+        // Prepare data for StoryChapter update
+        const storyUpdateData: {
+            studentSnippetText: string;
+            studentSnippetStatus: string;
+            studentSnippetImageUrl?: string;
+        } = {
+            studentSnippetText: studentResponseText,
+            studentSnippetStatus: 'SUBMITTED',
+        };
+
+        if (req.file) {
+            storyUpdateData.studentSnippetImageUrl = `/uploads/${req.file.filename}`;
+        }
+
         // Save student response and update lesson status in a single transaction
         const [_, updatedLesson] = await Promise.all([
             tx.storyChapter.update({
                 where: { lessonId },
-                data: {
-                    studentSnippetText: studentResponseText,
-                    studentSnippetStatus: 'SUBMITTED',
-                },
+                data: storyUpdateData,
             }),
             tx.lesson.update({
                 where: { id: lessonId },
@@ -264,7 +275,6 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
         }
     } catch (error) {
         console.error('Failed to send WebSocket notification:', error);
-        // Don't fail the request if WebSocket notification fails
     }
 
     res.status(200).json({
@@ -280,7 +290,6 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
     if (!studentId) throw new AppError('Not authenticated', 401);
     if (!goalId) throw new AppError('Goal ID is required', 400);
 
-    // Verify the goal belongs to this student
     const goal = await prisma.learningGoal.findFirst({
         where: { id: goalId, studentId },
         select: { id: true }
@@ -293,7 +302,6 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
     const storyChapters = await prisma.storyChapter.findMany({
         where: {
             learningGoalId: goalId,
-            // Only select approved teacher snippets
             teacherSnippetStatus: 'APPROVED',
         },
         select: {
@@ -301,8 +309,8 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
             teacherSnippetText: true,
             teacherSnippetImageUrl: true,
             studentSnippetText: true,
-            // studentSnippetImageUrl: true, // Uncomment if you generate images for student responses
-            lesson: { // Include lesson to get its title
+            studentSnippetImageUrl: true, // Also select student image
+            lesson: {
                 select: {
                     title: true,
                     order: true
