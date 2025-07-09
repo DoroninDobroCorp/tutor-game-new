@@ -5,7 +5,7 @@ import { generateRoadmap } from '../services/openai.service';
 
 export const generateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
-    const { existingPlan, feedback } = (req.body || {}) as { existingPlan?: any[], feedback?: string };
+    const { chatHistory } = req.body as { chatHistory?: any[] };
 
     const goal = await prisma.learningGoal.findUnique({ 
         where: { id: goalId },
@@ -13,13 +13,6 @@ export const generateRoadmapHandler = async (req: Request, res: Response) => {
             subject: true,
             studentAge: true,
             language: true,
-            setting: true,
-            student: {
-                select: {
-                    firstName: true,
-                    lastName: true
-                }
-            }
         }
     });
     
@@ -29,14 +22,15 @@ export const generateRoadmapHandler = async (req: Request, res: Response) => {
     
     const language = goal.language || 'Russian';
     
+    // Pass chat history to the service
     const roadmapProposal = await generateRoadmap(
         goal.subject,
         goal.studentAge,
         language,
-        existingPlan,
-        feedback
+        chatHistory
     );
     
+    // The 'roadmapProposal' now contains both a 'chatResponse' and 'roadmap'
     res.json({ success: true, data: roadmapProposal });
 };
 

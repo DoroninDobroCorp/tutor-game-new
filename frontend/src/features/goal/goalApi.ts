@@ -8,7 +8,6 @@ import type {
 
 export const goalApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
-        // Получение всех целей обучения
         getLearningGoals: builder.query<LearningGoal[], void>({
             query: () => ({
                 url: '/goals',
@@ -24,7 +23,6 @@ export const goalApi = apiSlice.injectEndpoints({
                     : [{ type: 'Goal', id: 'LIST' }],
         }),
         
-        // Получение цели обучения по ID
         getLearningGoalById: builder.query<LearningGoal, string>({
             query: (goalId) => ({
                 url: `/goals/${goalId}`,
@@ -34,8 +32,7 @@ export const goalApi = apiSlice.injectEndpoints({
             providesTags: (_result, _error, id) => [{ type: 'Goal', id }],
         }),
 
-        // Создание новой цели обучения
-        createLearningGoal: builder.mutation<LearningGoal, { subject: string; setting: string; studentAge: number }>({
+        createLearningGoal: builder.mutation<LearningGoal, Partial<LearningGoal>>({
             query: (data) => ({
                 url: '/goals',
                 method: 'POST',
@@ -45,7 +42,6 @@ export const goalApi = apiSlice.injectEndpoints({
             invalidatesTags: [{ type: 'Goal', id: 'LIST' }],
         }),
 
-        // Удаление цели обучения
         deleteLearningGoal: builder.mutation<void, string>({
             query: (goalId) => ({
                 url: `/goals/${goalId}`,
@@ -57,63 +53,31 @@ export const goalApi = apiSlice.injectEndpoints({
             ],
         }),
 
-        // Генерация предложения по учебному плану
-        generateRoadmapProposal: builder.mutation<RoadmapProposal[], { 
+        generateRoadmapProposal: builder.mutation<RoadmapProposal, { 
             goalId: string; 
-            existingPlan?: ContentSection[]; 
-            feedback?: string 
+            chatHistory: any[]; 
         }>({
-            query: ({ goalId, ...data }) => ({
+            query: ({ goalId, chatHistory }) => ({
                 url: `/goals/${goalId}/generate-roadmap`,
                 method: 'POST',
-                data,
+                data: { chatHistory },
             }),
-            transformResponse: (response: { data: RoadmapProposal[] }) => response.data,
+            transformResponse: (response: { data: RoadmapProposal }) => response.data,
         }),
 
-        // Обновление учебного плана
-        updateRoadmap: builder.mutation<LearningGoal, { goalId: string; roadmap: ContentSection[] }>({
+        updateRoadmap: builder.mutation<LearningGoal, { goalId: string; roadmap: any[] }>({
             query: ({ goalId, roadmap }) => ({
                 url: `/goals/${goalId}/roadmap`,
                 method: 'PUT',
                 data: { roadmap },
             }),
             transformResponse: (response: { data: LearningGoal }) => response.data,
-            async onQueryStarted({ goalId, roadmap }, { dispatch, queryFulfilled }) {
-                // Оптимистичное обновление
-                const patchResult = dispatch(
-                    goalApi.util.updateQueryData('getLearningGoalById', goalId, (draft) => {
-                        if (draft) {
-                            draft.sections = roadmap;
-                        }
-                    })
-                );
-
-                try {
-                    // Ждем ответа от сервера
-                    const { data: updatedGoal } = await queryFulfilled;
-                    
-                    // Обновляем кэш данными с сервера
-                    dispatch(
-                        goalApi.util.updateQueryData('getLearningGoalById', goalId, (draft) => {
-                            if (draft) {
-                                Object.assign(draft, updatedGoal);
-                            }
-                        })
-                    );
-                } catch {
-                    // В случае ошибки откатываем изменения
-                    patchResult.undo();
-                    toast.error('Не удалось сохранить изменения. Пожалуйста, попробуйте снова.');
-                }
-            },
             invalidatesTags: (_, __, { goalId }) => [
                 { type: 'Goal', id: goalId },
                 { type: 'Goal', id: 'LIST' }
             ],
         }),
 
-        // Генерация персонажа для цели
         generateCharacterForGoal: builder.mutation<LearningGoal, { goalId: string; prompt: string }>({
             query: ({ goalId, prompt }) => ({
                 url: `/goals/${goalId}/generate-character`,
@@ -121,27 +85,12 @@ export const goalApi = apiSlice.injectEndpoints({
                 data: { prompt },
             }),
             transformResponse: (response: { data: LearningGoal }) => response.data,
-            // Автоматически обновляет кэш при успешной мутации
             invalidatesTags: (_result, _error, { goalId }) => [
                 { type: 'Goal', id: goalId }, 
                 { type: 'Goal', id: 'LIST' }
             ],
         }),
 
-        // Подтверждение персонажа
-        approveCharacterForGoal: builder.mutation<void, { goalId: string; isApproved: boolean }>({
-            query: ({ goalId, isApproved }) => ({
-                url: `/goals/${goalId}/character/approve`,
-                method: 'POST',
-                data: { isApproved },
-            }),
-            invalidatesTags: (_, __, { goalId }) => [
-                { type: 'Goal', id: goalId },
-                { type: 'Goal', id: 'LIST' }
-            ],
-        }),
-
-        // Загрузка своего изображения для персонажа
         uploadCharacterImage: builder.mutation<LearningGoal, { goalId: string; image: File; prompt?: string }>({
             query: ({ goalId, image, prompt }) => {
                 const formData = new FormData();
@@ -154,27 +103,11 @@ export const goalApi = apiSlice.injectEndpoints({
                     url: `/goals/${goalId}/upload-character`,
                     method: 'POST',
                     data: formData,
-                    isFormData: true // Add this flag to handle FormData properly
+                    isFormData: true
                 };
             },
             transformResponse: (response: { data: LearningGoal }) => response.data,
             invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Goal', id: goalId }],
-            async onQueryStarted({ goalId }, { dispatch, queryFulfilled }) {
-                const patchResult = dispatch(
-                    goalApi.util.updateQueryData('getLearningGoals', undefined, (draft) => {
-                        const goal = draft?.find(g => g.id === goalId);
-                        if (goal) {
-                            // Update the character prompt status instead of characterStatus
-                            goal.characterPrompt = 'PENDING_APPROVAL';
-                        }
-                    })
-                );
-                try {
-                    await queryFulfilled;
-                } catch {
-                    patchResult.undo();
-                }
-            },
         }),
     }),
 });
@@ -187,6 +120,5 @@ export const {
     useGenerateRoadmapProposalMutation,
     useUpdateRoadmapMutation,
     useGenerateCharacterForGoalMutation,
-    useApproveCharacterForGoalMutation,
     useUploadCharacterImageMutation,
 } = goalApi;

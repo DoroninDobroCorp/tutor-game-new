@@ -23,9 +23,9 @@ export const lessonApi = apiSlice.injectEndpoints({
                 result?.data ? [{ type: 'Lesson', id: result.data.generationId }] : [],
         }),
         // УПРАВЛЕНИЕ КОНТЕНТОМ УРОКА
-        generateLessonContent: builder.mutation<{ data: Lesson }, { lessonId: string }>({
-            query: ({ lessonId }) => ({
-                url: `/lessons/${lessonId}/generate-content`,
+        generateLessonContent: builder.mutation<{ data: { chatResponse: string, blocks: any[] } }, { lessonId: string; chatHistory: any[] }>({
+            query: ({ lessonId, chatHistory }) => ({
+                url: `/lessons/${lessonId}/generate-content`, data: { chatHistory },
                 method: 'POST',
             }),
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],

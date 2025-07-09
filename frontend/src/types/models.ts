@@ -92,6 +92,11 @@ export interface PerformanceLog {
 }
 
 export interface RoadmapProposal {
+    chatResponse: string;
+    roadmap: { sectionTitle: string; lessons: string[] }[];
+}
+
+export interface OldRoadmapProposal {
     sectionTitle: string;
     lessons: string[];
 }

@@ -36,65 +36,61 @@ export const generateMathProblem = async (topic: string, difficulty: number) => 
 };
 
 export const generateLessonContent = async (
-    lessonTitle: string, 
-    subject: string, 
-    studentAge: number, 
-    setting: string, 
+    lessonTitle: string,
+    subject: string,
+    studentAge: number,
+    setting: string,
     language: string,
-    performanceContext?: string // <-- 1. Добавлен новый необязательный параметр
+    performanceContext?: string,
+    chatHistory: { role: 'user' | 'assistant', content: string }[] = []
 ) => {
-    // 2. Базовое системное сообщение остается как есть
-    let systemMessage = `
-You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
-Your task is to create content for a single lesson titled "${lessonTitle}" within a larger subject of "${subject}" for a ${studentAge}-year-old student.
-The lesson should be broken down into a series of small, manageable blocks, each lasting 3-13 minutes.
+    let systemMessage = `You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
+Your task is to have a conversation with a teacher to create content for a single lesson titled "${lessonTitle}" for a ${studentAge}-year-old student, within the subject of "${subject}".
 
 RULES:
-1.  Your response MUST BE ONLY a valid JSON object with a single root key "blocks".
-2.  "blocks" must be an array of objects.
-3.  Each block object must have three keys:
-    - - "type": "theory", "practice", or "youtube".
-    - "duration": an estimated time in minutes (number, 3-13).
-    - "content": For "theory" and "practice", this is text. For "youtube", this MUST be only the full YouTube URL.
-4.  **Pedagogical value is the #1 priority.** The lesson must be accurate, logical, and age-appropriate.
-5.  The theme "${setting}" is secondary. Use it for examples or narrative framing ONLY if it enhances the lesson and does not compromise the educational goal. Do not invent concepts to fit the theme.
-6.  If the topic is complex, create more blocks. If it's simple, create fewer.
+1.  Your response MUST BE ONLY a valid JSON object with TWO root keys:
+    - "chatResponse": A string containing your conversational reply to the teacher. This is where you explain your choices or ask clarifying questions.
+    - "blocks": An array of lesson block objects.
+2.  "blocks" must be an array. Each block object must have three keys:
+    - "type": Can be "theory", "practice", or "youtube".
+    - "duration": An estimated time in minutes (number).
+    - "content": For "theory" and "practice", this is text content. For "youtube", this MUST be only the full YouTube URL.
+3.  Be conversational in "chatResponse" but strict with the JSON format.
+4.  The theme "${setting}" is for framing, don't sacrifice pedagogy for it.
+5.  If a student performance context is provided, analyze it and mention your findings in the "chatResponse".
 
 Example Response Format:
 {
+  "chatResponse": "Great idea to add a video! I've found one that explains the concept visually and added a new practice block to reinforce it. How does this look?",
   "blocks": [
-    {
-      "type": "theory",
-      "duration": 5,
-      "content": "This is the theoretical part of the lesson..."
-    },
-    {
-      "type": "practice",
-      "duration": 8,
-      "content": "This is a practical task or question for the student..."
-    }
+    { "type": "theory", "duration": 5, "content": "..." },
+    { "type": "youtube", "duration": 4, "content": "https://www.youtube.com/watch?v=some_id" },
+    { "type": "practice", "duration": 8, "content": "..." }
   ]
-}
-`;
+}`;
 
-    // 3. Если контекст успеваемости передан, дополняем системное сообщение
     if (performanceContext) {
-        systemMessage += `
----
-IMPORTANT CONTEXT: Below are the student's previous raw answers. Analyze them to understand the student's level. 
-If you see mistakes or uncertainty in the answers, create more practice blocks on those topics. If the student seems confident, you can introduce a more complex task. Do not comment on the student's answers, just use them to build a better, more adaptive lesson.
+        systemMessage += `\n\n---
+IMPORTANT CONTEXT: Below are the student's previous raw answers. Analyze them to understand the student's level and inform your lesson plan.
 Student's performance context: ${performanceContext}`;
     }
 
-    const userMessage = `Generate the lesson content for "${lessonTitle}".`;
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: 'system', content: systemMessage }];
+
+    if (chatHistory.length === 0) {
+        messages.push({ role: 'user', content: `Generate the initial lesson content for "${lessonTitle}".` });
+    } else {
+        const openAiChatHistory = chatHistory.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+        }))
+        messages.push(...openAiChatHistory);
+    }
 
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-4-turbo',
-            messages: [
-                { role: 'system', content: systemMessage }, // <-- Используем дополненный systemMessage
-                { role: 'user', content: userMessage }
-            ],
+            messages: messages,
             response_format: { type: "json_object" },
         });
 
@@ -104,8 +100,8 @@ Student's performance context: ${performanceContext}`;
         }
 
         const parsedJson = JSON.parse(content);
-        if (!parsedJson.blocks || !Array.isArray(parsedJson.blocks)) {
-            throw new Error("AI did not return a valid 'blocks' array.");
+        if (!parsedJson.blocks || !Array.isArray(parsedJson.blocks) || typeof parsedJson.chatResponse !== 'string') {
+            throw new Error("AI did not return a valid { chatResponse, blocks } object.");
         }
 
         return parsedJson;
@@ -139,7 +135,6 @@ export const generateStorySnippet = async (
     let userPrompt = '';
 
     if (storyContext) {
-        // Context already includes teacher's text and student's response
         userPrompt += `${storyContext}\n\n`;
         userPrompt += `Based on the student's response, continue the story, naturally leading into the new lesson: "${lessonTitle}".`;
     } else {
@@ -257,53 +252,40 @@ export const generateRoadmap = async (
     subject: string,
     age: number,
     language: string,
-    existingPlan?: any,
-    feedback?: string
+    chatHistory: { role: 'user' | 'assistant', content: string }[] = []
 ) => {
-  console.log(`[LOG] 1. Starting generateRoadmap for subject: ${subject}, age: ${age}, language: ${language}`);
-  
-  const systemMessage = `You are a world-class curriculum designer and a creative methodologist for children's education. 
-Your task is to create a comprehensive, engaging, and logically structured learning plan for a ${age}-year-old student in ${language}.
-The plan must be broken down into logical sections, and each section into specific, bite-sized lesson titles.
+  const systemMessage = `You are a world-class curriculum designer. Your task is to have a conversation with a teacher to create a learning plan for a ${age}-year-old student in ${language}.
+
+The main learning goal is: "${subject}".
 
 RULES:
-1.  Analyze the user's main goal.
-2.  Structure the entire curriculum into several thematic sections. The section titles should be creative and engaging.
-3.  Each section must contain a list of short, clear, and actionable lesson titles.
-4.  If an existing plan and teacher feedback are provided, you MUST use them as a basis to refine and improve the plan, not create a new one.
-5.  Your response MUST BE ONLY a valid JSON object with a single root key "roadmap", which contains an array of section objects.
+1.  Your response MUST BE ONLY a valid JSON object with TWO root keys:
+    - "chatResponse": A string containing your conversational reply to the teacher. This is where you explain your choices.
+    - "roadmap": An array of section objects.
+2.  Each section object in the "roadmap" array must have "sectionTitle" (string) and "lessons" (array of strings representing lesson titles).
+3.  Analyze the user's main goal ("${subject}") and the entire chat history to refine the plan.
+4.  Be conversational in "chatResponse" but strict with the JSON format.
 
 Example format:
 {
+  "chatResponse": "I've updated the plan to include a section on fractions as you suggested. I also moved the geometry section to be later in the plan. Does this look better?",
   "roadmap": [
-    {
-      "sectionTitle": "Section 1: The Basics",
-      "lessons": ["Lesson 1.1: First Topic", "Lesson 1.2: Second Topic"]
-    },
-    {
-      "sectionTitle": "Section 2: Advanced Concepts",
-      "lessons": ["Lesson 2.1: Third Topic", "Lesson 2.2: Fourth Topic"]
-    }
+    { "sectionTitle": "Section 1: The Basics", "lessons": ["Lesson 1.1: First Topic", "Lesson 1.2: Second Topic"] },
+    { "sectionTitle": "Section 2: Advanced Concepts", "lessons": ["Lesson 2.1: Third Topic", "Lesson 2.2: Fourth Topic"] }
   ]
 }`;
   
-  let userMessage = `The main learning goal is: "${subject}". Create a complete, sectioned learning plan.`;
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: 'system', content: systemMessage }];
 
-  if (existingPlan && existingPlan.length > 0) {
-    userMessage = `Here is the current version of the plan that needs to be improved:\n${JSON.stringify(existingPlan, null, 2)}`;
-    if (feedback) {
-      userMessage += `\n\nPlease apply the following instructions from the teacher to improve the plan: "${feedback}"`;
-    } else {
-      userMessage += '\n\nPlease review and improve this plan to make it more logical and engaging.';
-    }
+  if (chatHistory.length === 0) {
+    messages.push({ role: 'user', content: `Create the initial complete, sectioned learning plan.` });
+  } else {
+    const openAiChatHistory = chatHistory.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+    }))
+    messages.push(...openAiChatHistory);
   }
-
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemMessage },
-    { role: 'user', content: userMessage }
-  ];
-
-  console.log('[LOG] 2. Sending request to OpenAI with messages:', JSON.stringify(messages, null, 2));
 
   try {
     const completion = await openai.chat.completions.create({
@@ -312,30 +294,20 @@ Example format:
       response_format: { type: "json_object" },
     });
 
-    console.log('[LOG] 3. Received FULL response object from OpenAI:', JSON.stringify(completion, null, 2));
     const content = completion.choices[0]?.message?.content;
 
     if (!content) {
       const finishReason = completion.choices[0]?.finish_reason;
-      console.error(`[ERROR] 4. OpenAI response content is empty. Finish reason: ${finishReason}`);
       throw new Error(`No content received from OpenAI. Finish reason: ${finishReason}`);
     }
     
-    console.log(`[LOG] 4. Raw "content" from OpenAI:\n---\n${content}\n---`);
-    
-    console.log(`[LOG] 5. Attempting to parse JSON...`);
     const parsedJson = JSON.parse(content);
-    console.log(`[LOG] 6. JSON parsed successfully.`);
 
-    const roadmapArray = parsedJson.roadmap;
-
-    if (!Array.isArray(roadmapArray)) {
-      console.error("[ERROR] 7. Parsed data does not contain a 'roadmap' array.");
-      throw new Error("AI did not return a valid 'roadmap' array.");
+    if (!parsedJson.roadmap || !Array.isArray(parsedJson.roadmap) || typeof parsedJson.chatResponse !== 'string') {
+        throw new Error("AI did not return a valid 'roadmap' array or 'chatResponse' string.");
     }
     
-    console.log(`[LOG] 8. Success! Roadmap array extracted.`);
-    return roadmapArray;
+    return parsedJson;
 
   } catch (error) {
     console.error('[FATAL ERROR] An error occurred in generateRoadmap:', error);

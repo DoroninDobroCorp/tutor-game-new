@@ -5,6 +5,7 @@ import { generateLessonContent } from '../services/openai.service';
 
 export const generateLessonContentHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
+    const { chatHistory } = req.body;
     const teacherId = req.user?.userId;
 
     const lesson = await prisma.lesson.findUnique({
@@ -29,21 +30,29 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
     });
 
     const performanceContext = performanceLogs.length > 0
-        ? "Context on student's previous answers: " + performanceLogs.map(log => 
-            `Student's answer: "${log.answer}"${log.aiNote ? `. AI note: "${log.aiNote}"` : ''}`
-          ).join('; ')
+        ? "Context on student's previous answers: " + performanceLogs.map(log => {
+            let context = '';
+            if (log.question) {
+                context += `For question: "${log.question}", `
+            }
+            context += `student answered: "${log.answer}"`;
+            if (log.isCorrect !== null && log.isCorrect !== undefined) {
+                context += ` (this was ${log.isCorrect ? 'correct' : 'incorrect'})`
+            }
+            if (log.aiNote) {
+                context += `. AI note: "${log.aiNote}"`;
+            }
+            return context;
+        }).join('; ')
         : undefined;
         
-    const generatedContent = await generateLessonContent(
-        lesson.title, subject, studentAge, setting, language || 'Russian', performanceContext 
+    const generatedData = await generateLessonContent(
+        lesson.title, subject, studentAge, setting, language || 'Russian', performanceContext, chatHistory
     );
     
-    const updatedLesson = await prisma.lesson.update({
-        where: { id: lessonId },
-        data: { content: generatedContent, status: 'PENDING_APPROVAL' }
-    });
-    
-    res.json({ success: true, data: updatedLesson });
+    // The 'generatedData' object now contains both 'chatResponse' and 'blocks'
+    // We don't save to db, just return the AI's proposal
+    res.json({ success: true, data: generatedData });
 };
 
 export const updateLessonContentHandler = async (req: Request, res: Response) => {
