@@ -29,7 +29,19 @@ export const goalApi = apiSlice.injectEndpoints({
                 method: 'GET',
             }),
             transformResponse: (response: { data: LearningGoal }) => response.data,
-            providesTags: (_result, _error, id) => [{ type: 'Goal', id }],
+            providesTags: (result, _error, id) => {
+                const tags: any[] = [{ type: 'Goal', id }];
+                if (result?.sections) {
+                    result.sections.forEach(section => {
+                        if (section.lessons) {
+                            section.lessons.forEach(lesson => {
+                                tags.push({ type: 'Lesson', id: lesson.id });
+                            });
+                        }
+                    });
+                }
+                return tags;
+            },
         }),
 
         createLearningGoal: builder.mutation<LearningGoal, Partial<LearningGoal>>({
