@@ -53,9 +53,9 @@ RULES:
 1.  Your response MUST BE ONLY a valid JSON object with a single root key "blocks".
 2.  "blocks" must be an array of objects.
 3.  Each block object must have three keys:
-    - "type": either "theory" or "practice".
+    - - "type": "theory", "practice", or "youtube".
     - "duration": an estimated time in minutes (number, 3-13).
-    - "content": the actual text for the block. For "practice" blocks, this should be the question or task.
+    - "content": For "theory" and "practice", this is text. For "youtube", this MUST be only the full YouTube URL.
 4.  **Pedagogical value is the #1 priority.** The lesson must be accurate, logical, and age-appropriate.
 5.  The theme "${setting}" is secondary. Use it for examples or narrative framing ONLY if it enhances the lesson and does not compromise the educational goal. Do not invent concepts to fit the theme.
 6.  If the topic is complex, create more blocks. If it's simple, create fewer.

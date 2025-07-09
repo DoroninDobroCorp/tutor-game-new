@@ -4,8 +4,8 @@
 Скрипт интерактивно запрашивает у пользователя цель и опциональный лог ошибки,
 а затем итеративно взаимодействует с моделью Gemini для достижения цели.
 """
-
-import google.generativeai as genai
+import vertexai
+from vertexai.generative_models import GenerativeModel, HarmCategory, HarmBlockThreshold
 import os
 import subprocess
 import time
@@ -13,43 +13,57 @@ import re
 import platform
 import sys
 
+# --- Класс для цветов в консоли ---
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    CYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 # --- НАСТРОЙКИ ---
-API_KEY = 'AIzaSyBlW_LcWYEYivEhPo7Q7Lc_vmNu-wtI-wM' 
+GOOGLE_CLOUD_PROJECT = "useful-gearbox-464618-v3"
+GOOGLE_CLOUD_LOCATION = "us-central1"
+MODEL_NAME = "gemini-2.5-pro" 
+
 CONTEXT_SCRIPT = 'AskGpt.py'
 CONTEXT_FILE = 'message_1.txt'
-MODEL_NAME = "gemini-2.5-pro"
 ALLOWED_COMMANDS = (
     "sed", "rm", "mv", "touch", "mkdir", "npm", "npx", "yarn", "pnpm", "git", "echo", "./", "cat"
 )
 MAX_ITERATIONS = 15
-API_TIMEOUT_SECONDS = 600
+API_TIMEOUT_SECONDS = 600 # Этот параметр больше не используется в вызове API, но оставлен для справки
 
 # --- КОНФИГУРАЦИЯ МОДЕЛИ ---
-print(f"ЛОГ: Начинаю конфигурацию. Модель: {MODEL_NAME}")
+print(f"{Colors.CYAN}⚙️  ЛОГ: Начинаю конфигурацию. Модель: {MODEL_NAME}{Colors.ENDC}")
 try:
-    if 'YOUR_API_KEY' in API_KEY:
-        raise ValueError("Необходимо указать API_KEY в скрипте sloth.py.")
-    genai.configure(api_key=API_KEY)
-    print("ЛОГ: API сконфигурировано успешно.")
+    vertexai.init(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION)
+    print(f"{Colors.OKGREEN}✅ ЛОГ: Vertex AI SDK успешно инициализирован для проекта '{GOOGLE_CLOUD_PROJECT}'.{Colors.ENDC}")
 except Exception as e:
-    print(f"ЛОГ: ОШИБКА конфигурации API: {e}")
+    print(f"{Colors.FAIL}❌ ЛОГ: ОШИБКА инициализации Vertex AI SDK: {e}{Colors.ENDC}")
+    print(f"{Colors.WARNING}⚠️  ПОДСКАЗКА: Убедитесь, что вы аутентифицированы. Выполните в терминале: gcloud auth application-default login{Colors.ENDC}")
     sys.exit(1)
 
 generation_config = {
     "temperature": 1, "top_p": 1, "top_k": 1, "max_output_tokens": 32768
 }
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-]
-model = genai.GenerativeModel(
+safety_settings = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
+
+model = GenerativeModel(
     model_name=MODEL_NAME,
     generation_config=generation_config,
     safety_settings=safety_settings
 )
-print(f"ЛОГ: Модель '{MODEL_NAME}' создана.")
+print(f"{Colors.OKGREEN}✅ ЛОГ: Модель '{MODEL_NAME}' создана.{Colors.ENDC}")
 
 
 # --- БЛОК ПРОМПТ-ШАБЛОНОВ ---
@@ -64,6 +78,7 @@ def get_command_rules():
 1.  **СТРАТЕГИЯ ИЗМЕНЕНИЙ:**
     *   **Точечные правки предпочтительнее:** Для больших файлов старайся использовать `sed` для точечных замен, вставок или удалений строк. Это безопаснее.
     *   **Полная перезапись:** Если точечная правка невозможна или слишком сложна, можно использовать `cat <<'EOF' > path/to/file.txt ... EOF` для полной перезаписи. **В этом случае будь предельно аккуратен, чтобы не удалить случайно другие части файла и сохранить исходное форматирование.**
+    *   **ЗАЩИТА ОТ ПОТЕРИ ДАННЫХ (Критически важно!):** Если файл, который ты хочешь изменить, содержит **более 150 строк**, тебе **СТРОГО ЗАПРЕЩЕНО** переписывать его целиком через `cat <<'EOF' > ...`. Для таких файлов ты **ОБЯЗАН** использовать только точечные команды (`sed`) для внесения правок. Это ключевая мера безопасности для предотвращения потери данных.
 
 2.  **ФОРМАТ ОТВЕТА — ЭТО ЗАКОН:**
     *   **Действия:** Если нужны правки, предоставь **только** блок команд, обернутый в ```bash ... ```. Никаких комментариев вне блока.
@@ -137,33 +152,28 @@ def get_error_fixing_prompt(failed_command, error_message, goal, context):
 # --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
 def notify_user(message):
-    print(f"ЛОГ: Отправляю уведомление: {message}")
+    print(f"{Colors.OKBLUE}📢 ЛОГ: Отправляю уведомление: {message.replace(Colors.ENDC, '')}{Colors.ENDC}")
     system = platform.system()
     try:
         if system == "Darwin":
-            # Всплывающее окно на macOS
-            script = f'''
-            tell application "System Events"
-                display dialog "{message}" with icon stop buttons {"OK"} default button "OK" giving up after 10
-            end tell
-            '''
-            subprocess.run(['osascript', '-e', script], check=True, timeout=10)
-            # Звук через afplay (предположим, что у вас есть системный звук)
-            subprocess.run(['afplay', '/System/Library/Sounds/Glass.aiff'], check=True, timeout=5)
+            ### ИЗМЕНЕНИЕ 2: Замена звука на более длинный и заметный ###
+            # Звук через afplay (самый надежный способ на macOS)
+            subprocess.run(['afplay', '/System/Library/Sounds/Sosumi.aiff'], check=True, timeout=5)
+            ### КОНЕЦ ИЗМЕНЕНИЯ 2 ###
         elif system == "Linux":
             # Всплывающее окно на Ubuntu
             subprocess.run(['zenity', '--info', '--text', message, '--title', 'Sloth Script', '--timeout=10', '--window-icon=info'], check=True, timeout=10)
             # Звук через aplay (или другой аудиопроигрыватель)
-            subprocess.run(['aplay', '/usr/share/sounds/alsa/Front_Center.wav'], check=True)  # Замените на ваш звук
+            subprocess.run(['aplay', '/usr/share/sounds/alsa/Front_Center.wav'], check=True)
         elif system == "Windows":
             # Всплывающее окно на Windows
             command = f'powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show(\'{message}\', \'Sloth Script\');"'
             subprocess.run(command, shell=True, check=True, timeout=30)
     except Exception as e:
-        print(f"ПРЕДУПРЕЖДЕНИЕ: Не удалось отправить визуальное уведомление. Ошибка: {e}.")
+        print(f"{Colors.WARNING}⚠️  ПРЕДУПРЕЖДЕНИЕ: Не удалось отправить системное уведомление. Ошибка: {e}.{Colors.ENDC}")
 
 def get_project_context():
-    print("ЛОГ: Обновляю контекст проекта...")
+    print(f"{Colors.CYAN}🔄 ЛОГ: Обновляю контекст проекта...{Colors.ENDC}")
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         script_to_run_path = os.path.join(script_dir, CONTEXT_SCRIPT)
@@ -176,10 +186,10 @@ def get_project_context():
         with open(context_file_path, 'r', encoding='utf-8') as f:
             context_data = f.read()
 
-        print(f"ЛОГ: Контекст успешно обновлен. Размер: {len(context_data)} символов.")
+        print(f"{Colors.OKGREEN}✅ ЛОГ: Контекст успешно обновлен. Размер: {len(context_data)} символов.{Colors.ENDC}")
         return context_data
     except Exception as e:
-        print(f"ЛОГ: КРИТИЧЕСКАЯ ОШИБКА в get_project_context: {e}")
+        print(f"{Colors.FAIL}❌ ЛОГ: КРИТИЧЕСКАЯ ОШИБКА в get_project_context: {e}{Colors.ENDC}")
         return None
 
 def extract_todo_block(text):
@@ -195,27 +205,27 @@ def extract_manual_steps_block(text):
     return None
 
 def apply_shell_commands(commands_str):
-    print("ЛОГ: Вход в функцию apply_shell_commands().")
+    print(f"{Colors.OKBLUE}  [Детали] Вход в apply_shell_commands().{Colors.ENDC}")
     try:
         is_macos = platform.system() == "Darwin"
         commands_str_adapted = re.sub(r"sed -i ", "sed -i '.bak' ", commands_str) if is_macos else commands_str
             
-        print(f"ЛОГ: Выполняю блок команд:\n---\n{commands_str_adapted}\n---")
+        print(f"{Colors.WARNING}⚡️ ЛОГ: Выполняю блок команд:\n---\n{commands_str_adapted}\n---{Colors.ENDC}")
         result = subprocess.run(['bash', '-c', commands_str_adapted], check=True, capture_output=True, text=True, encoding='utf-8')
 
         if result.stdout: print(f"STDOUT:\n{result.stdout.strip()}")
-        if result.stderr: print(f"ПРЕДУПРЕЖДЕНИЕ (STDERR):\n{result.stderr.strip()}")
+        if result.stderr: print(f"{Colors.WARNING}⚠️  ПРЕДУПРЕЖДЕНИЕ (STDERR):\n{result.stderr.strip()}{Colors.ENDC}")
         
         if is_macos: subprocess.run("find . -name '*.bak' -delete", shell=True, check=True)
 
-        print("ЛОГ: Блок команд успешно выполнен.")
+        print(f"{Colors.OKGREEN}✅ ЛОГ: Блок команд успешно выполнен.{Colors.ENDC}")
         return True, None, None
     except subprocess.CalledProcessError as e:
         error_msg = f"Команда: 'bash -c \"...\"'\nОшибка: {e.stderr.strip()}"
-        print(f"ЛОГ: КРИТИЧЕСКАЯ ОШИБКА при выполнении блока команд.\n{error_msg}")
+        print(f"{Colors.FAIL}❌ ЛОГ: КРИТИЧЕСКАЯ ОШИБКА при выполнении блока команд.\n{error_msg}{Colors.ENDC}")
         return False, commands_str, e.stderr.strip()
     except Exception as e:
-        print(f"ЛОГ: Непредвиденная ОШИБКА в apply_shell_commands: {e}")
+        print(f"{Colors.FAIL}❌ ЛОГ: Непредвиденная ОШИБКА в apply_shell_commands: {e}{Colors.ENDC}")
         return False, commands_str, str(e)
 
 
@@ -230,18 +240,23 @@ def extract_filepath_from_command(command):
 
 def send_request_to_model(prompt_text):
     try:
-        print(f"ЛОГ: Отправляю запрос в модель... Размер промпта: ~{len(prompt_text)} символов.")
+        print(f"{Colors.CYAN}🧠 ЛОГ: Отправляю запрос в модель... Размер промпта: ~{len(prompt_text)} символов.{Colors.ENDC}")
         prompt_preview = re.sub(r'--- КОНТЕКСТ ПРОЕКТА.*---(.|\n|\r)*--- КОНЕЦ КОНТЕКСТА ---', '--- КОНТЕКСТ ПРОЕКТА (скрыт) ---', prompt_text, flags=re.DOTALL)
         prompt_preview = re.sub(r'--- СОДЕРЖИМОЕ ФАЙЛА.*---(.|\n|\r)*--- КОНЕЦ СОДЕРЖИМОГО ФАЙЛА ---', '--- СОДЕРЖИМОЕ ФАЙЛА (скрыто) ---', prompt_preview, flags=re.DOTALL)
-        print(f"ЛОГ: Структура отправляемого промпта:\n---\n{prompt_preview}\n---")
-        response = model.generate_content(prompt_text, request_options={'timeout': API_TIMEOUT_SECONDS})
+        print(f"{Colors.OKBLUE}  [Детали] Структура отправляемого промпта:\n---\n{prompt_preview}\n---{Colors.ENDC}")
+        
+        ### ИЗМЕНЕНИЕ 1: Удаление request_options из вызова ###
+        # API Vertex AI не принимает этот аргумент в `generate_content`.
+        response = model.generate_content(prompt_text)
+        ### КОНЕЦ ИЗМЕНЕНИЯ 1 ###
+
         if not response.candidates or response.candidates[0].finish_reason.name != "STOP":
             reason = response.candidates[0].finish_reason.name if response.candidates else "Неизвестно"
-            print(f"ЛОГ: ОШИБКА: Ответ от модели не получен или был прерван. Причина: {reason}")
+            print(f"{Colors.FAIL}❌ ЛОГ: ОШИБКА: Ответ от модели не получен или был прерван. Причина: {reason}{Colors.ENDC}")
             return None
         return response.text
     except Exception as e:
-        print(f"ЛОГ: ОШИБКА при запросе к API: {e}")
+        print(f"{Colors.FAIL}❌ ЛОГ: ОШИБКА при запросе к API: {e}{Colors.ENDC}")
         return None
 
 def _read_multiline_input(prompt):
@@ -263,13 +278,13 @@ def _read_multiline_input(prompt):
 
 def get_user_input():
     """Интерактивный ввод цели и опционального лога ошибки."""
-    goal_prompt = "Привет! Опиши свою основную цель. (Для завершения ввода, нажми Enter 3 раза подряд)"
+    goal_prompt = f"{Colors.HEADER}{Colors.BOLD}👋 Привет! Опиши свою основную цель. (Для завершения ввода, нажми Enter 3 раза подряд){Colors.ENDC}"
     user_goal = _read_multiline_input(goal_prompt)
 
     if not user_goal:
         return None, None
 
-    log_prompt = "\nОтлично. Теперь, если есть лог ошибки, вставь его. Если нет, просто нажми Enter 3 раза."
+    log_prompt = f"\n{Colors.HEADER}{Colors.BOLD}👍 Отлично. Теперь, если есть лог ошибки, вставь его. Если нет, просто нажми Enter 3 раза.{Colors.ENDC}"
     error_log = _read_multiline_input(log_prompt)
 
     return user_goal, error_log
@@ -293,39 +308,38 @@ def main():
     current_prompt = get_initial_prompt(project_context, initial_task)
 
     for iteration_count in range(1, MAX_ITERATIONS + 1):
-        print(f"\n--- АВТОМАТИЧЕСКАЯ ИТЕРАЦИЯ {iteration_count}/{MAX_ITERATIONS} ---")
+        print(f"\n{Colors.BOLD}{Colors.HEADER}🚀 --- АВТОМАТИЧЕСКАЯ ИТЕРАЦИЯ {iteration_count}/{MAX_ITERATIONS} ---{Colors.ENDC}")
         
         answer = send_request_to_model(current_prompt)
         if not answer: return "Ошибка: Не удалось получить ответ от модели."
 
-        print("\nПОЛУЧЕН ОТВЕТ МОДЕЛИ:\n" + "="*20 + f"\n{answer}\n" + "="*20)
+        print(f"\n{Colors.OKGREEN}📦 ПОЛУЧЕН ОТВЕТ МОДЕЛИ:{Colors.ENDC}\n" + "="*20 + f"\n{answer}\n" + "="*20)
 
-        # ИЗМЕНЕНИЕ: Проверяем, начинается ли ответ с "ГОТОВО"
         if answer.strip().upper().startswith("ГОТОВО"):
             manual_steps = extract_manual_steps_block(answer)
-            final_message = "Задача выполнена успешно!"
+            final_message = f"{Colors.OKGREEN}✅ Задача выполнена успешно!{Colors.ENDC}"
             
             if manual_steps:
-                final_message += "\n\nВАЖНО: Требуются следующие ручные действия:\n" + "-"*20 + f"\n{manual_steps}\n" + "-"*20
+                final_message += f"\n\n{Colors.WARNING}✋ ВАЖНО: Требуются следующие ручные действия:{Colors.ENDC}\n" + "-"*20 + f"\n{manual_steps}\n" + "-"*20
                 
             return final_message
 
         commands_to_run = extract_todo_block(answer)
         if not commands_to_run:
-            return "Модель не предоставила блок команд и не считает задачу выполненной."
+            return f"{Colors.FAIL}Модель не предоставила блок команд и не считает задачу выполненной.{Colors.ENDC}"
 
-        print("\nНайдены shell-команды для применения:\n" + "-"*20 + f"\n{commands_to_run}\n" + "-"*20)
+        print(f"\n{Colors.OKBLUE}🔧 Найдены shell-команды для применения:{Colors.ENDC}\n" + "-"*20 + f"\n{commands_to_run}\n" + "-"*20)
         
         success, failed_command, error_message = apply_shell_commands(commands_to_run)
         
         project_context = get_project_context()
-        if not project_context: return "Критическая ошибка: не удалось обновить контекст."
+        if not project_context: return f"{Colors.FAIL}Критическая ошибка: не удалось обновить контекст.{Colors.ENDC}"
 
         if success:
-            print("\nЛОГ: Команды успешно применены. Готовлюсь к верификации.")
+            print(f"\n{Colors.CYAN}🧐 ЛОГ: Команды успешно применены. Готовлюсь к верификации.{Colors.ENDC}")
             current_prompt = get_review_prompt(project_context, user_goal)
         else:
-            print("\nЛОГ: Обнаружена ошибка. Готовлю промпт для исправления.")
+            print(f"\n{Colors.FAIL}🆘 ЛОГ: Обнаружена ошибка. Готовлю промпт для исправления.{Colors.ENDC}")
             filepath = extract_filepath_from_command(failed_command)
             
             error_context = f"--- КОНТЕКСТ ПРОЕКТА ---\n{project_context}\n--- КОНЕЦ КОНТЕКСТА ---"
@@ -337,17 +351,17 @@ def main():
                 failed_command=failed_command, error_message=error_message,
                 goal=user_goal, context=error_context)
             
-    return f"Достигнут лимит в {MAX_ITERATIONS} итераций. Задача не была завершена."
+    return f"{Colors.WARNING}⌛ Достигнут лимит в {MAX_ITERATIONS} итераций. Задача не была завершена.{Colors.ENDC}"
 
 if __name__ == "__main__":
     final_status = "Работа завершена."
     try: final_status = main()
-    except KeyboardInterrupt: final_status = "Процесс прерван пользователем."
+    except KeyboardInterrupt: final_status = f"{Colors.OKBLUE}🔵 Процесс прерван пользователем.{Colors.ENDC}"
     except Exception as e:
-        print(f"\nКРИТИЧЕСКАЯ НЕПЕРЕХВАЧЕННАЯ ОШИБКА: {e}")
-        final_status = f"Скрипт аварийно завершился с ошибкой: {e}"
+        print(f"\n{Colors.FAIL}❌ КРИТИЧЕСКАЯ НЕПЕРЕХВАЧЕННАЯ ОШИБКА: {e}{Colors.ENDC}")
+        final_status = f"{Colors.FAIL}❌ Скрипт аварийно завершился с ошибкой: {e}{Colors.ENDC}"
     finally:
         print(f"\n{final_status}")
         notify_user(final_status)
         time.sleep(1) 
-        print("\nСкрипт завершил работу.")
+        print(f"\n{Colors.BOLD}🏁 Скрипт завершил работу.{Colors.ENDC}")

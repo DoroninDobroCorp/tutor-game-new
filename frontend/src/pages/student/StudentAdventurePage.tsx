@@ -5,6 +5,54 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FiUpload, FiX } from 'react-icons/fi';
 
+const YoutubeEmbed = ({ url }: { url: string }) => {
+    const getYouTubeId = (url: string) => {
+        if (!url) return null;
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === 'youtu.be') {
+                return urlObj.pathname.slice(1);
+            }
+            if (urlObj.hostname.includes('youtube.com')) {
+                if (urlObj.pathname === '/watch') {
+                    return urlObj.searchParams.get('v');
+                }
+                if (urlObj.pathname.startsWith('/embed/')) {
+                    return urlObj.pathname.split('/')[2];
+                }
+            }
+        } catch (e) {
+            // Fallback for non-URL strings or simple IDs
+        }
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return match && match[2].length === 11 ? match[2] : null;
+    };
+
+    const videoId = getYouTubeId(url);
+
+    if (!videoId) {
+        return (
+            <div className="text-red-500 p-4 bg-red-50 rounded-md my-4">
+                Не удалось отобразить видео. <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Открыть в новой вкладке</a>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative my-4" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
+            <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                title="Embedded youtube"
+                className="absolute top-0 left-0 w-full h-full rounded-md"
+            />
+        </div>
+    );
+};
+
 export default function StudentAdventurePage() {
     const navigate = useNavigate();
     const { data: lesson, isLoading, isError, refetch } = useGetCurrentLessonQuery();
@@ -76,7 +124,6 @@ export default function StudentAdventurePage() {
             }).unwrap();
             
             toast.success("Отлично! Урок завершен. Загружаем следующий...", { duration: 3000 });
-            // The query will refetch automatically due to invalidation.
         } catch (err) {
             console.error('Error submitting lesson:', err);
             toast.error("Не удалось завершить урок.");
@@ -108,9 +155,23 @@ export default function StudentAdventurePage() {
             {!isContentViewFinished && currentBlock && (
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
-                    <div className={`p-4 border-l-4 rounded-r-lg ${currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : 'border-purple-500 bg-purple-50'}`}>
-                        <h3 className="font-semibold text-lg mb-2">{currentBlock.type === 'theory' ? '📚 Теория' : '✏️ Задание'}</h3>
-                        <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />
+                    <div className={`p-4 border-l-4 rounded-r-lg ${
+                        currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : 
+                        currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' :
+                        'border-red-500 bg-red-50'
+                    }`}>
+                        <h3 className="font-semibold capitalize text-lg mb-2">
+                           {currentBlock.type === 'theory' && '📚 '}
+                           {currentBlock.type === 'practice' && '✏️ '}
+                           {currentBlock.type === 'youtube' && '📺 '}
+                           {currentBlock.type === 'youtube' ? "Видео" : currentBlock.type}
+                        </h3>
+                        
+                        {currentBlock.type === 'youtube' ? (
+                            <YoutubeEmbed url={currentBlock.content} />
+                        ) : (
+                            <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />
+                        )}
                         
                         {currentBlock.type === 'practice' && (
                             <div className="mt-4">
