@@ -20,24 +20,63 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
     const { learningGoal } = lesson.section;
     const { studentId, subject, studentAge, setting, language } = learningGoal;
 
-    const performanceLogs = await prisma.studentPerformanceLog.findMany({
+    // 1. Find the last 3 completed lessons for this student in this goal, excluding the current one.
+    const recentCompletedLessons = await prisma.lesson.findMany({
         where: {
-            studentId: studentId,
-            lesson: { section: { learningGoalId: learningGoal.id } }
+            section: {
+                learningGoalId: learningGoal.id,
+            },
+            status: 'COMPLETED',
+            id: {
+                not: lessonId // Exclude the current lesson
+            }
         },
-        orderBy: { createdAt: 'desc' },
-        take: 20
+        orderBy: [ // Get latest lessons
+            { section: { order: 'desc' } },
+            { order: 'desc' },
+        ],
+        take: 3,
+        select: {
+            id: true,
+        }
     });
 
-    const performanceContext = performanceLogs.length > 0
-        ? "Context on student's previous answers: " + performanceLogs.map(log => {
-            let context = '';
-            if (log.question) {
-                context += `For question: "${log.question}", `
+    const recentLessonIds = recentCompletedLessons.map(l => l.id);
+
+    // 2. Fetch performance logs for these specific lessons.
+    let performanceLogs: (import('@prisma/client').StudentPerformanceLog & { lesson: { title: string; }; })[] = [];
+    if (recentLessonIds.length > 0) {
+        performanceLogs = await prisma.studentPerformanceLog.findMany({
+            where: {
+                studentId: studentId,
+                lessonId: {
+                    in: recentLessonIds,
+                },
+            },
+            orderBy: { 
+                createdAt: 'asc' // Chronological order
+            },
+            include: {
+                lesson: {
+                    select: {
+                        title: true
+                    }
+                }
             }
-            context += `student answered: "${log.answer}"`;
+        });
+    }
+
+    // 3. Build the context string
+    const performanceContext = performanceLogs.length > 0
+        ? "Context on student's answers from recent lessons: " + performanceLogs.map(log => {
+            let context = `In lesson "${log.lesson.title}"`;
+            if (log.question) {
+                context += `, for question: "${log.question}",`
+            }
+            context += ` the student answered: "${log.answer}"`;
+            
             if (log.isCorrect !== null && log.isCorrect !== undefined) {
-                context += ` (this was ${log.isCorrect ? 'correct' : 'incorrect'})`
+                context += ` (this was marked as ${log.isCorrect ? 'correct' : 'incorrect'})`
             }
             if (log.aiNote) {
                 context += `. AI note: "${log.aiNote}"`;

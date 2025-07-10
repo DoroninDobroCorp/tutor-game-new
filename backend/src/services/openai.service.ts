@@ -57,7 +57,6 @@ RULES:
     - "content": For "theory" and "practice", this is text content. For "youtube", this MUST be only the full YouTube URL.
 3.  Be conversational in "chatResponse" but strict with the JSON format.
 4.  The theme "${setting}" is for framing, don't sacrifice pedagogy for it.
-5.  If a student performance context is provided, analyze it and mention your findings in the "chatResponse".
 
 Example Response Format:
 {
@@ -71,8 +70,14 @@ Example Response Format:
 
     if (performanceContext) {
         systemMessage += `\n\n---
-IMPORTANT CONTEXT: Below are the student's previous raw answers. Analyze them to understand the student's level and inform your lesson plan.
-Student's performance context: ${performanceContext}`;
+IMPORTANT CONTEXT: Below are the student's answers from their last three lessons for this goal. Your critical task is to analyze them to adapt the new lesson's content.
+- First, you MUST determine if the student's answers were correct or incorrect for the given questions. The student is just learning, so be gentle in your evaluation.
+- If the student struggled with a topic (gave incorrect or incomplete answers), you MUST add more practice or theory blocks for repetition to help them master it.
+- If the student answered correctly and seems to understand the topic, you MUST make the new tasks more challenging or introduce a related, more advanced concept.
+- In your "chatResponse", you MUST explain what you observed from the student's answers and how you've adjusted the lesson plan based on it.
+
+Student's performance context from the last 3 lessons:
+${performanceContext}`;
     }
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: 'system', content: systemMessage }];
