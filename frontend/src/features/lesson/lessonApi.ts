@@ -1,5 +1,5 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import { Lesson, StoryChapter } from '../goal/goalApi';
+import { Lesson, StoryChapter } from '../../types/models';
 
 export interface GenerationResult {
     generationId: string;
@@ -10,19 +10,15 @@ export interface GenerationResult {
 
 export const lessonApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
-        // ... existing endpoints ...
-        
-        // New endpoint to check image generation status
         checkStoryImageStatus: builder.query<{ data: GenerationResult }, string>({
             query: (generationId) => ({
                 url: `/story/generation/${generationId}`,
                 method: 'GET',
             }),
-            // Use a valid tag type from the API slice
             providesTags: (result) => 
                 result?.data ? [{ type: 'Lesson', id: result.data.generationId }] : [],
         }),
-        // УПРАВЛЕНИЕ КОНТЕНТОМ УРОКА
+
         generateLessonContent: builder.mutation<{ data: { chatResponse: string, blocks: any[] } }, { lessonId: string; chatHistory: any[] }>({
             query: ({ lessonId, chatHistory }) => ({
                 url: `/lessons/${lessonId}/generate-content`, data: { chatHistory },
@@ -40,8 +36,7 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
 
-        // УПРАВЛЕНИЕ ИСТОРИЕЙ (STORY CHAPTER)
-        generateStorySnippet: builder.mutation<{ data: StoryChapter }, { lessonId: string, [key: string]: any }>({
+        generateStorySnippet: builder.mutation<{ data: { text: string; imagePrompt: string; } }, { lessonId: string, [key: string]: any }>({
             query: ({ lessonId, ...data }) => ({
                 url: `/lessons/${lessonId}/story/generate`,
                 method: 'POST',
@@ -69,12 +64,12 @@ export const lessonApi = apiSlice.injectEndpoints({
                     url: `/lessons/${lessonId}/story/approve-with-upload`,
                     method: 'PUT',
                     data: formData,
-                    isFormData: true // Add this flag to handle FormData properly
+                    isFormData: true
                 };
             },
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
-        
+
         regenerateStoryImage: builder.mutation<{ data: { generationId: string; prompt: string } }, { lessonId: string; prompt: string }>({
             query: ({ lessonId, prompt }) => ({
                 url: `/lessons/${lessonId}/story/regenerate-image`,

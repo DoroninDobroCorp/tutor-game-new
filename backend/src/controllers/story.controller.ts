@@ -29,10 +29,8 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
         throw new AppError('Lesson not found or you do not have permission', 404);
     }
 
-    // Get all needed fields from the learning goal
-    const { setting, studentAge, language, characterPrompt, characterImageUrl } = lesson.section.learningGoal;
-
-    // Get all lessons for this goal in order
+    const { setting, studentAge, language, characterPrompt } = lesson.section.learningGoal;
+    
     const allGoalSections = await prisma.contentSection.findMany({
         where: { learningGoalId: lesson.section.learningGoal.id },
         orderBy: { order: 'asc' },
@@ -44,7 +42,6 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     
     let storyContext: string | undefined = undefined;
 
-    // If this is not the first lesson, find the previous one and its context
     if (currentLessonIndex > 0) {
         const previousLesson = allLessons[currentLessonIndex - 1];
         if (previousLesson?.storyChapter) {
@@ -57,80 +54,28 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     }
 
     try {
-        // 1. Генерируем текст истории (как и раньше)
         const storySnippetText = await generateStorySnippet(
-            lesson.title,
-            setting,
-            studentAge,
-            characterPrompt || 'a brave hero',
-            language || 'Russian',
-            refinementPrompt,
-            storyContext
+            lesson.title, setting, studentAge, characterPrompt || 'a brave hero', language || 'Russian', refinementPrompt, storyContext
         );
 
-        // 2. Generate image prompt from the story text
         const scenePrompt = await translateForImagePrompt(storySnippetText);
-
-        // 3. Upload character image to Leonardo if we have a local file
-        let referenceImageId: string | null = null;
-        
-        // Check if we have a local character image URL
-        if (characterImageUrl) {
-            // Build the absolute path to the file on the server
-            const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
-            
-            // Check if the file exists
-            if (fs.existsSync(imagePath)) {
-                try {
-                    console.log(`[LEONARDO.AI] Uploading character reference from: ${imagePath}`);
-                    // Upload the image and get a fresh ID
-                    const { imageId } = await uploadImageToLeonardo(imagePath);
-                    referenceImageId = imageId;
-                    console.log(`[LEONARDO.AI] Got fresh reference imageId: ${referenceImageId}`);
-                } catch (uploadError) {
-                    console.error("Failed to upload character image to Leonardo, proceeding without it.", uploadError);
-                    // Continue without the reference image if upload fails
-                }
-            } else {
-                console.warn(`Character image file not found at path: ${imagePath}`);
-            }
-        }
-
-        // 4. Generate the final image prompt by combining character and scene descriptions
-        const characterDescriptionForPrompt = characterPrompt ? 
-            await translateForImagePrompt(characterPrompt) : 
-            'a character';
-            
+        const characterDescriptionForPrompt = characterPrompt ? await translateForImagePrompt(characterPrompt) : 'a character';
         const finalImagePrompt = `${characterDescriptionForPrompt}, ${scenePrompt}`;
         
-        console.log('[PROMPT] Character Description:', characterDescriptionForPrompt);
-        console.log('[PROMPT] Scene Description:', scenePrompt);
-        console.log('[PROMPT] Final Combined Prompt:', finalImagePrompt);
+        console.log('[PROMPT SUGGESTION] Generated for story snippet:', finalImagePrompt);
         
-        // 5. Start the image generation with the fresh reference image ID
-        const { generationId } = await startImageGeneration({ 
-            prompt: finalImagePrompt,
-            characterImageId: referenceImageId, // Use the fresh ID we just got
-            characterWeight: 1.15
-        });
-
         res.json({ 
             success: true, 
             data: {
                 text: storySnippetText,
-                imageUrl: null, // Показываем, что картинка еще не готова
-                imagePrompt: finalImagePrompt, // Возвращаем полный промпт
-                generationId // Отправляем ID генерации для последующего опроса
+                imagePrompt: finalImagePrompt,
             }
         });
     } catch (error) {
-        // ИЗМЕНЕНИЕ 3: Улучшаем логгирование в этом контроллере
         console.error('Error in generateStorySnippetHandler:', error);
-        // Передаем ошибку дальше, чтобы сработал глобальный обработчик
         if (error instanceof AppError) {
             throw error;
         }
-        // Если это не AppError, оборачиваем его
         throw new AppError('Failed to generate story snippet', 500);
     }
 };
@@ -160,19 +105,7 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
 
     const lesson = await prisma.lesson.findFirst({
         where: { id: lessonId, section: { learningGoal: { teacherId } } },
-        include: { 
-            section: { 
-                select: { 
-                    learningGoalId: true, 
-                    learningGoal: { 
-                        select: { 
-                            studentId: true, 
-                            teacherId: true 
-                        } 
-                    } 
-                } 
-            } 
-        }
+        include: { section: { select: { learningGoalId: true, learningGoal: { select: { studentId: true, teacherId: true } } } } }
     });
 
     if (!lesson) throw new AppError('Lesson not found or access denied', 404);
@@ -196,18 +129,11 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
             }
         });
         
-        await tx.lesson.update({
-            where: { id: lessonId },
-            data: { status: 'APPROVED' },
-        });
-
+        await tx.lesson.update({ where: { id: lessonId }, data: { status: 'APPROVED' } });
         return storyChapter;
     });
 
-    // Отправка WebSocket уведомления
-    const teacherUser = await prisma.user.findUnique({ 
-        where: { id: lesson.section.learningGoal.teacherId } 
-    });
+    const teacherUser = await prisma.user.findUnique({ where: { id: lesson.section.learningGoal.teacherId } });
     
     const wsService = req.app.get('wsService') as WebSocketService;
     wsService.emitToUser(lesson.section.learningGoal.studentId, 'teacher_reviewed_lesson', {
@@ -229,7 +155,7 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
     const teacherId = req.user?.userId;
 
     if (!text || !prompt || !file) {
-        if (file) fs.unlinkSync(file.path); // Удаляем файл, если он был загружен, но данных не хватает
+        if (file) fs.unlinkSync(file.path);
         throw new AppError('Text, prompt, and image file are required', 400);
     }
 
@@ -280,26 +206,46 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
 
     const lesson = await prisma.lesson.findFirst({
         where: { id: lessonId, section: { learningGoal: { teacherId } } },
-        select: { section: { select: { learningGoal: { select: { characterImageId: true } } } } }
+        select: { section: { select: { learningGoal: true } } }
     });
 
-    if (!lesson?.section.learningGoal.characterImageId) {
-        throw new AppError('Lesson not found or character is not set for this goal', 404);
+    if (!lesson) {
+        throw new AppError('Lesson not found or access denied', 404);
+    }
+    
+    const { characterImageUrl, characterImageId } = lesson.section.learningGoal;
+    
+    if (!characterImageUrl && !characterImageId) {
+        throw new AppError('Character is not set for this goal. Please set a character first.', 404);
     }
 
+    let referenceImageId: string | null = characterImageId;
+
     try {
-        // Start the image generation process with character weight
+        if (characterImageUrl && characterImageUrl.startsWith('/uploads/')) {
+            const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
+            if (fs.existsSync(imagePath)) {
+                try {
+                    console.log(`[LEONARDO.AI] Regenerating: Uploading character reference from: ${imagePath}`);
+                    const { imageId } = await uploadImageToLeonardo(imagePath);
+                    referenceImageId = imageId;
+                    console.log(`[LEONARDO.AI] Regenerating: Got fresh reference imageId: ${referenceImageId}`);
+                } catch (uploadError) {
+                    console.error("Failed to upload character image for regeneration, proceeding without it.", uploadError);
+                }
+            }
+        }
+
         const generationResult = await startImageGeneration({
             prompt,
-            characterImageId: lesson.section.learningGoal.characterImageId,
-            characterWeight: 1.15 // Consistent weight for regeneration
+            characterImageId: referenceImageId,
+            characterWeight: 1.15
         });
 
         if (!generationResult.generationId) {
             throw new AppError('Failed to start image regeneration', 500);
         }
         
-        // Return the generation ID to the client for polling
         res.json({ 
             success: true, 
             data: { 

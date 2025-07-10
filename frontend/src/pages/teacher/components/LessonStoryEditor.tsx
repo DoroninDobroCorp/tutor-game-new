@@ -2,25 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import { 
     useGenerateStorySnippetMutation, 
     useApproveStorySnippetMutation,
-    useLazyCheckStoryImageStatusQuery
+    useLazyCheckStoryImageStatusQuery,
+    useRegenerateStoryImageMutation,
+    useApproveStorySnippetWithUploadMutation
 } from '../../../features/lesson/lessonApi';
-import { Lesson } from '../../../features/goal/goalApi';
+import { Lesson } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
-import { FiRefreshCw, FiCheck, FiMaximize2, FiX } from 'react-icons/fi';
-
-interface GeneratedStory {
-    text: string;
-    imageUrl?: string;
-    prompt?: string;
-}
-
-interface LessonWithPrevious extends Lesson {
-    previousLesson?: Lesson | null;
-}
+import { FiRefreshCw, FiCheck, FiMaximize2, FiX, FiUpload, FiImage } from 'react-icons/fi';
 
 interface LessonStoryEditorProps {
-    lesson: LessonWithPrevious;
+    lesson: Lesson;
     onCloseModal: () => void;
 }
 
@@ -32,119 +24,158 @@ const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => (
 );
 
 const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => {
-    const [story, setStory] = useState<GeneratedStory>({ text: '', imageUrl: undefined, prompt: '' });
+    // State management
+    const [storyText, setStoryText] = useState('');
+    const [imagePrompt, setImagePrompt] = useState('');
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [refinementPrompt, setRefinementPrompt] = useState('');
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isApproving, setIsApproving] = useState(false);
+    
+    // API and loading state
     const [generationId, setGenerationId] = useState<string | null>(null);
+    const [generateStory, { isLoading: isGeneratingStory }] = useGenerateStorySnippetMutation();
+    const [regenerateImage, { isLoading: isGeneratingImage }] = useRegenerateStoryImageMutation();
+    const [approveWithUrl, { isLoading: isApprovingUrl }] = useApproveStorySnippetMutation();
+    const [approveWithFile, { isLoading: isApprovingFile }] = useApproveStorySnippetWithUploadMutation();
+    const [checkImageStatus, { isFetching: isPolling }] = useLazyCheckStoryImageStatusQuery();
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-    const [generateStory] = useGenerateStorySnippetMutation();
-    const [approveStory] = useApproveStorySnippetMutation();
-    const [checkImageStatus] = useLazyCheckStoryImageStatusQuery();
+    const isLoading = isGeneratingStory || isGeneratingImage || isApprovingUrl || isApprovingFile || !!generationId;
 
+    // Effects
     useEffect(() => {
         if (lesson.storyChapter) {
-            setStory({
-                text: lesson.storyChapter.teacherSnippetText || '',
-                imageUrl: lesson.storyChapter.teacherSnippetImageUrl || undefined,
-                prompt: lesson.storyChapter.teacherSnippetImagePrompt || ''
-            });
+            setStoryText(lesson.storyChapter.teacherSnippetText || '');
+            setImageUrl(lesson.storyChapter.teacherSnippetImageUrl || null);
+            setImagePrompt(lesson.storyChapter.teacherSnippetImagePrompt || '');
         } else {
-            setStory({ text: '', imageUrl: undefined, prompt: '' });
+            setStoryText('');
+            setImageUrl(null);
+            setImagePrompt('');
         }
     }, [lesson]);
 
-    useEffect(() => () => { if (pollingInterval.current) clearInterval(pollingInterval.current); }, []);
+    useEffect(() => () => { stopPolling(); }, []);
 
-    const startPolling = (id: string) => {
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-        const poll = async () => {
-            try {
-                const result = await checkImageStatus(id).unwrap();
-                if (result.data?.status === 'COMPLETE' && result.data?.url) {
-                    setStory(prev => ({ ...prev, imageUrl: result.data.url || undefined }));
-                    toast.success('Изображение сгенерировано!');
-                    stopPolling();
-                } else if (result.data?.status === 'FAILED') {
-                    toast.error('Не удалось сгенерировать изображение');
-                    stopPolling();
-                }
-            } catch (error) {
-                toast.error('Ошибка при проверке статуса генерации');
-                stopPolling();
-            }
-        };
-        pollingInterval.current = setInterval(poll, 3000);
-        poll(); // Initial check
-    };
-    
+    // Polling logic
     const stopPolling = () => {
         if (pollingInterval.current) clearInterval(pollingInterval.current);
         pollingInterval.current = null;
         setGenerationId(null);
     };
 
-    const handleGenerateStory = async () => {
-        setIsGenerating(true);
-        try {
-            const result = await generateStory({ lessonId: lesson.id, refinementPrompt: refinementPrompt || undefined }).unwrap();
-            const responseData = result.data as { text?: string; imageUrl?: string; prompt?: string; generationId?: string; };
-            setStory({ text: responseData.text || '', imageUrl: responseData.imageUrl, prompt: responseData.prompt || '' });
-            if (responseData.generationId) {
-                setGenerationId(responseData.generationId);
-                startPolling(responseData.generationId);
-                toast.success('Текст истории готов! Генерируем изображение...');
-            } else {
-                toast.success('История успешно сгенерирована!');
+    const startPolling = (id: string) => {
+        stopPolling();
+        setGenerationId(id);
+        const poll = async () => {
+            const result = await checkImageStatus(id).unwrap();
+            if (result.data?.status === 'COMPLETE' && result.data?.url) {
+                setImageUrl(result.data.url);
+                toast.success('Изображение готово!');
+                stopPolling();
+            } else if (result.data?.status === 'FAILED') {
+                toast.error('Ошибка генерации изображения');
+                stopPolling();
             }
-            setRefinementPrompt('');
+        };
+        pollingInterval.current = setInterval(poll, 3000);
+        poll();
+    };
+
+    // Handlers
+    const handleGenerateStory = async () => {
+        try {
+            const result = await generateStory({ lessonId: lesson.id, refinementPrompt }).unwrap();
+            setStoryText(result.data.text);
+            setImagePrompt(result.data.imagePrompt);
+            setImageUrl(null);
+            setUploadedFile(null);
+            stopPolling();
+            toast.success('Текст и промпт для картинки сгенерированы!');
         } catch (error) {
             toast.error('Не удалось сгенерировать историю.');
-        } finally {
-            setIsGenerating(false);
         }
     };
 
-    const handleApproveStory = async () => {
-        if (!story.text) { toast.error('Сгенерируйте историю перед утверждением.'); return; }
-        setIsApproving(true);
+    const handleGenerateImage = async () => {
+        if (!imagePrompt) { toast.error("Промпт не может быть пустым."); return; }
+        setUploadedFile(null);
+        setImageUrl(null);
         try {
-            await approveStory({ lessonId: lesson.id, text: story.text, imageUrl: story.imageUrl || '', imagePrompt: story.prompt || '' }).unwrap();
-            toast.success('История одобрена и доступна студенту!');
-            onCloseModal();
+            const result = await regenerateImage({ lessonId: lesson.id, prompt: imagePrompt }).unwrap();
+            startPolling(result.data.generationId);
+            toast('Начали генерацию изображения...');
         } catch (error) {
-            toast.error('Не удалось одобрить историю.');
-        } finally {
-            setIsApproving(false);
+            toast.error('Не удалось запустить генерацию изображения.');
+        }
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setUploadedFile(file);
+            setImageUrl(URL.createObjectURL(file));
+            stopPolling();
         }
     };
     
-    const isLoading = isGenerating || isApproving;
-    const studentResponse = lesson.storyChapter?.studentSnippetText || lesson.storyChapter?.studentSnippetImageUrl;
+    const handleApprove = async () => {
+        if (!storyText.trim()) { toast.error("Текст истории не может быть пустым."); return; }
+        
+        try {
+            if (uploadedFile) {
+                await approveWithFile({ lessonId: lesson.id, image: uploadedFile, text: storyText, prompt: imagePrompt }).unwrap();
+            } else {
+                await approveWithUrl({ lessonId: lesson.id, text: storyText, imageUrl: imageUrl || '', imagePrompt }).unwrap();
+            }
+            toast.success('История утверждена!');
+            onCloseModal();
+        } catch (error) {
+            toast.error('Не удалось утвердить историю.');
+        }
+    };
 
     return (
-        <div className="rounded-xl p-3 max-h-[70vh] overflow-y-auto">
+        <div className="rounded-xl p-3 max-h-[85vh] flex flex-col">
             {lightboxImage && <Lightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex-grow overflow-y-auto pr-2 space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Текст истории (часть учителя)</label>
-                    <textarea value={story.text} onChange={(e) => setStory(p => ({ ...p, text: e.target.value }))} rows={10} className="w-full p-2 border rounded-md" placeholder="Здесь появится текст истории..." disabled={isLoading} />
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Уточнение для генерации (необязательно)</label>
-                        <input type="text" value={refinementPrompt} onChange={e => setRefinementPrompt(e.target.value)} className="w-full p-2 border rounded-md" placeholder="Например: сделай смешнее, добавь дракона..." disabled={isLoading} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Фрагмент истории</label>
+                    <textarea value={storyText} onChange={(e) => setStoryText(e.target.value)} rows={6} className="w-full p-2 border rounded-md" placeholder="Здесь появится текст истории..." disabled={isLoading} />
+                    <div className="mt-2">
+                        <input type="text" value={refinementPrompt} onChange={e => setRefinementPrompt(e.target.value)} className="w-full p-2 border rounded-md text-sm" placeholder="Уточнение для генерации (напр. 'сделай смешнее')..." disabled={isLoading} />
+                    </div>
+                     <button onClick={handleGenerateStory} disabled={isGeneratingStory} className="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                        {isGeneratingStory ? <Spinner size="sm" /> : <FiRefreshCw size={16} />} <span>Сгенерировать текст истории</span>
+                    </button>
+                </div>
+                
+                <div className="border-t pt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Промпт для изображения</label>
+                    <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="w-full p-2 border rounded-md" placeholder="Здесь появится промпт для изображения..." disabled={isLoading} />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                         <button onClick={handleGenerateImage} disabled={isLoading || !imagePrompt} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                            {isGeneratingImage || generationId ? <Spinner size="sm" /> : <FiImage size={16} />} <span>{isGeneratingImage || generationId ? "Генерация..." : "Создать картинку"}</span>
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                            <FiUpload size={16} /> <span>Загрузить свою</span>
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg, image/webp" />
                     </div>
                 </div>
-                <div className="flex flex-col">
-                    <label className="block text-sm font-medium text-gray-700 text-center mb-2">Изображение (часть учителя)</label>
+
+                <div className="flex flex-col items-center">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Предпросмотр изображения</label>
                     <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center relative">
-                        {generationId ? <><Spinner size="md" /><p className="ml-2">Генерация...</p></>
-                        : story.imageUrl ? (
+                        {generationId || isGeneratingImage ? <><Spinner size="md" /><p className="ml-2 text-gray-500">Генерация...</p></>
+                        : imageUrl ? (
                             <>
-                                <img src={story.imageUrl} alt="Story" className="w-full h-full object-cover rounded-lg" />
-                                <button onClick={() => setLightboxImage(story.imageUrl!)} className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/75">
+                                <img src={imageUrl} alt="Story" className="w-full h-full object-cover rounded-lg" />
+                                <button onClick={() => setLightboxImage(imageUrl!)} className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/75">
                                     <FiMaximize2 size={16} />
                                 </button>
                             </>
@@ -152,39 +183,12 @@ const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => 
                     </div>
                 </div>
             </div>
-            
-            <div className="border-t mt-6 pt-4 flex justify-between items-center">
-                <p className="text-xs text-gray-500">Предыдущий ответ ученика используется как контекст для генерации.</p>
-                <div className="flex gap-3">
-                    <button onClick={handleGenerateStory} disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                        {isGenerating ? <Spinner size="sm" /> : <FiRefreshCw size={16} />} <span>Сгенерировать</span>
-                    </button>
-                    <button onClick={handleApproveStory} disabled={isLoading || !story.text} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
-                        {isApproving ? <Spinner size="sm" /> : <FiCheck size={16} />} <span>Утвердить</span>
-                    </button>
-                </div>
-            </div>
 
-            {studentResponse && (
-                <div className="mt-6 border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-800 mb-2">Ответ ученика на предыдущий шаг</h4>
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        {lesson.storyChapter?.studentSnippetImageUrl && (
-                            <div className="mb-2">
-                                <img 
-                                    src={lesson.storyChapter.studentSnippetImageUrl} 
-                                    alt="Ответ ученика" 
-                                    className="max-w-xs rounded-md shadow-sm cursor-pointer"
-                                    onClick={() => setLightboxImage(lesson.storyChapter!.studentSnippetImageUrl!)}
-                                />
-                            </div>
-                        )}
-                        {lesson.storyChapter?.studentSnippetText && (
-                            <p className="italic text-gray-700">"{lesson.storyChapter.studentSnippetText}"</p>
-                        )}
-                    </div>
-                </div>
-            )}
+            <div className="mt-6 pt-4 border-t flex justify-end">
+                <button onClick={handleApprove} disabled={isLoading || !storyText} className="px-6 py-2 text-sm font-bold text-white bg-green-700 rounded-md hover:bg-green-800 disabled:opacity-50 flex items-center gap-2">
+                    {isApprovingFile || isApprovingUrl ? <Spinner size="sm" /> : <FiCheck size={16} />} <span>УТВЕРДИТЬ И ЗАВЕРШИТЬ</span>
+                </button>
+            </div>
         </div>
     );
 };
