@@ -22,7 +22,8 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
             subject: true, 
             studentAge: true, 
             setting: true, 
-            language: true 
+            language: true,
+            illustrationStyle: true
         }
     });
 
@@ -45,6 +46,7 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
     // Start the image generation process
     const { generationId } = await startImageGeneration({
         prompt: imagePrompt,
+        presetStyle: goal.illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined,
     });
     
     console.log('[LEONARDO.AI] Started image generation with ID:', generationId);

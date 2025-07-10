@@ -11,6 +11,7 @@ interface IFormInput {
     setting: string; 
     studentAge: number; 
     language: string;
+    illustrationStyle: string;
 }
 
 export default function CreateGoalPage() {
@@ -100,6 +101,19 @@ export default function CreateGoalPage() {
                         <option value="English">English</option>
                     </select>
                     {errors.language && <p className="mt-1 text-sm text-red-600">Выберите язык обучения</p>}
+                </div>
+                <div>
+                    <label htmlFor="illustrationStyle" className="block text-sm font-medium text-gray-700">Стиль иллюстраций</label>
+                    <select
+                        id="illustrationStyle"
+                        {...register('illustrationStyle', { required: true })}
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                        defaultValue="ILLUSTRATION"
+                    >
+                        <option value="ILLUSTRATION">Иллюстрация (стандартный)</option>
+                        <option value="ANIME">Аниме</option>
+                    </select>
+                    {errors.illustrationStyle && <p className="mt-1 text-sm text-red-600">Выберите стиль иллюстраций</p>}
                 </div>
                 <button 
                     type="submit" 

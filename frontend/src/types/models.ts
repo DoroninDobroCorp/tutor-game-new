@@ -33,6 +33,8 @@ export interface LearningGoal {
     setting: string; 
     studentAge: number; 
     studentId: string;
+    language: string;
+    illustrationStyle: string;
     student: StudentInfo;
     sections: ContentSection[];
     characterPrompt?: string;

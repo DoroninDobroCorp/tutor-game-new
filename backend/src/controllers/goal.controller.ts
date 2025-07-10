@@ -8,6 +8,7 @@ interface CreateGoalBody {
     setting: string;
     studentAge: number | string;
     language?: string;
+    illustrationStyle?: string;
 }
 
 export const createGoalHandler = async (req: Request, res: Response) => {
@@ -16,7 +17,7 @@ export const createGoalHandler = async (req: Request, res: Response) => {
         throw new AppError('User not authenticated', 401);
     }
 
-    const { studentId, subject, setting, studentAge, language } = req.body as CreateGoalBody;
+    const { studentId, subject, setting, studentAge, language, illustrationStyle } = req.body as CreateGoalBody;
     if (!studentId || !subject || !setting || studentAge === undefined) {
         throw new AppError('All fields (studentId, subject, setting, studentAge) are required', 400);
     }
@@ -30,7 +31,8 @@ export const createGoalHandler = async (req: Request, res: Response) => {
             subject,
             setting,
             studentAge: age,
-            language: language || 'Russian'
+            language: language || 'Russian',
+            illustrationStyle: illustrationStyle || 'ILLUSTRATION'
         },
         include: {
             student: {

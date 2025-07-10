@@ -80,12 +80,13 @@ model Student {
 
 // --- LEARNING FLOW MODELS ---
 model LearningGoal {
-  id         String   @id @default(uuid())
-  subject    String
-  setting    String
-  studentAge Int
-  language   String   @default("Russian")
-  createdAt  DateTime @default(now())
+  id                String   @id @default(uuid())
+  subject           String
+  setting           String
+  studentAge        Int
+  language          String   @default("Russian")
+  illustrationStyle String   @default("ILLUSTRATION") // ILLUSTRATION or ANIME
+  createdAt         DateTime @default(now())
 
   // Relations
   teacherId String

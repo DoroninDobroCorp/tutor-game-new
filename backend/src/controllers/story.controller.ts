@@ -213,7 +213,7 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
         throw new AppError('Lesson not found or access denied', 404);
     }
     
-    const { characterImageUrl, characterImageId } = lesson.section.learningGoal;
+    const { characterImageUrl, characterImageId, illustrationStyle } = lesson.section.learningGoal;
     
     if (!characterImageUrl && !characterImageId) {
         throw new AppError('Character is not set for this goal. Please set a character first.', 404);
@@ -239,7 +239,8 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
         const generationResult = await startImageGeneration({
             prompt,
             characterImageId: referenceImageId,
-            characterWeight: 1.15
+            characterWeight: 1.15,
+            presetStyle: illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined
         });
 
         if (!generationResult.generationId) {

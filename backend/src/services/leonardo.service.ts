@@ -21,6 +21,7 @@ export interface GenerateImageParams {
   modelId?: string;
   characterImageId?: string | null;
   characterWeight?: number;
+  presetStyle?: 'ILLUSTRATION' | 'ANIME';
 }
 
 export interface GenerationResult {
@@ -43,7 +44,7 @@ export async function startImageGeneration(params: GenerateImageParams): Promise
         modelId: params.modelId || config.leonardoModelId || 'aa77f04e-3eec-4034-9c07-d0f619684628',
         num_images: 1,
         alchemy: true,
-        presetStyle: 'ILLUSTRATION',
+        presetStyle: params.presetStyle || 'ILLUSTRATION',
     };
 
     // Добавляем controlnets, только если есть ID картинки персонажа

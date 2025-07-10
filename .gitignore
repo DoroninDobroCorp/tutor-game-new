@@ -34,3 +34,15 @@ yarn-error.log*
 Thumbs.db
 backend/.env
 message_1.txt
+
+# Sloth AI script files
+sloth_debug_prompt.txt
+sloth_debug_bad_response.txt
+sloth_history.json
+message_1.txt # Также добавим файл контекста, он тоже временный
+
+# Sloth AI script files
+sloth_debug_prompt.txt
+sloth_debug_bad_response.txt
+sloth_history.json
+message_1.txt
