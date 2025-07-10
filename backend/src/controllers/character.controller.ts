@@ -152,3 +152,45 @@ export const uploadCharacterImageHandler = async (req: Request, res: Response) =
         throw error;
     }
 };
+
+export const updateCharacterPromptHandler = async (req: Request, res: Response) => {
+    const { goalId } = req.params;
+    const { prompt } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!prompt) {
+        throw new AppError('Character prompt is required', 400);
+    }
+
+    const goal = await prisma.learningGoal.findFirst({
+        where: { id: goalId, teacherId },
+        select: { id: true }
+    });
+
+    if (!goal) {
+        throw new AppError('Learning Goal not found or access denied', 404);
+    }
+
+    const updatedGoal = await prisma.learningGoal.update({
+        where: { id: goalId },
+        data: {
+            characterPrompt: prompt,
+        },
+        include: {
+            student: true,
+            teacher: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                }
+            }
+        }
+    });
+
+    res.json({
+        success: true,
+        data: updatedGoal
+    });
+};

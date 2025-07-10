@@ -121,6 +121,19 @@ export const goalApi = apiSlice.injectEndpoints({
             transformResponse: (response: { data: LearningGoal }) => response.data,
             invalidatesTags: (_result, _error, { goalId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Goal', id: goalId }],
         }),
+
+        updateCharacterPrompt: builder.mutation<LearningGoal, { goalId: string; prompt: string }>({
+            query: ({ goalId, prompt }) => ({
+                url: `/goals/${goalId}/character-prompt`,
+                method: 'PUT',
+                data: { prompt },
+            }),
+            transformResponse: (response: { data: LearningGoal }) => response.data,
+            invalidatesTags: (_result, _error, { goalId }) => [
+                { type: 'Goal', id: goalId },
+                { type: 'Goal', id: 'LIST' }
+            ],
+        }),
     }),
 });
 
@@ -133,4 +146,5 @@ export const {
     useUpdateRoadmapMutation,
     useGenerateCharacterForGoalMutation,
     useUploadCharacterImageMutation,
+    useUpdateCharacterPromptMutation,
 } = goalApi;

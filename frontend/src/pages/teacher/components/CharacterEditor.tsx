@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
     useGenerateCharacterForGoalMutation, 
     useUploadCharacterImageMutation,
+    useUpdateCharacterPromptMutation,
     LearningGoal 
 } from '../../../features/goal/goalApi';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
-import { FiUserPlus, FiMaximize2, FiX, FiRefreshCcw, FiUpload } from 'react-icons/fi';
+import { FiUserPlus, FiMaximize2, FiX, FiRefreshCcw, FiUpload, FiSave } from 'react-icons/fi';
 
 interface CharacterEditorProps {
   goal: LearningGoal & {
@@ -37,10 +38,16 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
+    // API Hooks
     const [generateCharacter, { isLoading: isGenerating }] = useGenerateCharacterForGoalMutation();
     const [uploadImage, { isLoading: isUploading }] = useUploadCharacterImageMutation();
+    const [updatePrompt, { isLoading: isSavingPrompt }] = useUpdateCharacterPromptMutation();
     
-    const isLoading = isGenerating || isUploading;
+    const isLoading = isGenerating || isUploading || isSavingPrompt;
+    
+    useEffect(() => {
+        setPrompt(goal.characterPrompt || '');
+    }, [goal.characterPrompt]);
 
     const handleGenerate = async () => {
         if (!prompt.trim()) {
@@ -74,10 +81,24 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
             console.error('Error uploading image:', error);
             toast.error('Не удалось загрузить изображение.');
         } finally {
-            // Reset the input to allow selecting the same file again
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
+        }
+    };
+
+    const handleSaveDescription = async () => {
+        if (!prompt.trim()) {
+            toast.error('Описание не может быть пустым.');
+            return;
+        }
+        try {
+            await updatePrompt({ goalId: goal.id, prompt }).unwrap();
+            toast.success('Описание персонажа сохранено!');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Error saving description:', error);
+            toast.error('Не удалось сохранить описание.');
         }
     };
     
@@ -115,24 +136,34 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
     return (
         <div>
             <p className="text-sm text-gray-600 mb-2">
-                {goal.characterImageUrl ? "Опишите новую версию персонажа или загрузите свое изображение:" : "Опишите персонажа для истории или загрузите свое изображение:"}
+                {goal.characterImageUrl ? "Отредактируйте описание, загрузите новое фото или сгенерируйте нового персонажа:" : "Опишите персонажа для истории или загрузите свое изображение:"}
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-                <input 
-                    type="text" 
-                    value={prompt} 
-                    onChange={(e) => setPrompt(e.target.value)} 
-                    placeholder="Например: отважная девочка-исследователь..." 
-                    className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-                    disabled={isGenerating} 
-                />
+            <textarea
+                value={prompt} 
+                onChange={(e) => setPrompt(e.target.value)} 
+                placeholder="Например: отважная девочка-исследователь с телескопом..." 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2" 
+                rows={2}
+                disabled={isLoading} 
+            />
+            <div className="flex flex-wrap gap-2">
+                 {goal.characterImageUrl && (
+                     <button 
+                        onClick={handleSaveDescription} 
+                        disabled={isLoading || !prompt.trim()} 
+                        className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {isSavingPrompt ? <Spinner size="sm" className="mr-2" /> : <FiSave className="mr-2" />}
+                        Сохранить описание
+                    </button>   
+                )}
                 <button 
                     onClick={handleGenerate} 
                     disabled={isLoading || !prompt.trim()} 
                     className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
                 >
                     {isGenerating ? <Spinner size="sm" className="mr-2" /> : <FiUserPlus className="mr-2" />}
-                    {isGenerating ? "Создание..." : (goal.characterImageUrl ? "Создать новую версию" : "Создать")}
+                    {isGenerating ? "Создание..." : (goal.characterImageUrl ? "Новый персонаж и фото" : "Создать")}
                 </button>
                 <button
                     type="button"
@@ -141,7 +172,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                     className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
                     {isUploading ? <Spinner size="sm" className="mr-2" /> : <FiUpload className="mr-2" />}
-                    Загрузить
+                    Загрузить фото
                 </button>
                 <input 
                     type="file" 
@@ -152,7 +183,10 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                 />
                 {isEditing && goal.characterImageUrl && (
                     <button 
-                        onClick={() => setIsEditing(false)} 
+                        onClick={() => {
+                            setIsEditing(false);
+                            setPrompt(goal.characterPrompt || ''); // Revert changes
+                        }} 
                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                     >
                         Отмена
