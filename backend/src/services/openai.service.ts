@@ -8,7 +8,7 @@ const openai = new OpenAI({
 export const generateMathProblem = async (topic: string, difficulty: number) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4.1',
       messages: [
         {
           role: 'system',
@@ -94,7 +94,7 @@ ${performanceContext}`;
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4-turbo',
+            model: 'gpt-4.1',
             messages: messages,
             response_format: { type: "json_object" },
         });
@@ -157,7 +157,7 @@ export const generateStorySnippet = async (
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4-turbo',
+            model: 'gpt-4.1',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
@@ -186,7 +186,7 @@ export const translateForImagePrompt = async (text: string): Promise<string> => 
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4-turbo',
+            model: 'gpt-4.1',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: text },
@@ -232,7 +232,7 @@ Example for a "Math in space" theme:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
+      model: 'gpt-4.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -294,7 +294,7 @@ Example format:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
+      model: 'gpt-4.1',
       messages,
       response_format: { type: "json_object" },
     });
