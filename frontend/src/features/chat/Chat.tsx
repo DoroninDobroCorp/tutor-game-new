@@ -30,34 +30,34 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const selectedUserRef = useRef(selectedUser); // Ref to hold the current selected user
+  selectedUserRef.current = selectedUser;
   
   const messages = useAppSelector(selectActiveChatMessages);
   const unreadCounts = useAppSelector((state) => state.chat.unreadCounts);
 
-  // --- Явное действие пользователя ---
   const handleSelectUser = (userToSelect: ChatUser) => {
-    if (selectedUser?.id === userToSelect.id) return; // Не кликать на уже активного
+    if (selectedUser?.id === userToSelect.id) return;
     setSelectedUser(userToSelect);
-    // Диспатчим действие ТОЛЬКО когда пользователь кликнул
     dispatch(setActiveChat(userToSelect.id)); 
     socket?.emit('getMessages', { userId: userToSelect.id });
   };
 
-  // Эффект для получения данных от сокета (список пользователей, история)
+  // Effect for setting up socket listeners. Runs only once.
   useEffect(() => {
     if (!socket || !user) return;
 
-    socket.emit('getUsers');
-
     const handleUsers = (usersList: ChatUser[]) => {
+      if (!user) return;
       const filtered = usersList.filter(u => u.id !== user.id);
       setUsers(filtered);
-      // НЕ ВЫБИРАЕМ АВТОМАТИЧЕСКИ!
     };
     
     const handleHistory = (history: Message[]) => {
-      if (selectedUser) {
-        dispatch(setMessagesForUser({ partnerId: selectedUser.id, messages: history }));
+      // Use the ref to get the most up-to-date selectedUser
+      const currentSelectedUser = selectedUserRef.current;
+      if (currentSelectedUser) {
+        dispatch(setMessagesForUser({ partnerId: currentSelectedUser.id, messages: history }));
       }
     };
     
@@ -68,9 +68,17 @@ const Chat = () => {
       socket.off('users', handleUsers);
       socket.off('messages', handleHistory);
     };
-  }, [socket, user, dispatch, selectedUser]); // selectedUser нужен, чтобы перезапросить историю
+  }, [socket, user, dispatch]);
 
-  // Эффект для прокрутки
+  // Effect for initially fetching the user list.
+  useEffect(() => {
+    if (socket) {
+      socket.emit('getUsers');
+    }
+  }, [socket]);
+
+
+  // Effect for scrolling to the bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);

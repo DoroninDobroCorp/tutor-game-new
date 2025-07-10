@@ -109,6 +109,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
       // Слушатель для чата
       newSocket.on('message', (message: any) => {
+        // Оптимистичное обновление для мгновенного отклика UI
         dispatch(addMessage({ message, currentUserId: user.id }));
       });
 

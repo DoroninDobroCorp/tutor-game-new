@@ -9,12 +9,13 @@ import {
   ArrowRightOnRectangleIcon,
   ChatBubbleLeftEllipsisIcon,
   DocumentTextIcon,
-  ChevronDoubleLeftIcon, // Added for toggle
+  ChevronDoubleLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
+import { useGetUnreadSummaryQuery } from '../../features/chat/chatApi';
 import { logout } from '../../features/auth/authSlice';
-import { selectTotalUnreadCount } from '../../features/chat/chatSlice';
+import { selectTotalUnreadCount, setUnreadCounts } from '../../features/chat/chatSlice';
 
 interface NavigationItem {
   name: string;
@@ -55,7 +56,7 @@ function classNames(...classes: (string | boolean | undefined)[]): string {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for desktop sidebar
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -64,6 +65,20 @@ export default function Layout() {
   const [logoutUser] = useLogoutMutation();
   const chatPath = user?.role === 'teacher' ? '/teacher/chat' : '/student/chat';
 
+  // Use polling to periodically check for unread messages
+  const { data: unreadData } = useGetUnreadSummaryQuery(undefined, {
+    skip: !isAuthenticated,
+    pollingInterval: 30000, // Check every 30 seconds
+    refetchOnMountOrArgChange: true,
+  });
+
+  // Update the unread counts when new data is received
+  useEffect(() => {
+    if (unreadData) {
+      dispatch(setUnreadCounts(unreadData));
+    }
+  }, [unreadData, dispatch]);
+
   // Update browser tab title with unread count
   useEffect(() => {
     if (totalUnreadCount > 0) {
@@ -71,14 +86,13 @@ export default function Layout() {
     } else {
       document.title = 'Math Quest';
     }
-    // Cleanup function to reset title when component unmounts
     return () => {
       document.title = 'Math Quest';
     };
   }, [totalUnreadCount]);
 
   const getNavItems = () => {
-    if (!isAuthenticated) return []; // Не создаем навигацию для анонимных пользователей
+    if (!isAuthenticated) return [];
     const items = user?.role === 'teacher' ? teacherNavigation : studentNavigation;
     return items.map(item => ({
       ...item,
@@ -91,12 +105,10 @@ export default function Layout() {
   const handleLogout = async () => {
     try {
       await logoutUser().unwrap();
-      // Logout locally regardless of API call result
       dispatch(logout());
       navigate('/login');
     } catch (err) {
       console.error('Failed to logout:', err);
-      // Even if the API call fails, still logout locally
       dispatch(logout());
       navigate('/login');
     }
@@ -104,7 +116,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Боковая панель будет отображаться только для аутентифицированных пользователей */}
       {isAuthenticated && (
         <>
           {/* Mobile sidebar */}
@@ -153,7 +164,6 @@ export default function Layout() {
                             )}
                             onClick={() => setSidebarOpen(false)}
                           >
-                            {/* Block 1: Icon and Name */}
                             <div className="flex items-center gap-x-3">
                               <item.icon
                                 className={classNames(
@@ -165,7 +175,6 @@ export default function Layout() {
                               {item.name}
                             </div>
 
-                            {/* Block 2: Notification Badge */}
                             {item.showBadge && totalUnreadCount > 0 && (
                               <span className="inline-block rounded-full bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white">
                                 {totalUnreadCount}
@@ -197,7 +206,7 @@ export default function Layout() {
             </Dialog>
           </Transition.Root>
 
-          {/* Desktop sidebar - MODIFIED */}
+          {/* Desktop sidebar */}
           <div className={classNames(
             'hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out',
             isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
@@ -284,9 +293,8 @@ export default function Layout() {
         </>
       )}
 
-      {/* Main content - MODIFIED */}
+      {/* Main content */}
       <div className={classNames('transition-all duration-300 ease-in-out', isAuthenticated ? (isSidebarCollapsed ? "lg:pl-20" : "lg:pl-72") : "")}>
-        {/* Header */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           {isAuthenticated && (
             <button
@@ -336,7 +344,6 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Page content */}
         <main className="py-10">
           <div className="px-4 sm:px-6 lg:px-8">
             <Outlet />

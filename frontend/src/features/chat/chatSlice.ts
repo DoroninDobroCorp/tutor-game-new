@@ -43,12 +43,9 @@ const chatSlice = createSlice({
         state.messagesByPartnerId[partnerId] = [...conversation, message];
       }
 
-      // Увеличиваем счетчик ВСЕГДА, если сообщение не от нас.
-      if (message.senderId !== currentUserId) {
-        state.unreadCounts = {
-          ...state.unreadCounts,
-          [partnerId]: (state.unreadCounts[partnerId] || 0) + 1,
-        };
+      // Увеличиваем счетчик, только если сообщение не от нас И чат с этим пользователем не активен
+      if (message.senderId !== currentUserId && state.activeChatPartnerId !== partnerId) {
+        state.unreadCounts[partnerId] = (state.unreadCounts[partnerId] || 0) + 1;
       }
     },
     setActiveChat: (state, action: PayloadAction<string | null>) => {
@@ -56,9 +53,7 @@ const chatSlice = createSlice({
       state.activeChatPartnerId = partnerId;
       // При открытии чата сбрасываем счетчик для этого пользователя.
       if (partnerId && state.unreadCounts[partnerId]) {
-        const newUnreadCounts = { ...state.unreadCounts };
-        delete newUnreadCounts[partnerId];
-        state.unreadCounts = newUnreadCounts;
+        delete state.unreadCounts[partnerId];
       }
     },
     resetChatState: () => initialState,

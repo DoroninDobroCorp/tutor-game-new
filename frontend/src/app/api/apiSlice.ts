@@ -5,7 +5,7 @@ export const apiSlice = createApi({
   reducerPath: 'api',
   // Pass base URL for all requests
   baseQuery: axiosBaseQuery({ baseUrl: import.meta.env.VITE_API_URL || '/api' }),
-  tagTypes: ['User', 'Student', 'Teacher', 'Goal', 'Lesson'],
+  tagTypes: ['User', 'Student', 'Teacher', 'Goal', 'Lesson', 'UnreadCount'],
   endpoints: () => ({}),
 });
 

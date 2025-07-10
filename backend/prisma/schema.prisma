@@ -157,9 +157,6 @@ model StudentPerformanceLog {
 }
 
 // --- OTHER MODELS ---
-}
-
-
 
 model StoryChapter {
   id                        String       @id @default(uuid())

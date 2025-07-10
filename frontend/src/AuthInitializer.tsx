@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from './app/hooks';
 import { useGetProfileQuery } from './features/auth/authApi';
-import { useLazyGetUnreadSummaryQuery } from './features/chat/chatApi';
 import { logout, setUser, selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
 import Spinner from './components/common/Spinner';
 import { WebSocketProvider } from './components/common/WebSocketManager';
@@ -18,7 +17,6 @@ export default function AuthInitializer({ children }: { children: JSX.Element })
   const { data: profileData, isError, isFetching } = useGetProfileQuery(undefined, {
     skip: !token,
   });
-  const [triggerGetUnreadSummary] = useLazyGetUnreadSummaryQuery();
 
   useEffect(() => {
     if (!token) {
@@ -30,12 +28,11 @@ export default function AuthInitializer({ children }: { children: JSX.Element })
         dispatch(logout());
       } else if (profileData?.data.user) {
         dispatch(setUser(profileData.data.user));
-        // Fetch unread messages summary after successful authentication
-        triggerGetUnreadSummary();
+        // The unread summary is now fetched in Layout.tsx
       }
       setIsInitialized(true);
     }
-  }, [isFetching, isError, token, profileData, dispatch, triggerGetUnreadSummary]);
+  }, [isFetching, isError, token, profileData, dispatch]);
 
   if (!isInitialized) {
     return (

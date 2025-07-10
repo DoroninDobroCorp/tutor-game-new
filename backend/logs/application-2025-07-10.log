@@ -5,3 +5,9 @@
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T09:20:41.078Z"}
 {"level":"info","message":"Login attempt for email: teststudent@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T09:31:04.648Z"}
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T09:38:36.177Z"}
+{"level":"info","message":"Login attempt for email: teststudent@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:03:19.090Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:03:58.983Z"}
+{"level":"info","message":"Login attempt for email: teststudent@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:18:59.654Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:19:14.604Z"}
+{"level":"info","message":"Login attempt for email: teststudent@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:34:48.522Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-10T10:34:57.992Z"}
