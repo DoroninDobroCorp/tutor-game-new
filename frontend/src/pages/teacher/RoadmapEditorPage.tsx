@@ -2,7 +2,7 @@
 // Версия: Полная, с интеграцией просмотра ответов студента и чата с ИИ
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useOutletContext } from 'react-router-dom';
 import { useLazyGetPerformanceLogsQuery } from '../../features/teacher/teacherApi';
 import { 
     useGetLearningGoalByIdQuery,
@@ -15,7 +15,6 @@ import { CharacterEditor } from './components/CharacterEditor';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiZap } from 'react-icons/fi';
-import LessonEditorModal from './LessonEditorModal';
 import { RoadmapSection } from './components/RoadmapSection';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 
@@ -33,9 +32,15 @@ interface ChatMessage {
     content: string;
 }
 
+// Контекст из Outlet
+interface RoadmapEditorContext {
+  setEditingLesson: (lesson: Lesson | null) => void;
+}
+
 const RoadmapEditorPage = () => {
     const { goalId } = useParams<{ goalId: string }>();
     const navigate = useNavigate();
+    const { setEditingLesson } = useOutletContext<RoadmapEditorContext>();
 
     const { data: currentGoal, isLoading, error } = useGetLearningGoalByIdQuery(goalId!, {
         skip: !goalId,
@@ -45,7 +50,6 @@ const RoadmapEditorPage = () => {
     const [roadmap, setRoadmap] = useState<ContentSection[]>([]);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [userMessage, setUserMessage] = useState('');
-    const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
     const [isEditingTitle, setIsEditingTitle] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
     const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
     const [showLogsModal, setShowLogsModal] = useState(false);
@@ -185,7 +189,6 @@ const RoadmapEditorPage = () => {
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-6">
-            {editingLesson && <LessonEditorModal isOpen={!!editingLesson} onClose={() => setEditingLesson(null)} lesson={editingLesson} />}
             <div className="flex justify-between items-center mb-6">
                 <Link to="/teacher/goals" className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> Назад</Link>
                 <h1 className="text-2xl font-bold text-gray-900 text-center">{currentGoal.subject}</h1>
@@ -209,7 +212,7 @@ const RoadmapEditorPage = () => {
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
                                         {roadmap.map((section, sectionIndex) => (
-                                            <RoadmapSection key={section.id} section={section} sectionIndex={sectionIndex} onRemoveSection={handleRemoveSection} onAddLesson={handleAddLesson} onRemoveLesson={handleRemoveLesson} onEditLesson={setEditingLesson} onTitleChange={handleLessonTitleChange} onSectionTitleChange={handleSectionTitleChange} editingTitle={isEditingTitle} editingSectionIndex={editingSectionIndex} setEditingSectionIndex={setEditingSectionIndex} startEditing={(si, li) => setIsEditingTitle({section: si, lesson: li})} stopEditing={() => setIsEditingTitle({section: null, lesson: null})} />
+                                            <RoadmapSection key={section.id} section={section} sectionIndex={sectionIndex} onRemoveSection={handleRemoveSection} onAddLesson={handleAddLesson} onRemoveLesson={handleRemoveLesson} onEditLesson={(lesson) => setEditingLesson(lesson)} onTitleChange={handleLessonTitleChange} onSectionTitleChange={handleSectionTitleChange} editingTitle={isEditingTitle} editingSectionIndex={editingSectionIndex} setEditingSectionIndex={setEditingSectionIndex} startEditing={(si, li) => setIsEditingTitle({section: si, lesson: li})} stopEditing={() => setIsEditingTitle({section: null, lesson: null})} />
                                         ))}
                                         {provided.placeholder}
                                     </div>

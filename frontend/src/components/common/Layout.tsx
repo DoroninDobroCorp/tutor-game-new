@@ -16,6 +16,8 @@ import { useLogoutMutation } from '../../features/auth/authApi';
 import { useGetUnreadSummaryQuery } from '../../features/chat/chatApi';
 import { logout } from '../../features/auth/authSlice';
 import { selectTotalUnreadCount, setUnreadCounts } from '../../features/chat/chatSlice';
+import type { Lesson } from '../../types/models';
+import LessonEditorModal from '../../pages/teacher/LessonEditorModal';
 
 interface NavigationItem {
   name: string;
@@ -57,6 +59,8 @@ function classNames(...classes: (string | boolean | undefined)[]): string {
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -116,6 +120,15 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Modal is now managed by Layout to persist its state */}
+      {editingLesson && user?.role === 'teacher' && (
+        <LessonEditorModal 
+          isOpen={!!editingLesson}
+          onClose={() => setEditingLesson(null)} 
+          lesson={editingLesson} 
+        />
+      )}
+
       {isAuthenticated && (
         <>
           {/* Mobile sidebar */}
@@ -346,7 +359,7 @@ export default function Layout() {
 
         <main className="py-10">
           <div className="px-4 sm:px-6 lg:px-8">
-            <Outlet />
+            <Outlet context={{ setEditingLesson }} />
           </div>
         </main>
       </div>

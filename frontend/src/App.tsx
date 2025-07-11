@@ -1,6 +1,6 @@
-// Файл: tutor-game/frontend/src/App.tsx (100% ПРАВИЛЬНАЯ ВЕРСИЯ)
+// Файл: tutor-game/frontend/src/App.tsx
 
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useOutletContext } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 // Хуки и состояние
@@ -29,6 +29,7 @@ import StoryHistoryPage from './pages/student/StoryHistoryPage';
 const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' }) => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectCurrentUser);
+  const context = useOutletContext(); // <-- Получаем контекст из родительского Outlet
 
   if (!isAuthenticated) {
     // Если не аутентифицирован, перенаправляем на логин
@@ -36,13 +37,13 @@ const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' })
   }
 
   if (user?.role.toLowerCase() !== requiredRole) {
-    // Если роль не совпадает, перенаправляем на главную (или на их собственный дашборд)
+    // Если роль не совпадает, перенаправляем на их собственный дашборд
     const userDashboard = user?.role === 'teacher' ? '/teacher' : '/student';
     return <Navigate to={userDashboard} replace />;
   }
 
-  // Если все проверки пройдены, показываем вложенный контент
-  return <Outlet />;
+  // Если все проверки пройдены, показываем вложенный контент и передаем контекст дальше
+  return <Outlet context={context} />;
 };
 
 function App() {
@@ -54,25 +55,24 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         
         {/* Роуты, использующие общий Layout */}
-        <Route element={<Layout />}>
-          <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
           
           {/* Защищенные роуты для Студента */}
-          <Route element={<PrivateRoute requiredRole="student" />}>
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/adventure" element={<StudentAdventurePage />} />
-            <Route path="/student/stories" element={<StudentStoriesListPage />} />
-            <Route path="/student/chat" element={<ChatPage />} />
-            <Route path="/student/story/:goalId" element={<StoryHistoryPage />} />
+          <Route path="student" element={<PrivateRoute requiredRole="student" />}>
+            <Route index element={<StudentDashboard />} />
+            <Route path="adventure" element={<StudentAdventurePage />} />
+            <Route path="stories" element={<StudentStoriesListPage />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route path="story/:goalId" element={<StoryHistoryPage />} />
           </Route>
           
           {/* Защищенные роуты для Учителя */}
-          <Route path="/teacher" element={<PrivateRoute requiredRole="teacher" />}>
-            {/* Новые маршруты для управления учебными целями */}
+          <Route path="teacher" element={<PrivateRoute requiredRole="teacher" />}>
+            <Route index element={<TeacherDashboard />} />
             <Route path="goals" element={<LearningGoalsListPage />} />
             <Route path="create-goal" element={<CreateGoalPage />} />
             <Route path="goals/:goalId/edit" element={<RoadmapEditorPage />} />
-            <Route path="" element={<TeacherDashboard />} />
             <Route path="students" element={<StudentsPage />} />
             <Route path="chat" element={<ChatPage />} />
           </Route>

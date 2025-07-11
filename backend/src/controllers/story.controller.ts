@@ -154,9 +154,9 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
     const file = req.file as Express.Multer.File;
     const teacherId = req.user?.userId;
 
-    if (!text || !prompt || !file) {
+    if (!text || !file) {
         if (file) fs.unlinkSync(file.path);
-        throw new AppError('Text, prompt, and image file are required', 400);
+        throw new AppError('Text and image file are required', 400);
     }
 
     const lesson = await prisma.lesson.findFirst({
