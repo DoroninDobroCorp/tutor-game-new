@@ -218,8 +218,17 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
                     include: { 
                         learningGoal: { 
                             include: {
-                                student: { select: { user: { select: { firstName: true, lastName: true } } } },
-                                teacher: { select: { user: { select: { id: true } } } }
+                                student: { 
+                                    select: { 
+                                        firstName: true, 
+                                        lastName: true 
+                                    } 
+                                },
+                                teacher: { 
+                                    select: { 
+                                        id: true 
+                                    } 
+                                }
                             }
                         }
                     }
@@ -262,8 +271,8 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
 
         return {
             lesson: updatedLesson,
-            teacherId: learningGoal.teacher.user.id,
-            studentName: `${learningGoal.student.user.firstName || ''} ${learningGoal.student.user.lastName || ''}`.trim(),
+            teacherId: learningGoal.teacher.id,
+            studentName: `${learningGoal.student.firstName || ''} ${learningGoal.student.lastName || ''}`.trim(),
             goalId: learningGoal.id
         };
     });
