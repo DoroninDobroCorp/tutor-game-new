@@ -194,7 +194,7 @@ export const endLessonForReviewHandler = async (req: Request, res: Response) => 
     const studentUser = await prisma.user.findUnique({ where: { id: studentId }});
     const wsService = req.app.get('wsService') as WebSocketService;
     
-    wsService.emitToUser(transactionResult.teacherId, 'roadmap_updated', {
+    wsService.emitToUser(transactionResult.teacherId, 'student_requested_review', {
         goalId: transactionResult.goalId,
         message: `Ученик ${studentUser?.firstName || 'Student'} создал урок для повторения в плане "${transactionResult.subject}"`
     });

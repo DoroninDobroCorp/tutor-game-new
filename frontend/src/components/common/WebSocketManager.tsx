@@ -8,7 +8,7 @@ import { addMessage } from '../../features/chat/chatSlice';
 import { SocketContext } from '../../context/SocketContext';
 import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { StudentSubmittedLessonEvent, TeacherReviewedLessonEvent } from '../../types/websocket';
+import { StudentSubmittedLessonEvent, TeacherReviewedLessonEvent, StudentRequestedReviewEvent } from '../../types/websocket';
 
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, token } = useAppSelector((state) => ({
@@ -51,6 +51,42 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         </div>
       ), { 
         duration: Infinity, // Уведомление будет "висеть" до закрытия
+        position: 'top-right' 
+      }
+    );
+  }, [navigate]);
+
+  // Handler for when student requests a review lesson
+  const handleStudentRequestedReview = useCallback((data: StudentRequestedReviewEvent) => {
+    console.log('📬 [WebSocket] Received student_requested_review:', data);
+    toast.custom(
+      (t) => (
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5">
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <span className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-lg">💡</span>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">Запрос на повторение</p>
+                <p className="mt-1 text-sm text-gray-500">{data.message}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button
+              onClick={() => {
+                navigate(`/teacher/goals/${data.goalId}/edit`);
+                toast.dismiss(t.id);
+              }}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              К плану
+            </button>
+          </div>
+        </div>
+      ), { 
+        duration: Infinity, 
         position: 'top-right' 
       }
     );
@@ -113,10 +149,9 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         dispatch(addMessage({ message, currentUserId: user.id }));
       });
 
-      // Слушатель для учителя
+      // Слушатели для событий урока
       newSocket.on('student_submitted_lesson', handleStudentSubmitted);
-      
-      // Слушатель для ученика
+      newSocket.on('student_requested_review', handleStudentRequestedReview);
       newSocket.on('teacher_reviewed_lesson', handleTeacherReviewed);
       
       // Функция очистки при размонтировании компонента
@@ -126,11 +161,12 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         newSocket.off('disconnect');
         newSocket.off('message');
         newSocket.off('student_submitted_lesson');
+        newSocket.off('student_requested_review');
         newSocket.off('teacher_reviewed_lesson');
         newSocket.disconnect();
       };
     }
-  }, [user, token, dispatch, handleStudentSubmitted, handleTeacherReviewed]);
+  }, [user, token, dispatch, handleStudentSubmitted, handleTeacherReviewed, handleStudentRequestedReview]);
 
   return (
     <SocketContext.Provider value={socket}>

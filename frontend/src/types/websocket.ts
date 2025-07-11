@@ -16,7 +16,13 @@ export interface TeacherReviewedLessonEvent {
   hasImage: boolean;
 }
 
+export interface StudentRequestedReviewEvent {
+    message: string;
+    goalId: string;
+}
+
 // Union type for all WebSocket events
 export type WebSocketEvent = 
   | { type: 'student_submitted_lesson'; data: StudentSubmittedLessonEvent }
-  | { type: 'teacher_reviewed_lesson'; data: TeacherReviewedLessonEvent };
+  | { type: 'teacher_reviewed_lesson'; data: TeacherReviewedLessonEvent }
+  | { type: 'student_requested_review'; data: StudentRequestedReviewEvent };

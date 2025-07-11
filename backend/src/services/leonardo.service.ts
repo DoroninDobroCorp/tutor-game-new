@@ -22,6 +22,7 @@ export interface GenerateImageParams {
   characterImageId?: string | null;
   characterWeight?: number;
   presetStyle?: 'ILLUSTRATION' | 'ANIME';
+  characterImageType?: 'UPLOADED' | 'GENERATED';
 }
 
 export interface GenerationResult {
@@ -51,7 +52,7 @@ export async function startImageGeneration(params: GenerateImageParams): Promise
     if (params.characterImageId) {
         payload.controlnets = [{
             initImageId: params.characterImageId,
-            initImageType: 'UPLOADED',
+            initImageType: params.characterImageType || 'UPLOADED',
             preprocessorId: 133,  // Character Reference Preprocessor ID
             // Используем 'weight', как в рабочем скрипте. Это правильно.
             weight: params.characterWeight || 1.15,

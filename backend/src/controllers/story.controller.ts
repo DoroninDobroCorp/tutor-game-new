@@ -220,9 +220,11 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
     }
 
     let referenceImageId: string | null = characterImageId;
+    let imageType: 'UPLOADED' | 'GENERATED' = 'GENERATED'; // Default to generated for Leonardo images
 
     try {
         if (characterImageUrl && characterImageUrl.startsWith('/uploads/')) {
+            imageType = 'UPLOADED'; // If it's a local upload, its type is UPLOADED
             const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
             if (fs.existsSync(imagePath)) {
                 try {
@@ -240,7 +242,8 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
             prompt,
             characterImageId: referenceImageId,
             characterWeight: 1.15,
-            presetStyle: illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined
+            presetStyle: illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined,
+            characterImageType: imageType // Pass the correct image type
         });
 
         if (!generationResult.generationId) {
