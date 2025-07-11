@@ -124,6 +124,32 @@ export const lessonPracticeChatHandler = async (req: Request, res: Response) => 
     if (!lesson || lesson.section.learningGoal.studentId !== studentId) {
         throw new AppError('Lesson not found or access denied', 404);
     }
+    
+    // Log initial practice answers to persistence storage
+    if (initialAnswers && Array.isArray(initialAnswers)) {
+        const practiceBlocks = (lesson.content?.blocks || [])
+            .map((block: any, index: number) => ({ ...block, originalIndex: index }))
+            .filter((block: any) => block.type === 'practice');
+
+        if (practiceBlocks.length > 0) {
+            const logsToCreate = practiceBlocks
+                .map((block, i) => ({
+                    studentId,
+                    lessonId,
+                    question: String(block.content),
+                    answer: String(initialAnswers[i] || ''),
+                    blockType: block.type,
+                    blockIndex: block.originalIndex,
+                }))
+                .filter(log => log.answer && log.answer.trim() !== ''); // Do not log empty/whitespace answers
+
+            if (logsToCreate.length > 0) {
+                await prisma.studentPerformanceLog.createMany({
+                    data: logsToCreate,
+                });
+            }
+        }
+    }
 
     const aiResponse = await getAIAssessment(
         { title: lesson.title, content: lesson.content },
