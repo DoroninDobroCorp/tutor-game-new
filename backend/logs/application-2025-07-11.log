@@ -1,0 +1,2 @@
+{"level":"info","message":"Login attempt for email: teststudent@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-11T18:56:37.274Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-11T18:56:58.218Z"}

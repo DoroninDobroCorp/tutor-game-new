@@ -2,13 +2,15 @@ import { apiSlice } from '../../app/api/apiSlice';
 import type {
     StoryChapterHistory,
     StudentProfile,
-    Lesson as LessonType
+    Lesson as LessonType,
+    AIAssessmentResponse,
 } from '../../types/models';
 
 interface SubmitLessonApiPayload {
     lessonId: string;
     formData: FormData;
 }
+
 
 export const studentApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -51,6 +53,22 @@ export const studentApi = apiSlice.injectEndpoints({
         return result ? [{ type: 'Student' as const, id: `STORY_${goalId}` }] : [];
       },
     }),
+
+    lessonPracticeChat: builder.mutation<{ data: AIAssessmentResponse }, { lessonId: string; initialAnswers?: string[]; chatHistory?: any[] }>({
+      query: ({ lessonId, ...body }) => ({
+        url: `/student/lessons/${lessonId}/practice-chat`,
+        method: 'POST',
+        data: body,
+      }),
+    }),
+
+    endLessonForReview: builder.mutation<{ success: boolean; message: string }, { lessonId: string }>({
+      query: ({ lessonId }) => ({
+        url: `/student/lessons/${lessonId}/end-for-review`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Goal', { type: 'Student', id: 'CURRENT_LESSON' }, { type: 'Student', id: 'PROFILE' }],
+    }),
   }),
 });
 
@@ -59,4 +77,6 @@ export const {
   useGetCurrentLessonQuery, 
   useSubmitLessonMutation,
   useGetStoryHistoryQuery,
+  useLessonPracticeChatMutation,
+  useEndLessonForReviewMutation,
 } = studentApi;

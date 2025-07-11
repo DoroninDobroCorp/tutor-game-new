@@ -51,7 +51,7 @@ export interface ContentSection {
 }
 
 export interface Lesson {
-    id: string;
+    id:string;
     title: string;
     status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
     order: number;
@@ -107,4 +107,14 @@ export interface SubmitLessonPayload {
   lessonId: string;
   studentResponseText: string;
   answers: string[];
+}
+
+// --- AI Chat Types ---
+export interface AIAssessmentResponse {
+    responseText: string;
+    isSessionComplete: boolean;
+    newQuestion: {
+        content: string;
+        type: 'practice';
+    } | null;
 }

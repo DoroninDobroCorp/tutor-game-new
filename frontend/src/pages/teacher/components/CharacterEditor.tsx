@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { 
     useGenerateCharacterForGoalMutation, 
     useUploadCharacterImageMutation,
-    useUpdateCharacterPromptMutation,
-    LearningGoal 
+    useUpdateCharacterPromptMutation
 } from '../../../features/goal/goalApi';
+import type { LearningGoal } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiUserPlus, FiMaximize2, FiX, FiRefreshCcw, FiUpload, FiSave } from 'react-icons/fi';

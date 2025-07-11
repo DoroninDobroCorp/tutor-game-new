@@ -1,5 +1,5 @@
 // Импортируем тип Lesson из центрального файла goalApi.ts
-import { Lesson } from '../../../features/goal/goalApi';
+import { Lesson } from '../../../types/models';
 import { FiBookOpen } from 'react-icons/fi';
 
 export const LessonStatusIndicator = ({ lesson }: { lesson: Lesson }) => {

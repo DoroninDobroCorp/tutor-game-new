@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import { FiX } from 'react-icons/fi';
 // Импортируем тип Lesson из центрального файла goalApi.ts
-import { type Lesson } from '../../features/goal/goalApi';
+import { type Lesson } from '../../types/models';
 import { LessonContentEditor } from './components/LessonContentEditor';
 import LessonStoryEditor from './components/LessonStoryEditor';
 

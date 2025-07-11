@@ -253,6 +253,92 @@ Example for a "Math in space" theme:
   }
 };
 
+export const getAIAssessment = async (
+    lesson: { title: string, content: any },
+    studentAnswers: string[],
+    studentAge: number,
+    language: string,
+    chatHistory: { role: 'user' | 'assistant', content: string }[] = []
+): Promise<any> => {
+    const practiceBlocks = (lesson.content?.blocks || [])
+        .filter((block: any) => block.type === 'practice')
+        .map((block: any) => block.content);
+
+    let context = `The student has completed the lesson "${lesson.title}".\n`;
+    context += "Here are the tasks and the student's answers:\n";
+    practiceBlocks.forEach((question: string, index: number) => {
+        context += `- Task: "${question}"\n  Student's Answer: "${studentAnswers[index] || 'No answer'}"\n`;
+    });
+
+    const systemPrompt = `You are a fun, friendly, and slightly humorous AI tutor for a ${studentAge}-year-old student, speaking ${language}. Your task is to review the student's answers after they complete a lesson, and provide interactive follow-up practice if needed.
+
+    YOUR PROCESS:
+    1.  **Analyze Answers**: First, silently analyze the provided tasks and the student's answers. Determine if they are correct or incorrect. Be gentle; a small typo is not a major error if the concept is right.
+    2.  **Choose Path**:
+        - If ALL answers are correct: Your goal is to praise the student and end the session.
+        - If there are ANY incorrect answers: Your goal is to help the student master the topic.
+    3.  **Chat Interaction**: Engage in a conversation based on the chat history. The user's input may be an answer to your question or just a comment. Respond naturally.
+    4.  **Error Correction**: If a student was wrong, explain the concept clearly and simply, using humor and analogies suitable for their age. Then, generate ONE NEW, similar question to test their understanding.
+    5.  **Mastery Rule**: The student must answer 3 new questions correctly IN A ROW for a topic they got wrong. You must keep track of this. Once they achieve this streak for all failed topics, the session is complete.
+    
+    RESPONSE FORMAT:
+    You MUST respond with ONLY a valid JSON object with the following structure:
+    {
+      "responseText": "A string containing your friendly, conversational reply to the student.",
+      "isSessionComplete": boolean, // Set to true ONLY when all topics are mastered or were correct from the start.
+      "newQuestion": { // An object for a new practice question. This should be null if no new question is needed.
+        "content": "The text of the new question.",
+        "type": "practice" // Always 'practice'
+      }
+    }
+
+    EXAMPLE (First Interaction, one error found):
+    {
+      "responseText": "Hey, great job on the lesson! You nailed almost everything! 💪 I noticed on the question about finding the area, you multiplied instead of adding. Let’s try another one just like it to make sure you've got it!",
+      "isSessionComplete": false,
+      "newQuestion": {
+        "content": "A square has a side length of 5cm. What is its PERIMETER?",
+        "type": "practice"
+      }
+    }
+
+    EXAMPLE (Session Complete):
+    {
+      "responseText": "YES! That's three in a row! You're a true math wizard! 🧙‍♂️ You've totally mastered this. Ready for the next part of your adventure?",
+      "isSessionComplete": true,
+      "newQuestion": null
+    }`;
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt }
+    ];
+
+    if (chatHistory.length > 0) {
+        messages.push(...chatHistory.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+        })));
+    } else {
+        messages.push({ role: 'user', content: `Initial context: ${context}\n\nThis is my first message. Please analyze my initial answers and give me your first response.` });
+    }
+    
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4.1',
+            messages,
+            response_format: { type: "json_object" },
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) throw new Error('No content from AI.');
+        
+        return JSON.parse(content);
+    } catch (error) {
+        console.error('[OpenAI Service] Error in getAIAssessment:', error);
+        throw new Error('Failed to get AI assessment.');
+    }
+};
+
 export const generateRoadmap = async (
     subject: string,
     age: number,

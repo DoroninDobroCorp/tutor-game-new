@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { 
   getStudentProfile,
   getCurrentLessonHandler,
+  lessonPracticeChatHandler,
+  endLessonForReviewHandler,
   submitLessonHandler,
   getStoryHistoryHandler,
 } from '../controllers/student.controller';
@@ -16,6 +18,8 @@ router.use(authenticate);
 
 // Adventure routes
 router.get('/current-lesson', asyncHandler(getCurrentLessonHandler));
+router.post('/lessons/:lessonId/practice-chat', authorize('STUDENT'), asyncHandler(lessonPracticeChatHandler));
+router.post('/lessons/:lessonId/end-for-review', authorize('STUDENT'), asyncHandler(endLessonForReviewHandler));
 router.post('/lessons/:lessonId/submit', authorize('STUDENT'), upload.single('image'), asyncHandler(submitLessonHandler));
 
 // Story history

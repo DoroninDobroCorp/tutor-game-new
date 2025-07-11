@@ -2,6 +2,7 @@ import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { WebSocketService } from '../services/websocket.service';
+import { getAIAssessment } from '../services/openai.service';
 
 // Расширяем Request, чтобы он мог содержать файл
 interface Request extends ExpressRequest {
@@ -103,6 +104,104 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
   res.json({ success: true, data: currentLesson });
 };
 
+export const lessonPracticeChatHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const studentId = req.user?.userId;
+    const { initialAnswers, chatHistory } = req.body;
+
+    if (!studentId) {
+        throw new AppError('Not authenticated', 401);
+    }
+    if (!initialAnswers && !chatHistory) {
+         throw new AppError('Initial answers or chat history is required', 400);
+    }
+
+    const lesson = await prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: { section: { include: { learningGoal: true } } }
+    });
+    
+    if (!lesson || lesson.section.learningGoal.studentId !== studentId) {
+        throw new AppError('Lesson not found or access denied', 404);
+    }
+
+    const aiResponse = await getAIAssessment(
+        { title: lesson.title, content: lesson.content },
+        initialAnswers || [], // Pass initial answers only on the first call
+        lesson.section.learningGoal.studentAge,
+        lesson.section.learningGoal.language || 'Russian',
+        chatHistory || []
+    );
+
+    res.json({ success: true, data: aiResponse });
+};
+
+export const endLessonForReviewHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const studentId = req.user?.userId;
+
+    if (!studentId) {
+        throw new AppError('Not authenticated', 401);
+    }
+
+    const transactionResult = await prisma.$transaction(async (tx) => {
+        const originalLesson = await tx.lesson.findUnique({
+            where: { id: lessonId },
+            include: { section: { include: { learningGoal: true }}}
+        });
+
+        if (!originalLesson || originalLesson.section.learningGoal.studentId !== studentId) {
+            throw new AppError('Lesson not found or access denied', 404);
+        }
+        
+        await tx.lesson.update({
+            where: { id: lessonId },
+            data: { status: 'COMPLETED' }
+        });
+
+        await tx.lesson.updateMany({
+            where: {
+                sectionId: originalLesson.sectionId,
+                order: { gt: originalLesson.order }
+            },
+            data: { order: { increment: 1 } }
+        });
+
+        await tx.lesson.create({
+            data: {
+                title: `Повторение: ${originalLesson.title}`,
+                order: originalLesson.order + 1,
+                type: 'PRACTICE',
+                status: 'DRAFT',
+                sectionId: originalLesson.sectionId,
+                content: {
+                    blocks: [{
+                        type: 'theory',
+                        duration: 5,
+                        content: `Этот урок создан для повторения темы "${originalLesson.title}". Здесь учитель добавит материалы, чтобы помочь тебе лучше разобраться в сложных моментах.`
+                    }]
+                }
+            }
+        });
+
+        return {
+            teacherId: originalLesson.section.learningGoal.teacherId,
+            goalId: originalLesson.section.learningGoal.id,
+            subject: originalLesson.section.learningGoal.subject,
+        };
+    });
+
+    const studentUser = await prisma.user.findUnique({ where: { id: studentId }});
+    const wsService = req.app.get('wsService') as WebSocketService;
+    
+    wsService.emitToUser(transactionResult.teacherId, 'roadmap_updated', {
+        goalId: transactionResult.goalId,
+        message: `Ученик ${studentUser?.firstName || 'Student'} создал урок для повторения в плане "${transactionResult.subject}"`
+    });
+
+    res.json({ success: true, message: 'Lesson ended. A review lesson has been added.' });
+}
+
 export const submitLessonHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
     const studentId = req.user?.userId;
@@ -111,114 +210,32 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
     if (!studentId) throw new AppError('Not authenticated', 401);
     if (!studentResponseText) throw new AppError('Story continuation is required', 400);
 
-    // Start transaction
     const result = await prisma.$transaction(async (tx) => {
-        // First, get the basic lesson info
         const lesson = await tx.lesson.findUnique({
             where: { id: lessonId },
-            select: {
-                id: true,
-                title: true,
-                content: true,
-                status: true,
-                order: true,
-                type: true,
-                sectionId: true
-            }
-        });
-
-        if (!lesson) {
-            throw new AppError('Lesson not found', 404);
-        }
-
-        // Get the section and learning goal info
-        const section = await tx.contentSection.findUnique({
-            where: { id: lesson.sectionId },
-            select: {
-                learningGoal: {
-                    select: {
-                        id: true,
-                        teacherId: true,
-                        studentId: true
+            include: { 
+                section: { 
+                    include: { 
+                        learningGoal: { 
+                            include: {
+                                student: { select: { user: { select: { firstName: true, lastName: true } } } },
+                                teacher: { select: { user: { select: { id: true } } } }
+                            }
+                        }
                     }
                 }
             }
         });
 
-        if (!section?.learningGoal) {
-            throw new AppError('Learning goal not found', 404);
+        if (!lesson || lesson.section.learningGoal.studentId !== studentId) {
+            throw new AppError('Lesson not found or access denied', 404);
         }
 
-        const { learningGoal } = section;
-        const goalId = learningGoal.id;
+        const { learningGoal } = lesson.section;
 
-        // Get teacher info
-        const teacher = await tx.teacher.findUnique({
-            where: { userId: learningGoal.teacherId },
-            select: {
-                user: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true
-                    }
-                }
-            }
-        });
+        // Note: Practice answers from the main lesson content are no longer logged here.
+        // They are now handled during the AI chat phase.
 
-        // Get student info
-        const student = await tx.student.findUnique({
-            where: { userId: learningGoal.studentId },
-            select: {
-                user: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true
-                    }
-                }
-            }
-        });
-
-        if (!teacher?.user || !student?.user) {
-            throw new AppError('Teacher or student not found', 404);
-        }
-
-        // Parse answers from stringified JSON
-        const answers = JSON.parse(req.body.answers || '[]');
-
-        // Save practice answers to log
-        if (Array.isArray(answers) && answers.length > 0) {
-            const practiceBlocks = ((lesson.content as any)?.blocks || [])
-                .map((block: any, index: number) => ({ ...block, originalIndex: index }))
-                .filter((block: any) => block.type === 'practice');
-
-            for (let i = 0; i < answers.length; i++) {
-                if (practiceBlocks[i]) {
-                    await tx.$executeRaw`
-                        INSERT INTO student_performance_logs (
-                            id, 
-                            student_id, 
-                            lesson_id, 
-                            block_index, 
-                            block_type, 
-                            question, 
-                            answer
-                        ) VALUES (
-                            gen_random_uuid(),
-                            ${studentId}::uuid,
-                            ${lessonId}::uuid,
-                            ${practiceBlocks[i].originalIndex},
-                            'practice',
-                            ${practiceBlocks[i].content},
-                            ${answers[i]}
-                        )
-                    `;
-                }
-            }
-        }
-
-        // Prepare data for StoryChapter update
         const storyUpdateData: {
             studentSnippetText: string;
             studentSnippetStatus: string;
@@ -232,7 +249,6 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
             storyUpdateData.studentSnippetImageUrl = `/uploads/${req.file.filename}`;
         }
 
-        // Save student response and update lesson status in a single transaction
         const [_, updatedLesson] = await Promise.all([
             tx.storyChapter.update({
                 where: { lessonId },
@@ -241,27 +257,17 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
             tx.lesson.update({
                 where: { id: lessonId },
                 data: { status: 'COMPLETED' },
-                select: {
-                    id: true,
-                    title: true,
-                    content: true,
-                    status: true,
-                    order: true,
-                    type: true,
-                    sectionId: true
-                }
             })
         ]);
 
         return {
             lesson: updatedLesson,
-            teacherId: teacher.user.id,
-            studentName: `${student.user.firstName} ${student.user.lastName}`,
-            goalId
+            teacherId: learningGoal.teacher.user.id,
+            studentName: `${learningGoal.student.user.firstName || ''} ${learningGoal.student.user.lastName || ''}`.trim(),
+            goalId: learningGoal.id
         };
     });
 
-    // Send WebSocket notification to teacher after successful transaction
     try {
         const wsService = req.app.get('wsService') as WebSocketService;
         if (wsService && result.teacherId) {
@@ -309,7 +315,7 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
             teacherSnippetText: true,
             teacherSnippetImageUrl: true,
             studentSnippetText: true,
-            studentSnippetImageUrl: true, // Also select student image
+            studentSnippetImageUrl: true,
             lesson: {
                 select: {
                     title: true,
