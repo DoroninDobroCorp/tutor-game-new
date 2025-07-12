@@ -2,3 +2,4 @@
 {"level":"info","message":"Registration attempt for email: MayaDoronina@gmail.com, role: STUDENT","service":"tutor-game-api","timestamp":"2025-07-12T12:53:14.944Z"}
 {"level":"info","message":"User registered successfully: 9c72d192-5457-4d18-80b5-8eb0238ab967","service":"tutor-game-api","timestamp":"2025-07-12T12:53:15.248Z"}
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T13:28:15.007Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T16:33:49.871Z"}

@@ -43,19 +43,35 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     let storyContext: string | undefined = undefined;
 
     if (currentLessonIndex > 0) {
-        const previousLesson = allLessons[currentLessonIndex - 1];
-        if (previousLesson?.storyChapter) {
-            const { teacherSnippetText, studentSnippetText } = previousLesson.storyChapter;
-            storyContext = `КОНТЕКСТ ПРЕДЫДУЩЕГО ШАГА:\n`;
-            if (teacherSnippetText) storyContext += `Учитель написал: "${teacherSnippetText}"\n`;
-            if (studentSnippetText) storyContext += `Ученик ответил: "${studentSnippetText}"\n`;
-            storyContext += `---`;
+        // Iterate backwards from the lesson before the current one
+        for (let i = currentLessonIndex - 1; i >= 0; i--) {
+            const previousLesson = allLessons[i];
+            if (previousLesson?.storyChapter) {
+                const { teacherSnippetText, studentSnippetText } = previousLesson.storyChapter;
+                storyContext = `КОНТЕКСТ ПРЕДЫДУЩЕГО ШАГА:\n`;
+                if (teacherSnippetText) storyContext += `Учитель написал: "${teacherSnippetText}"\n`;
+                if (studentSnippetText) storyContext += `Ученик ответил: "${studentSnippetText}"\n`;
+                storyContext += `---`;
+                // Break the loop once we've found the most recent context
+                break; 
+            }
         }
     }
 
     try {
+        const totalLessons = allLessons.length;
+        const currentLessonNumber = currentLessonIndex >= 0 ? currentLessonIndex + 1 : 1;
+
         const storySnippetText = await generateStorySnippet(
-            lesson.title, setting, studentAge, characterPrompt || 'a brave hero', language || 'Russian', refinementPrompt, storyContext
+            lesson.title,
+            setting,
+            studentAge,
+            characterPrompt || 'a brave hero',
+            language || 'Russian',
+            currentLessonNumber,
+            totalLessons,
+            refinementPrompt,
+            storyContext
         );
 
         const scenePrompt = await translateForImagePrompt(storySnippetText);

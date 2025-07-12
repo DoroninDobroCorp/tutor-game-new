@@ -123,34 +123,43 @@ export const generateStorySnippet = async (
     studentAge: number,
     characterPrompt: string,
     language: string,
+    currentLessonNumber: number,
+    totalLessons: number,
     refinementPrompt?: string,
     storyContext?: string
 ): Promise<string> => {
     const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
-    Your task is to create a short, intriguing story snippet (3-5 sentences) for a ${studentAge}-year-old.
-    
-    RULES:
-    1. The story must be fun and unexpected, not preachy or boring. Avoid clichés. Use humor and mystery.
-    2. Your primary goal is to CREATE INTRIGUE and NARRATIVE, not to teach.
-    3. The lesson topic is "${lessonTitle}". You should subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful, but DO NOT include any direct tasks, questions, or explanations.
-    4. If a story context is provided, you MUST use it as a basis. The student's response in the context is the MOST IMPORTANT part. The new story must be a direct, logical continuation of the student's action or idea.
-    5. The story MUST end with an open-ended, intriguing question to the student, like "What do you think the character should do?" or "What strange thing did they find?"
-    6. Your output must be ONLY the story text. No explanations or extra text.`;
+You are writing a multi-chapter story for a ${studentAge}-year-old. The entire adventure consists of ${totalLessons} lessons (chapters). You are now writing the chapter for lesson ${currentLessonNumber}.
+
+YOUR MAIN GOAL: Create a coherent, developing story that builds on previous chapters. The story must be fun, unexpected, and use humor and mystery.
+
+RULES:
+1.  **Story Arc:** You MUST consider the current lesson number (${currentLessonNumber}) out of the total (${totalLessons}).
+    -   If it's an early lesson, introduce characters and the main conflict. Create intrigue.
+    -   If it's a middle lesson, develop the plot, introduce twists and new challenges.
+    -   If it's one of the last lessons, you MUST move the story towards a resolution. The final lesson should have a concluding chapter.
+2.  **Continuity:** If a story context (previous chapters) is provided, you MUST use it. The new chapter must be a direct, logical, and creative continuation of the events, especially the student's last action/response.
+3.  **Lesson Integration:** The topic of the current lesson is "${lessonTitle}". You must subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful. DO NOT include any direct tasks, questions, or educational content. Your primary goal is to create NARRATIVE.
+4.  **Length:** The story snippet MUST be 2 to 3 paragraphs long. This is a short chapter.
+5.  **Tone & Style:** The story must be exciting, not preachy or boring. Avoid clichés.
+6.  **Ending:** The chapter MUST end with an open-ended, intriguing question to the student, like "What do you think the character should do?" or "What strange thing did they find?" (Unless it's the final chapter, which should offer a sense of closure).
+7.  **Output Format:** Your output must be ONLY the story text. No explanations, titles, or extra text.`;
 
     let userPrompt = '';
 
     if (storyContext) {
         userPrompt += `${storyContext}\n\n`;
-        userPrompt += `Based on the student's response, continue the story, naturally leading into the new lesson: "${lessonTitle}".`;
+        userPrompt += `Based on all the previous chapters and especially the student's last response, continue the story for the current lesson: "${lessonTitle}". This is chapter ${currentLessonNumber} of ${totalLessons}.`;
     } else {
+        // This is the first chapter.
         userPrompt = `Lesson Title: "${lessonTitle}"
         Story Setting: "${setting}"
         Main Character: "${characterPrompt}"
-        \nWrite the very first chapter of the story.`;
+        \nWrite the very first chapter (chapter ${currentLessonNumber} of ${totalLessons}) of the story.`;
     }
 
     if (refinementPrompt) {
-        userPrompt += `\n\nRefine the story with the following instruction: "${refinementPrompt}"`;
+        userPrompt += `\n\nTeacher's instruction for this chapter: "${refinementPrompt}"`;
     }
     
     userPrompt += '\n\nWrite the story snippet now.';
