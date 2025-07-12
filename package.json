@@ -8,14 +8,16 @@
     "frontend:dev": "cd frontend && npm run dev",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "build": "cd backend && npm run build && cd ../frontend && npm run build",
-    "start": "cd backend && npm start"
+    "start": "cd backend && npm start",
+    "seed": "dotenv -e backend/.env -- npx prisma generate && dotenv -e backend/.env -- npx ts-node backend/scripts/createTestUsers.ts"
   },
   "workspaces": [
     "backend",
     "frontend"
   ],
   "dependencies": {
-    "@prisma/client": "^6.10.1"
+    "@prisma/client": "^6.10.1",
+    "dotenv-cli": "^7.4.2"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

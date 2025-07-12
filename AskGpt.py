@@ -22,7 +22,7 @@ USER_IGNORE_FILES = (
     # Go
     "go.mod, go.sum, "
     # Node.js
-    "package.json, package-lock.json, yarn.lock, "
+    "package-lock.json, yarn.lock, "
     # Common
     ".DS_Store, .gitignore, README.md, "
     # Specific user files
