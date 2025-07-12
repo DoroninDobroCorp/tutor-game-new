@@ -151,6 +151,21 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
                 <div className="border-t pt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Промпт для изображения</label>
                     <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="w-full p-2 border rounded-md" placeholder="Здесь появится промпт для изображения..." disabled={isLoading} />
+                    
+                    <div className="mt-2 flex items-center">
+                        <input
+                            id="use-character-ref"
+                            type="checkbox"
+                            checked={useCharacterReference}
+                            onChange={(e) => setUseCharacterReference(e.target.checked)}
+                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            disabled={isLoading}
+                        />
+                        <label htmlFor="use-character-ref" className="ml-2 block text-sm text-gray-900">
+                            Использовать референс персонажа
+                        </label>
+                    </div>
+                     
                     <div className="mt-2 grid grid-cols-2 gap-2">
                          <button onClick={handleGenerateImage} disabled={isLoading || !imagePrompt} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
                             {isGeneratingImage || generationId ? <Spinner size="sm" /> : <FiImage size={16} />} <span>{isGeneratingImage || generationId ? "Генерация..." : "Создать картинку"}</span>
