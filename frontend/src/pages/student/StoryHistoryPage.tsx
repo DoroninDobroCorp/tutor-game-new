@@ -46,7 +46,7 @@ const StoryHistoryPage = () => {
                                     )}
                                     <div className="flex-1">
                                         <p className="font-semibold text-indigo-700">Рассказчик:</p>
-                                        <p className="mt-2 text-gray-700 italic leading-relaxed">{chapter.teacherSnippetText}</p>
+                                        <p className="mt-2 text-gray-700 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
                                     </div>
                                 </div>
                             )}
@@ -62,7 +62,7 @@ const StoryHistoryPage = () => {
                                                 className="mt-2 w-full md:w-1/2 rounded-lg shadow-md object-cover"
                                             />
                                         )}
-                                        <p className="mt-2 text-gray-800 leading-relaxed">{chapter.studentSnippetText}</p>
+                                        <p className="mt-2 text-gray-800 leading-relaxed whitespace-pre-wrap">{chapter.studentSnippetText}</p>
                                     </div>
                                 </div>
                             )}

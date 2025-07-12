@@ -3,7 +3,7 @@ import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeCha
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FiUpload, FiX, FiSend, FiCoffee, FiChevronsRight, FiZap } from 'react-icons/fi';
+import { FiSend, FiCoffee, FiChevronsRight, FiZap } from 'react-icons/fi';
 import type { AIAssessmentResponse } from '../../types/models';
 
 const YoutubeEmbed = ({ url }: { url: string }) => {
@@ -46,7 +46,6 @@ export default function StudentAdventurePage() {
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
     const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
     const [storyResponse, setStoryResponse] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [studentChatMessage, setStudentChatMessage] = useState('');
     const [aiResponse, setAiResponse] = useState<AIAssessmentResponse | null>(null);
@@ -61,7 +60,6 @@ export default function StudentAdventurePage() {
             setCurrentBlockIndex(0);
             setPracticeAnswers({});
             setStoryResponse('');
-            setImageFile(null);
             setChatHistory([]);
             setAiResponse(null);
         }
@@ -119,13 +117,13 @@ export default function StudentAdventurePage() {
     };
     
     const handleEndForReview = async () => {
-        if (window.confirm("Вы уверены, что хотите закончить? Новая карточка для повторения будет добавлена в план.") && lesson) {
+        if (window.confirm("Вы уверены, что хотите продолжить, создав урок для повторения? Учитель увидит ваш запрос.") && lesson) {
             try {
                 await endLesson({ lessonId: lesson.id }).unwrap();
-                toast.success("Урок для повторения создан. Возвращаемся в кабинет.");
-                navigate('/student');
+                toast.success("Урок для повторения создан. Теперь можно продолжить историю!");
+                setLessonPhase('story');
             } catch (err) {
-                toast.error("Не удалось завершить урок.");
+                toast.error("Не удалось создать урок для повторения.");
             }
         }
     };
@@ -134,7 +132,6 @@ export default function StudentAdventurePage() {
         if (!lesson || !storyResponse.trim()) { toast.error("Напиши, что будет дальше в истории!"); return;}
         const formData = new FormData();
         formData.append('studentResponseText', storyResponse);
-        if (imageFile) formData.append('image', imageFile);
         try {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
             toast.success("Отлично! Урок отправлен учителю на проверку.", { duration: 4000 });
@@ -218,11 +215,6 @@ export default function StudentAdventurePage() {
                          <div className="mt-6">
                             <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
                             <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
-                            <div className="mt-4">
-                               <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md cursor-pointer hover:bg-gray-300"><FiUpload /><span>{imageFile ? 'Изменить фото' : 'Прикрепить фото'}</span></label>
-                               <input id="image-upload" type="file" className="hidden" onChange={(e) => e.target.files && setImageFile(e.target.files[0])} accept="image/png, image/jpeg, image/webp" />
-                               {imageFile && (<div className="mt-2 relative inline-block align-middle ml-4"><img src={URL.createObjectURL(imageFile)} alt="Preview" className="h-20 w-20 object-cover rounded-md border-2 border-white shadow-sm" /><button onClick={() => setImageFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 leading-none shadow-md hover:bg-red-600"><FiX size={12} /></button></div>)}
-                            </div>
                          </div>
                          <div className="flex justify-end mt-4">
                              <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>

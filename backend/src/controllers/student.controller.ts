@@ -180,10 +180,8 @@ export const endLessonForReviewHandler = async (req: Request, res: Response) => 
             throw new AppError('Lesson not found or access denied', 404);
         }
         
-        await tx.lesson.update({
-            where: { id: lessonId },
-            data: { status: 'COMPLETED' }
-        });
+        // We no longer mark the lesson as completed here.
+        // It will be completed when the student submits the story.
 
         await tx.lesson.updateMany({
             where: {
