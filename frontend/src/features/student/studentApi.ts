@@ -54,6 +54,14 @@ export const studentApi = apiSlice.injectEndpoints({
       },
     }),
 
+    getStorySummary: builder.query<{ summary: string }, string>({
+        query: (goalId) => ({
+            url: `/student/story/${goalId}/summary`,
+            method: 'GET',
+        }),
+        transformResponse: (response: { data: { summary: string } }) => response.data || { summary: '' },
+    }),
+
     lessonPracticeChat: builder.mutation<{ data: AIAssessmentResponse }, { lessonId: string; initialAnswers?: string[]; chatHistory?: any[] }>({
       query: ({ lessonId, ...body }) => ({
         url: `/student/lessons/${lessonId}/practice-chat`,
@@ -77,6 +85,7 @@ export const {
   useGetCurrentLessonQuery, 
   useSubmitLessonMutation,
   useGetStoryHistoryQuery,
+  useLazyGetStorySummaryQuery,
   useLessonPracticeChatMutation,
   useEndLessonForReviewMutation,
 } = studentApi;

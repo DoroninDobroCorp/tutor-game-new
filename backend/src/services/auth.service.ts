@@ -217,7 +217,7 @@ export const getCurrentUser = async (userId: string): Promise<SafeUser | null> =
 // Generate token helper function
 const generateToken = (user: User, type: 'access' | 'refresh'): string => {
   const secret = type === 'access' ? config.jwtSecret : config.jwtRefreshSecret;
-  const expiresIn = type === 'access' ? '15m' : '7d';
+  const expiresIn = type === 'access' ? config.jwtExpiresIn : config.refreshTokenExpiresIn;
 
   const payload = {
     userId: user.id,

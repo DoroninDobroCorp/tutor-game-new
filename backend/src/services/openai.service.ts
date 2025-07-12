@@ -136,7 +136,7 @@ YOUR MAIN GOAL: Create a coherent, developing story and a corresponding image pr
 
 RULES:
 1.  **JSON Output:** Your response MUST BE ONLY a valid JSON object with THREE keys:
-    - "storyText": A string containing the story chapter text (2-3 paragraphs, ending with an intriguing question, unless it's the final chapter).
+    - "storyText": A string containing the story chapter text (2-3 paragraphs). The chapter MUST end with an open-ended question asking what the character will do next. Phrase it naturally to fit the story, but the core question is always about the character's next action (e.g., 'What should [character name] do now?', 'How will they get out of this situation?'). This is not a quiz, it's a story prompt.
     - "imagePrompt": A CONCISE (15-25 words), powerful, comma-separated list of keywords in ENGLISH for an AI image generator. It must describe the scene from "storyText" and include style hints like "whimsical, cartoon style, detailed illustration, vibrant colors".
     - "useCharacterReference": A boolean (true/false). Set this to 'true' if the main character is central to this scene. Set it to 'false' if the scene focuses on the environment, an object, or another character, making the main character's presence less important. You have creative freedom to make the best artistic choice.
 2.  **Story Arc:** You MUST consider the current lesson number (${currentLessonNumber}) out of the total (${totalLessons}).
@@ -418,4 +418,51 @@ Example format:
     console.error('[FATAL ERROR] An error occurred in generateRoadmap:', error);
     throw new Error('Failed to generate roadmap due to an internal error.');
   }
+};
+
+export const generateStorySummary = async (
+    storyHistory: string,
+    language: string
+): Promise<{ summary: string }> => {
+    const systemPrompt = `You are a helpful assistant who is great at summarizing stories for children. 
+    Your task is to read the provided story history and return a short, easy-to-understand summary.
+    The language of the summary must be ${language}.
+    The summary should remind the student what has happened so far in their adventure, in 2-3 concise sentences.
+    
+    Your response MUST BE ONLY a valid JSON object with one key: "summary".
+    
+    Example:
+    {
+        "summary": "You woke up in a mysterious forest, found a talking squirrel who gave you a magical map, and now you stand before a glowing waterfall, wondering what secrets it holds."
+    }`;
+
+    const userPrompt = `Here is the story so far. Please provide a summary in ${language}.\n\nStory:\n${storyHistory}`;
+
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4.1',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            response_format: { type: "json_object" },
+            max_tokens: 250,
+            temperature: 0.7,
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error('No content from OpenAI');
+        }
+
+        const parsedJson = JSON.parse(content);
+        if (typeof parsedJson.summary !== 'string') {
+            throw new Error('Invalid JSON structure from OpenAI');
+        }
+
+        return parsedJson;
+    } catch (error) {
+        console.error('Error generating story summary with OpenAI:', error);
+        throw new Error('Failed to generate story summary.');
+    }
 };

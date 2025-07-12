@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeChatMutation, useEndLessonForReviewMutation } from '../../features/student/studentApi';
+import { useState, useEffect, useRef, Fragment } from 'react';
+import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeChatMutation, useEndLessonForReviewMutation, useLazyGetStorySummaryQuery } from '../../features/student/studentApi';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FiSend, FiCoffee, FiChevronsRight, FiZap } from 'react-icons/fi';
+import { FiSend, FiCoffee, FiChevronsRight, FiZap, FiHelpCircle, FiX } from 'react-icons/fi';
 import type { AIAssessmentResponse } from '../../types/models';
+import { Dialog, Transition } from '@headlessui/react';
+
 
 const YoutubeEmbed = ({ url }: { url: string }) => {
     const getYouTubeId = (url: string) => {
@@ -32,6 +34,38 @@ const YoutubeEmbed = ({ url }: { url: string }) => {
     );
 };
 
+// Summary Modal Component
+const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean; onClose: () => void; summary: string; isLoading: boolean; }) => {
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+          <div className="fixed inset-0 bg-black/30" />
+        </Transition.Child>
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0 scale-95">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-start">
+                  Краткое содержание
+                  <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><FiX /></button>
+                </Dialog.Title>
+                <div className="mt-4 min-h-[10rem]">
+                  {isLoading ? 
+                    <div className="flex justify-center items-center h-full"><Spinner /></div> : 
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{summary}</p>
+                  }
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+};
+
+
 type LessonPhase = 'content' | 'assessment' | 'story';
 type ChatMessage = { role: 'user' | 'assistant', content: string };
 
@@ -41,6 +75,7 @@ export default function StudentAdventurePage() {
     const [submitLesson, { isLoading: isSubmitting }] = useSubmitLessonMutation();
     const [practiceChat, { isLoading: isChatLoading }] = useLessonPracticeChatMutation();
     const [endLesson, { isLoading: isEndingLesson }] = useEndLessonForReviewMutation();
+    const [triggerGetSummary, { isLoading: isSummaryLoading }] = useLazyGetStorySummaryQuery();
 
     const [lessonPhase, setLessonPhase] = useState<LessonPhase>('content');
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
@@ -49,6 +84,9 @@ export default function StudentAdventurePage() {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [studentChatMessage, setStudentChatMessage] = useState('');
     const [aiResponse, setAiResponse] = useState<AIAssessmentResponse | null>(null);
+
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+    const [summaryText, setSummaryText] = useState('');
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const blocks = lesson?.content?.blocks || [];
@@ -68,6 +106,19 @@ export default function StudentAdventurePage() {
     useEffect(() => {
       chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight);
     }, [chatHistory]);
+
+    const handleShowSummary = async () => {
+        if (!lesson?.section?.learningGoal?.id) return;
+        setIsSummaryOpen(true);
+        setSummaryText('');
+        try {
+          const result = await triggerGetSummary(lesson.section.learningGoal.id).unwrap();
+          setSummaryText(result.summary);
+        } catch (error) {
+          toast.error('Не удалось загрузить краткое содержание.');
+          setSummaryText('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
+        }
+    };
 
     const startAssessmentPhase = async () => {
         if (!lesson) return;
@@ -153,6 +204,7 @@ export default function StudentAdventurePage() {
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
+            <SummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} summary={summaryText} isLoading={isSummaryLoading} />
             <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
 
             {lessonPhase === 'content' && (<>
@@ -206,11 +258,16 @@ export default function StudentAdventurePage() {
 
             {lessonPhase === 'story' && (<>
                 <div className="bg-indigo-50 rounded-lg shadow-md p-6">
-                     <h2 className="text-2xl font-bold text-indigo-700 mb-4">Продолжение истории...</h2>
+                     <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-2xl font-bold text-indigo-700">Продолжение истории...</h2>
+                        <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-indigo-200 text-indigo-800 rounded-md hover:bg-indigo-300 flex items-center gap-2">
+                            <FiHelpCircle /> Краткое содержание
+                        </button>
+                     </div>
                      {lesson.storyChapter ? (<>
                          <div className="flex flex-col md:flex-row gap-6 items-start">
                              {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
-                             <p className="flex-1 text-gray-700 leading-relaxed italic">{lesson.storyChapter.teacherSnippetText}</p>
+                             <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
                          </div>
                          <div className="mt-6">
                             <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>

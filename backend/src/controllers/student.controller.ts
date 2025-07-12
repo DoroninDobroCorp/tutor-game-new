@@ -2,7 +2,7 @@ import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { WebSocketService } from '../services/websocket.service';
-import { getAIAssessment } from '../services/openai.service';
+import { getAIAssessment, generateStorySummary } from '../services/openai.service';
 import { createAndSendMessage } from '../services/chat.service';
 
 // Расширяем Request, чтобы он мог содержать файл
@@ -374,4 +374,51 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
     });
 
     res.json({ success: true, data: storyChapters });
+};
+
+export const getStorySummaryHandler = async (req: Request, res: Response) => {
+    const studentId = req.user?.userId;
+    const { goalId } = req.params;
+
+    if (!studentId) throw new AppError('Not authenticated', 401);
+    if (!goalId) throw new AppError('Goal ID is required', 400);
+
+    const goal = await prisma.learningGoal.findFirst({
+        where: { id: goalId, studentId },
+        select: { id: true, language: true }
+    });
+
+    if (!goal) {
+        throw new AppError('Goal not found or access denied', 404);
+    }
+
+    const storyChapters = await prisma.storyChapter.findMany({
+        where: {
+            learningGoalId: goalId,
+            teacherSnippetStatus: 'APPROVED',
+        },
+        orderBy: [
+            { lesson: { order: 'asc' } }
+        ],
+    });
+
+    // Combine the story parts into a single string
+    const storyHistory = storyChapters.map(chapter => {
+        let turn = '';
+        if (chapter.teacherSnippetText) {
+            turn += `Рассказчик: ${chapter.teacherSnippetText}\n`;
+        }
+        if (chapter.studentSnippetText) {
+            turn += `Ты ответил(а): ${chapter.studentSnippetText}\n`;
+        }
+        return turn;
+    }).join('\n---\n');
+
+    if (!storyHistory.trim()) {
+       return res.json({ success: true, data: { summary: 'Приключение еще не началось! Это самая первая глава.' } });
+    }
+
+    const { summary } = await generateStorySummary(storyHistory, goal.language || 'Russian');
+
+    res.json({ success: true, data: { summary } });
 };

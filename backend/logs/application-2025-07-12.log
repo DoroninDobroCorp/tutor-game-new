@@ -11,3 +11,5 @@
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T18:27:16.291Z"}
 {"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T18:30:24.970Z"}
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T18:42:19.581Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T19:05:10.221Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-12T19:05:21.368Z"}
