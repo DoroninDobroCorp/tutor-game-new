@@ -3,6 +3,7 @@ import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { WebSocketService } from '../services/websocket.service';
 import { getAIAssessment } from '../services/openai.service';
+import { createAndSendMessage } from '../services/chat.service';
 
 // Расширяем Request, чтобы он мог содержать файл
 interface Request extends ExpressRequest {
@@ -297,7 +298,8 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
             lesson: updatedLesson,
             teacherId: learningGoal.teacher.id,
             studentName: `${learningGoal.student.firstName || ''} ${learningGoal.student.lastName || ''}`.trim(),
-            goalId: learningGoal.id
+            goalId: learningGoal.id,
+            lessonTitle: lesson.title,
         };
     });
 
@@ -314,6 +316,16 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
         }
     } catch (error) {
         console.error('Failed to send WebSocket notification:', error);
+    }
+
+    try {
+        const wsService = req.app.get('wsService') as WebSocketService;
+        const messageContent = `Я завершил(а) урок "${result.lessonTitle}" и отправил(а) свой ответ. Жду продолжения истории!`;
+        if (wsService && studentId) {
+            await createAndSendMessage(wsService, studentId, result.teacherId, messageContent);
+        }
+    } catch (error) {
+        console.error('Failed to send system message on lesson submission:', error);
     }
 
     res.status(200).json({

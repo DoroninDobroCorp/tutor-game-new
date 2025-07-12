@@ -4,6 +4,7 @@ import prisma from '../db';
 import { generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
 import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
 import { WebSocketService } from '../services/websocket.service';
+import { createAndSendMessage } from '../services/chat.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -121,7 +122,18 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
 
     const lesson = await prisma.lesson.findFirst({
         where: { id: lessonId, section: { learningGoal: { teacherId } } },
-        include: { section: { select: { learningGoalId: true, learningGoal: { select: { studentId: true, teacherId: true } } } } }
+        select: {
+            id: true,
+            title: true,
+            section: { 
+                select: { 
+                    learningGoalId: true, 
+                    learningGoal: { 
+                        select: { studentId: true, teacherId: true } 
+                    } 
+                }
+            }
+        }
     });
 
     if (!lesson) throw new AppError('Lesson not found or access denied', 404);
@@ -160,6 +172,15 @@ export const approveStorySnippetHandler = async (req: Request, res: Response) =>
         timestamp: new Date().toISOString(),
         hasImage: !!imageUrl
     });
+
+    try {
+        const messageContent = `Отлично! Я проверил(а) твой ответ. Тебя ждет продолжение приключения в уроке "${lesson.title}"!`;
+        if (teacherId) {
+             await createAndSendMessage(wsService, teacherId, lesson.section.learningGoal.studentId, messageContent);
+        }
+    } catch (error) {
+        console.error('Failed to send system message on lesson approval:', error);
+    }
 
     res.json({ success: true, data: result });
 };
