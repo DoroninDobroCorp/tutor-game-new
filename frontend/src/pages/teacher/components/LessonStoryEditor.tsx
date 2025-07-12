@@ -9,28 +9,21 @@ import {
 import { Lesson } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
-import { FiRefreshCw, FiCheck, FiMaximize2, FiX, FiUpload, FiImage } from 'react-icons/fi';
+import { FiRefreshCw, FiCheck, FiMaximize2, FiUpload, FiImage } from 'react-icons/fi';
 
 interface LessonStoryEditorProps {
     lesson: Lesson;
     onCloseModal: () => void;
+    setLightboxImage: (url: string | null) => void;
 }
 
-const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999] cursor-pointer" onClick={onClose}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-white text-3xl"><FiX /></button>
-        <img src={src} alt="Full view" className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
-    </div>
-);
-
-const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => {
+const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonStoryEditorProps) => {
     // State management
     const [storyText, setStoryText] = useState('');
     const [imagePrompt, setImagePrompt] = useState('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [refinementPrompt, setRefinementPrompt] = useState('');
-    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     
     // API and loading state
     const [generationId, setGenerationId] = useState<string | null>(null);
@@ -140,8 +133,6 @@ const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => 
 
     return (
         <div className="rounded-xl p-3 max-h-[85vh] flex flex-col">
-            {lightboxImage && <Lightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />}
-            
             <div className="flex-grow overflow-y-auto pr-2 space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Фрагмент истории</label>
@@ -174,7 +165,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal }: LessonStoryEditorProps) => 
                         {generationId || isGeneratingImage ? <><Spinner size="md" /><p className="ml-2 text-gray-500">Генерация...</p></>
                         : imageUrl ? (
                             <>
-                                <img src={imageUrl} alt="Story" className="w-full h-full object-cover rounded-lg" />
+                                <img src={imageUrl} alt="Story" className="w-full h-full object-contain rounded-lg" />
                                 <button onClick={() => setLightboxImage(imageUrl!)} className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/75">
                                     <FiMaximize2 size={16} />
                                 </button>

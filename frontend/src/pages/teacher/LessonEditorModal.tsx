@@ -1,18 +1,29 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import { FiX } from 'react-icons/fi';
-// Импортируем тип Lesson из центрального файла goalApi.ts
 import { type Lesson } from '../../types/models';
 import { LessonContentEditor } from './components/LessonContentEditor';
 import LessonStoryEditor from './components/LessonStoryEditor';
 
-// Lightbox component for image preview
+// Lightbox component is now defined and managed within the modal
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
-    if (!src) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999]" onClick={onClose}>
-            <button onClick={onClose} className="absolute top-4 right-4 text-white text-3xl"><FiX /></button>
-            <img src={src} alt="Full view" className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
+        <div 
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999]" 
+            onClick={onClose}
+        >
+            <button 
+                onClick={onClose} 
+                className="absolute top-4 right-4 text-white text-3xl hover:opacity-75"
+            >
+                <FiX />
+            </button>
+            <img 
+                src={src} 
+                alt="Full view" 
+                className="max-w-[90vw] max-h-[90vh] object-contain" 
+                onClick={(e) => e.stopPropagation()} 
+            />
         </div>
     );
 };
@@ -22,15 +33,21 @@ function classNames(...classes: (string | boolean)[]) {
 }
 
 export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen: boolean; onClose: () => void; lesson: Lesson | null; }) {
-    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [currentTab, setCurrentTab] = useState(0);
 
     if (!lesson) return null;
 
+    const handleCloseModal = () => {
+        setLightboxImage(null); // Ensure lightbox is closed when modal closes
+        onClose();
+    };
+    
     return (
-        <Transition appear show={isOpen} as="div">
-            <Dialog as="div" className="relative z-10" onClose={onClose}>
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-10" onClose={handleCloseModal}>
                 <Transition.Child
+                    as={Fragment}
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
                     enterTo="opacity-100"
@@ -44,6 +61,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                 <div className="fixed inset-0 overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4 text-center">
                         <Transition.Child
+                            as={Fragment}
                             enter="ease-out duration-300"
                             enterFrom="opacity-0 scale-95"
                             enterTo="opacity-100 scale-100"
@@ -89,28 +107,27 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                         <Tab.Panel>
                                             <LessonContentEditor 
                                                 lesson={lesson} 
-                                                onCloseModal={onClose}
+                                                onCloseModal={handleCloseModal}
                                             />
                                         </Tab.Panel>
                                         <Tab.Panel>
                                             <LessonStoryEditor 
                                                 lesson={lesson}
-                                                onCloseModal={onClose}
+                                                onCloseModal={handleCloseModal}
+                                                setLightboxImage={setLightboxImage}
                                             />
                                         </Tab.Panel>
                                     </Tab.Panels>
                                 </Tab.Group>
+
+                                {/* Render lightbox here, managed by this component's state */}
+                                {lightboxImage && (
+                                    <Lightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />
+                                )}
                             </Dialog.Panel>
                         </Transition.Child>
                     </div>
                 </div>
-                
-                {isLightboxOpen && lesson.storyChapter?.teacherSnippetImageUrl && (
-                    <Lightbox 
-                        src={lesson.storyChapter.teacherSnippetImageUrl} 
-                        onClose={() => setIsLightboxOpen(false)} 
-                    />
-                )}
             </Dialog>
         </Transition>
     );
