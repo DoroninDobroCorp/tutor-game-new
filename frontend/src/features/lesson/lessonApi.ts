@@ -36,7 +36,7 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
 
-        generateStorySnippet: builder.mutation<{ data: { text: string; imagePrompt: string; } }, { lessonId: string, [key: string]: any }>({
+        generateStorySnippet: builder.mutation<{ data: { text: string; imagePrompt: string; useCharacterReference: boolean; } }, { lessonId: string, [key: string]: any }>({
             query: ({ lessonId, ...data }) => ({
                 url: `/lessons/${lessonId}/story/generate`,
                 method: 'POST',
@@ -70,11 +70,11 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
 
-        regenerateStoryImage: builder.mutation<{ data: { generationId: string; prompt: string } }, { lessonId: string; prompt: string }>({
-            query: ({ lessonId, prompt }) => ({
+        regenerateStoryImage: builder.mutation<{ data: { generationId: string; prompt: string } }, { lessonId: string; prompt: string; useCharacterReference: boolean; }>({
+            query: ({ lessonId, prompt, useCharacterReference }) => ({
                 url: `/lessons/${lessonId}/story/regenerate-image`,
                 method: 'POST',
-                data: { prompt },
+                data: { prompt, useCharacterReference },
             }),
         }),
     }),

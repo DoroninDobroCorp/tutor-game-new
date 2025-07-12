@@ -127,23 +127,40 @@ export const generateStorySnippet = async (
     totalLessons: number,
     refinementPrompt?: string,
     storyContext?: string
-): Promise<string> => {
+): Promise<{ storyText: string; imagePrompt: string; useCharacterReference: boolean }> => {
     const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
 You are writing a multi-chapter story for a ${studentAge}-year-old. The entire adventure consists of ${totalLessons} lessons (chapters). You are now writing the chapter for lesson ${currentLessonNumber}.
+The main character description is: "${characterPrompt}".
 
-YOUR MAIN GOAL: Create a coherent, developing story that builds on previous chapters. The story must be fun, unexpected, and use humor and mystery.
+YOUR MAIN GOAL: Create a coherent, developing story and a corresponding image prompt, returned in a specific JSON format.
 
 RULES:
-1.  **Story Arc:** You MUST consider the current lesson number (${currentLessonNumber}) out of the total (${totalLessons}).
-    -   If it's an early lesson, introduce characters and the main conflict. Create intrigue.
-    -   If it's a middle lesson, develop the plot, introduce twists and new challenges.
-    -   If it's one of the last lessons, you MUST move the story towards a resolution. The final lesson should have a concluding chapter.
-2.  **Continuity:** If a story context (previous chapters) is provided, you MUST use it. The new chapter must be a direct, logical, and creative continuation of the events, especially the student's last action/response.
-3.  **Lesson Integration:** The topic of the current lesson is "${lessonTitle}". You must subtly HINT at this topic or create a situation where the concepts from the lesson MIGHT be useful. DO NOT include any direct tasks, questions, or educational content. Your primary goal is to create NARRATIVE.
-4.  **Length:** The story snippet MUST be 2 to 3 paragraphs long. This is a short chapter.
-5.  **Tone & Style:** The story must be exciting, not preachy or boring. Avoid clichés.
-6.  **Ending:** The chapter MUST end with an open-ended, intriguing question to the student, like "What do you think the character should do?" or "What strange thing did they find?" (Unless it's the final chapter, which should offer a sense of closure).
-7.  **Output Format:** Your output must be ONLY the story text. No explanations, titles, or extra text.`;
+1.  **JSON Output:** Your response MUST BE ONLY a valid JSON object with THREE keys:
+    - "storyText": A string containing the story chapter text (2-3 paragraphs, ending with an intriguing question, unless it's the final chapter).
+    - "imagePrompt": A CONCISE (15-25 words), powerful, comma-separated list of keywords in ENGLISH for an AI image generator. It must describe the scene from "storyText" and include style hints like "whimsical, cartoon style, detailed illustration, vibrant colors".
+    - "useCharacterReference": A boolean (true/false). Set this to 'true' if the main character is central to this scene. Set it to 'false' if the scene focuses on the environment, an object, or another character, making the main character's presence less important. You have creative freedom to make the best artistic choice.
+2.  **Story Arc:** You MUST consider the current lesson number (${currentLessonNumber}) out of the total (${totalLessons}).
+    -   Early lessons: Introduce characters, conflict, intrigue.
+    -   Middle lessons: Develop plot, add twists.
+    -   Late lessons: Move towards a resolution. The final chapter should be conclusive.
+3.  **Continuity:** If story context (previous chapters) is provided, you MUST use it. The new chapter must be a direct continuation.
+4.  **Lesson Integration:** The topic of the current lesson is "${lessonTitle}". Subtly HINT at this topic. DO NOT include direct tasks or questions. This is NARRATIVE.
+5.  **Tone & Style:** The story should be exciting, with humor and mystery. Avoid clichés.
+6.  **Character in Prompt:** If \`useCharacterReference\` is true, you MUST include a description of the character in the \`imagePrompt\`. If it's false, you MUST NOT include the main character in the prompt.
+
+Example Response (with character):
+{
+  "storyText": "The iron door creaked open, revealing a dusty chamber filled with whirring cogs and steaming pipes. Our hero stepped inside, holding their glowing compass. In the center of the room, a tiny, four-armed robot suddenly scurried out from behind a gear, holding up a sign that read 'HALT!'. What could this little guardian want?",
+  "imagePrompt": "whimsical illustration, brave explorer hero, inside a steampunk clockwork room, glowing golden compass on a pedestal, a tiny cute four-armed robot stands guard, dynamic composition, vibrant colors, cartoon style",
+  "useCharacterReference": true
+}
+
+Example Response (without character):
+{
+  "storyText": "They followed the map to a shimmering waterfall. The water glowed with a soft, magical light, and behind it, a hidden cave entrance was visible. Strange, beautiful flowers grew around the entrance, pulsing with the same light as the water. What secrets could be inside?",
+  "imagePrompt": "hidden cave entrance behind a magical glowing waterfall, shimmering water, strange luminous flowers, mysterious atmosphere, digital fantasy art, vibrant colors",
+  "useCharacterReference": false
+}`;
 
     let userPrompt = '';
 
@@ -151,7 +168,6 @@ RULES:
         userPrompt += `${storyContext}\n\n`;
         userPrompt += `Based on all the previous chapters and especially the student's last response, continue the story for the current lesson: "${lessonTitle}". This is chapter ${currentLessonNumber} of ${totalLessons}.`;
     } else {
-        // This is the first chapter.
         userPrompt = `Lesson Title: "${lessonTitle}"
         Story Setting: "${setting}"
         Main Character: "${characterPrompt}"
@@ -162,7 +178,7 @@ RULES:
         userPrompt += `\n\nTeacher's instruction for this chapter: "${refinementPrompt}"`;
     }
     
-    userPrompt += '\n\nWrite the story snippet now.';
+    userPrompt += '\n\nGenerate the JSON response now.';
 
     try {
         const completion = await openai.chat.completions.create({
@@ -171,43 +187,26 @@ RULES:
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            max_tokens: 400,
+            response_format: { type: "json_object" },
+            max_tokens: 600,
             temperature: 0.85,
         });
 
-        return completion.choices[0]?.message?.content || 'Не удалось сгенерировать фрагмент истории.';
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error('No content from OpenAI');
+        }
+        
+        const parsedJson = JSON.parse(content);
+        if (typeof parsedJson.storyText !== 'string' || typeof parsedJson.imagePrompt !== 'string' || typeof parsedJson.useCharacterReference !== 'boolean') {
+            throw new Error('Invalid JSON structure from OpenAI');
+        }
+
+        return parsedJson;
+
     } catch (error) {
         console.error('Error generating story snippet with OpenAI:', error);
         throw new Error('Failed to generate story snippet.');
-    }
-};
-
-export const translateForImagePrompt = async (text: string): Promise<string> => {
-    const systemPrompt = `You are an expert prompt engineer for AI image generation models.
-    Analyze the user's text, which describes a scene. Your task is to extract the main visual elements and convert them into a concise, powerful, comma-separated list of keywords in ENGLISH.
-    Focus on: main characters, key objects, the environment, actions, and the overall mood/atmosphere.
-    Limit the output to about 20-30 words.
-
-    Example Input (Russian): "Отважная девочка-исследователь в смешных носках и с яркими волосами скачет на коне по торговому центру. Вокруг витрины магазинов."
-    Example Output: "cinematic action shot, whimsical heroine explorer with bright hair and long socks, riding a horse inside a modern shopping mall, shop windows, dynamic composition, cartoon style"
-
-    Your output MUST be only the resulting English prompt. No extra text or explanations.`;
-
-    try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: text },
-            ],
-            max_tokens: 150,
-            temperature: 0.3,
-        });
-
-        return completion.choices[0]?.message?.content || text;
-    } catch (error) {
-        console.error('Error translating text for image prompt:', error);
-        return text;
     }
 };
 

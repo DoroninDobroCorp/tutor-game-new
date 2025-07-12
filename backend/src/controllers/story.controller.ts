@@ -1,7 +1,7 @@
 import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateStorySnippet, translateForImagePrompt } from '../services/openai.service';
+import { generateStorySnippet } from '../services/openai.service';
 import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
 import { WebSocketService } from '../services/websocket.service';
 import { createAndSendMessage } from '../services/chat.service';
@@ -63,7 +63,7 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
         const totalLessons = allLessons.length;
         const currentLessonNumber = currentLessonIndex >= 0 ? currentLessonIndex + 1 : 1;
 
-        const storySnippetText = await generateStorySnippet(
+        const { storyText, imagePrompt, useCharacterReference } = await generateStorySnippet(
             lesson.title,
             setting,
             studentAge,
@@ -75,17 +75,15 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             storyContext
         );
 
-        const scenePrompt = await translateForImagePrompt(storySnippetText);
-        const characterDescriptionForPrompt = characterPrompt ? await translateForImagePrompt(characterPrompt) : 'a character';
-        const finalImagePrompt = `${characterDescriptionForPrompt}, ${scenePrompt}`;
-        
-        console.log('[PROMPT SUGGESTION] Generated for story snippet:', finalImagePrompt);
+        console.log('[PROMPT SUGGESTION] Generated for story snippet:', imagePrompt);
+        console.log('[PROMPT SUGGESTION] Use character reference:', useCharacterReference);
         
         res.json({ 
             success: true, 
             data: {
-                text: storySnippetText,
-                imagePrompt: finalImagePrompt,
+                text: storyText,
+                imagePrompt: imagePrompt,
+                useCharacterReference: useCharacterReference, // Pass this to the frontend
             }
         });
     } catch (error) {
@@ -234,11 +232,14 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
 
 export const regenerateStoryImageHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
-    const { prompt } = req.body;
+    const { prompt, useCharacterReference } = req.body;
     const teacherId = req.user?.userId;
 
     if (!prompt) {
         throw new AppError('Image prompt is required for regeneration', 400);
+    }
+    if (useCharacterReference === undefined) {
+        throw new AppError('useCharacterReference flag is required', 400);
     }
 
     const lesson = await prisma.lesson.findFirst({
@@ -250,37 +251,43 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
         throw new AppError('Lesson not found or access denied', 404);
     }
     
-    const { characterImageUrl, characterImageId, illustrationStyle } = lesson.section.learningGoal;
-    
-    if (!characterImageUrl && !characterImageId) {
-        throw new AppError('Character is not set for this goal. Please set a character first.', 404);
-    }
+    let referenceImageId: string | null = null;
+    let imageType: 'UPLOADED' | 'GENERATED' = 'GENERATED';
 
-    let referenceImageId: string | null = characterImageId;
-    let imageType: 'UPLOADED' | 'GENERATED' = 'GENERATED'; // Default to generated for Leonardo images
-
-    try {
-        if (characterImageUrl && characterImageUrl.startsWith('/uploads/')) {
-            imageType = 'UPLOADED'; // If it's a local upload, its type is UPLOADED
-            const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
-            if (fs.existsSync(imagePath)) {
-                try {
-                    console.log(`[LEONARDO.AI] Regenerating: Uploading character reference from: ${imagePath}`);
-                    const { imageId } = await uploadImageToLeonardo(imagePath);
-                    referenceImageId = imageId;
-                    console.log(`[LEONARDO.AI] Regenerating: Got fresh reference imageId: ${referenceImageId}`);
-                } catch (uploadError) {
-                    console.error("Failed to upload character image for regeneration, proceeding without it.", uploadError);
+    if (useCharacterReference) {
+        const { characterImageUrl, characterImageId } = lesson.section.learningGoal;
+        
+        if (!characterImageUrl && !characterImageId) {
+            console.warn(`[STORY REGEN] AI requested character reference, but no character is set for goal ${lesson.section.learningGoal.id}. Proceeding without reference.`);
+        } else {
+            referenceImageId = characterImageId;
+            if (characterImageUrl && characterImageUrl.startsWith('/uploads/')) {
+                imageType = 'UPLOADED';
+                const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
+                if (fs.existsSync(imagePath)) {
+                    try {
+                        console.log(`[LEONARDO.AI] Regenerating: Uploading character reference from: ${imagePath}`);
+                        const { imageId } = await uploadImageToLeonardo(imagePath);
+                        referenceImageId = imageId;
+                        console.log(`[LEONARDO.AI] Regenerating: Got fresh reference imageId: ${referenceImageId}`);
+                    } catch (uploadError) {
+                        console.error("Failed to upload character image for regeneration, proceeding without it.", uploadError);
+                        referenceImageId = null; 
+                    }
                 }
             }
         }
+    }
+    
+    const { illustrationStyle } = lesson.section.learningGoal;
 
+    try {
         const generationResult = await startImageGeneration({
             prompt,
-            characterImageId: referenceImageId,
+            characterImageId: referenceImageId, // This is null if reference is not used
             characterWeight: 1.15,
             presetStyle: illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined,
-            characterImageType: imageType // Pass the correct image type
+            characterImageType: imageType
         });
 
         if (!generationResult.generationId) {

@@ -24,6 +24,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [refinementPrompt, setRefinementPrompt] = useState('');
+    const [useCharacterReference, setUseCharacterReference] = useState(false);
     
     // API and loading state
     const [generationId, setGenerationId] = useState<string | null>(null);
@@ -49,6 +50,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
             setImageUrl(null);
             setImagePrompt('');
         }
+        setUseCharacterReference(false);
     }, [lesson]);
 
     useEffect(() => () => { stopPolling(); }, []);
@@ -84,6 +86,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
             const result = await generateStory({ lessonId: lesson.id, refinementPrompt }).unwrap();
             setStoryText(result.data.text);
             setImagePrompt(result.data.imagePrompt);
+            setUseCharacterReference(result.data.useCharacterReference);
             setImageUrl(null);
             setUploadedFile(null);
             stopPolling();
@@ -98,7 +101,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
         setUploadedFile(null);
         setImageUrl(null);
         try {
-            const result = await regenerateImage({ lessonId: lesson.id, prompt: imagePrompt }).unwrap();
+            const result = await regenerateImage({ lessonId: lesson.id, prompt: imagePrompt, useCharacterReference }).unwrap();
             startPolling(result.data.generationId);
             toast('Начали генерацию изображения...');
         } catch (error) {
