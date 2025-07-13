@@ -392,14 +392,35 @@ export const getStorySummaryHandler = async (req: Request, res: Response) => {
         throw new AppError('Goal not found or access denied', 404);
     }
 
+    // Fetch chapters only from completed lessons to summarize the past.
     const storyChapters = await prisma.storyChapter.findMany({
         where: {
             learningGoalId: goalId,
             teacherSnippetStatus: 'APPROVED',
+            lesson: {
+                status: 'COMPLETED'
+            }
         },
-        orderBy: [
-            { lesson: { order: 'asc' } }
-        ],
+        include: {
+            lesson: {
+                select: {
+                    order: true,
+                    section: {
+                        select: {
+                            order: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Sort chapters chronologically by section and lesson order
+    storyChapters.sort((a, b) => {
+        if (a.lesson.section.order !== b.lesson.section.order) {
+            return a.lesson.section.order - b.lesson.section.order;
+        }
+        return a.lesson.order - b.lesson.order;
     });
 
     // Combine the story parts into a single string
