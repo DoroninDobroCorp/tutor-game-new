@@ -8,7 +8,7 @@ const openai = new OpenAI({
 export const generateMathProblem = async (topic: string, difficulty: number) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'chatgpt-4o-latest',
       messages: [
         {
           role: 'system',
@@ -94,7 +94,7 @@ ${performanceContext}`;
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: 'chatgpt-4o-latest',
             messages: messages,
             response_format: { type: "json_object" },
         });
@@ -182,7 +182,7 @@ Example Response (without character):
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: 'chatgpt-4o-latest',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
@@ -240,7 +240,7 @@ Example for a "Math in space" theme:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'chatgpt-4o-latest',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -338,7 +338,7 @@ export const getAIAssessment = async (
     
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: 'chatgpt-4o-latest',
             messages,
             response_format: { type: "json_object" },
         });
@@ -394,7 +394,7 @@ Example format:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'chatgpt-4o-latest',
       messages,
       response_format: { type: "json_object" },
     });
@@ -440,7 +440,7 @@ export const generateStorySummary = async (
 
     try {
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: 'chatgpt-4o-latest',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
