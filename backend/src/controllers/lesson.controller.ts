@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateLessonContent } from '../services/openai.service';
+import { generateLessonContent } from '../services/gemini.service';
 
 export const generateLessonContentHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;

@@ -2,7 +2,7 @@ import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { WebSocketService } from '../services/websocket.service';
-import { getAIAssessment, generateStorySummary } from '../services/openai.service';
+import { getAIAssessment, generateStorySummary } from '../services/gemini.service';
 import { createAndSendMessage } from '../services/chat.service';
 
 // Расширяем Request, чтобы он мог содержать файл

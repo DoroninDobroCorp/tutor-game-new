@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateRoadmap } from '../services/openai.service';
+import { generateRoadmap } from '../services/gemini.service';
 
 export const generateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;

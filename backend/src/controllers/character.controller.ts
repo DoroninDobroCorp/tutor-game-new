@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateCharacter } from '../services/openai.service';
+import { generateCharacter } from '../services/gemini.service';
 import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
 import fs from 'fs';
 import path from 'path';
@@ -31,7 +31,7 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
         throw new AppError('Learning Goal not found or access denied', 404);
     }
     
-    // Generate character description and name using OpenAI
+    // Generate character description and name using Gemini
     const characterDetails = await generateCharacter(
         goal.subject,
         goal.studentAge,

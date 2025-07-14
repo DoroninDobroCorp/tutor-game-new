@@ -1,19 +1,93 @@
 //---------------------------------------------------------------
-// openai-service.ts
-// Сервис работы с OpenAI: генерация задач, уроков, историй и т.д.
-// Переписан 13 июля 2025 г. — улучшена логика рассуждений,
-// добавлена двух‑шаговая проверка ответов ученика.
+// gemini.service.ts
+// Сервис работы с Google Gemini: генерация задач, уроков, историй и т.д.
 //---------------------------------------------------------------
-import OpenAI from 'openai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/generative-ai';
 import { config } from '../config/env';
 
 //--- инициализация клиента -------------------------------------
-const openai = new OpenAI({ apiKey: config.openaiApiKey });
+if (!config.geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not set in the environment variables.');
+}
+const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 
 //--- Вспомогательные константы ---------------------------------
-const TEMP_LOW = 0.2;    // для «строгой» проверочной логики
-const TEMP_MID = 0.45;   // для дружелюбного ответа / креатива
-const TEMP_HIGH = 0.85;  // для историй и творчества
+const MODEL_NAME = "gemini-2.5-flash"; // Используем актуальную быструю модель
+const TEMP_LOW = 0.2;
+const TEMP_MID = 0.45;
+const TEMP_HIGH = 0.85;
+
+const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+];
+
+function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' | 'assistant'; content: string }[]): Content[] {
+    const history: Content[] = [];
+
+    // Системный промпт + первый запрос пользователя объединяются в первый элемент истории
+    const firstUserMessage = chatHistory.shift();
+    const initialPrompt = `${systemPrompt}\n\n${firstUserMessage?.content || ''}`;
+    history.push({ role: 'user', parts: [{ text: initialPrompt }] });
+
+    // Остальная история конвертируется в формат user/model
+    chatHistory.forEach(msg => {
+        history.push({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+        });
+    });
+    return history;
+}
+
+async function callGemini(prompt: string, temperature: number, isJson: boolean) {
+    try {
+        const model = genAI.getGenerativeModel({
+            model: MODEL_NAME,
+            safetySettings,
+            generationConfig: {
+                temperature,
+                responseMimeType: isJson ? 'application/json' : 'text/plain',
+            },
+        });
+
+        const result = await model.generateContent(prompt);
+        const raw = (await result.response).text();
+        if (!raw) throw new Error('No content received from Gemini');
+        return isJson ? JSON.parse(raw) : raw;
+    } catch (err) {
+        console.error('Error calling Gemini API:', err);
+        throw new Error('Failed to get response from Gemini');
+    }
+}
+
+async function callGeminiWithChat(history: Content[], temperature: number, isJson: boolean) {
+    try {
+        const model = genAI.getGenerativeModel({
+            model: MODEL_NAME,
+            safetySettings,
+            generationConfig: {
+                temperature,
+                responseMimeType: isJson ? 'application/json' : 'text/plain',
+            },
+        });
+        const chat = model.startChat({ history: history.slice(0, -1) });
+        const lastMessage = history.slice(-1)[0];
+        if (!lastMessage || !lastMessage.parts) throw new Error('Chat history is empty');
+        
+        const result = await chat.sendMessage(lastMessage.parts);
+        const raw = (await result.response).text();
+
+        if (!raw) throw new Error('No content received from Gemini');
+        return isJson ? JSON.parse(raw) : raw;
+
+    } catch (err) {
+        console.error('Error calling Gemini API with chat:', err);
+        throw new Error('Failed to get response from Gemini');
+    }
+}
 
 //----------------------------------------------------------------
 // 1.  Генерация одной математической задачи
@@ -22,33 +96,20 @@ export const generateMathProblem = async (
   topic: string,
   difficulty: number,
 ) => {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: 0.5,
-      messages: [
-        {
-          role: 'system',
-          content: `Create a math problem about ${topic} with difficulty ${difficulty}/10. 
+  const prompt = `Create a math problem about ${topic} with difficulty ${difficulty}/10. 
 Format the response strictly as JSON with keys:
 {
   "question": "...",
   "options": ["...", "...", "...", "..."],
   "correctAnswer": 0,
   "explanation": "..."
-}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw new Error('No content received from OpenAI');
-
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error generating math problem with OpenAI:', err);
-    throw new Error('Failed to generate math problem');
+}`;
+  
+  try {
+      return await callGemini(prompt, 0.5, true);
+  } catch(err) {
+      console.error('Error generating math problem with Gemini:', err);
+      throw new Error('Failed to generate math problem');
   }
 };
 
@@ -64,12 +125,10 @@ export const generateLessonContent = async (
   performanceContext?: string,
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
 ) => {
-  // --- system prompt --------------------------------------------------
-  let systemMessage = `You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
+  let systemPrompt = `You are an expert curriculum designer and a creative methodologist for children's education in ${language}.
 Your task is to have a conversation with a teacher to create content for a single lesson titled "${lessonTitle}" for a ${studentAge}-year-old student, within the subject of "${subject}".`;
 
-  // ---- правила формата JSON -----------------------------------------
-  systemMessage += `
+  systemPrompt += `
 RULES:
 1. Respond with ONLY valid JSON:
    {
@@ -81,9 +140,8 @@ RULES:
 4. Be conversational in "chatResponse", but strict with JSON format.
 5. The theme "${setting}" is for framing; do not sacrifice pedagogy for it.`;
 
-  // ---- если есть контекст успеваемости, добавляем --------------------
   if (performanceContext) {
-    systemMessage += `
+    systemPrompt += `
 
 ---
 IMPORTANT CONTEXT (student performance):
@@ -95,47 +153,14 @@ If mastered, raise difficulty or introduce the next concept.
 Explain what you changed in "chatResponse".`;
   }
 
-  // ---- формируем сообщения ------------------------------------------
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemMessage },
-  ];
-
-  if (chatHistory.length === 0) {
-    messages.push({
-      role: 'user',
-      content: `Generate the initial lesson content for "${lessonTitle}".`,
-    });
-  } else {
-    messages.push(
-      ...chatHistory.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    );
-  }
-
-  // ---- запрос -------------------------------------------------------
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      messages,
-      temperature: 0.45,
-      response_format: { type: 'json_object' },
-    });
-
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw new Error('No content received');
-
-    const data = JSON.parse(raw);
-    if (
-      !data ||
-      typeof data.chatResponse !== 'string' ||
-      !Array.isArray(data.blocks)
-    ) {
-      throw new Error('AI did not return valid { chatResponse, blocks }');
+    if (chatHistory.length === 0) {
+        const prompt = `${systemPrompt}\n\nGenerate the initial lesson content for "${lessonTitle}".`;
+        return await callGemini(prompt, TEMP_MID, true);
+    } else {
+        const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
+        return await callGeminiWithChat(geminiHistory, TEMP_MID, true);
     }
-
-    return data;
   } catch (err) {
     console.error('[generateLessonContent] error:', err);
     throw new Error('Failed to generate lesson content');
@@ -160,7 +185,6 @@ export const generateStorySnippet = async (
   imagePrompt: string;
   useCharacterReference: boolean;
 }> => {
-  // --- system prompt --------------------------------------------------
   const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
 You are writing chapter ${currentLessonNumber} of ${totalLessons} for a ${studentAge}-year-old. 
 Main character: "${characterPrompt}".
@@ -175,48 +199,25 @@ Rules:
 - imagePrompt = 15‑25 English keywords, comma‑separated, describing the scene;
 - if useCharacterReference=true, include the main character in prompt; else do not.
 - subtle link to lesson topic "${lessonTitle}", no direct tasks.`;
-
-  // --- user prompt ----------------------------------------------------
+  
   let userPrompt = '';
   if (storyContext) {
-    userPrompt = `${storyContext}
-
-Continue the story. This is lesson ${currentLessonNumber} of ${totalLessons}.`;
+    userPrompt = `${storyContext}\n\nContinue the story. This is lesson ${currentLessonNumber} of ${totalLessons}.`;
   } else {
-    userPrompt = `Lesson Title: "${lessonTitle}"
-Story Setting: "${setting}"
-Main Character: "${characterPrompt}"
-Write the FIRST chapter.`;
+    userPrompt = `Lesson Title: "${lessonTitle}"\nStory Setting: "${setting}"\nMain Character: "${characterPrompt}"\nWrite the FIRST chapter.`;
   }
-  if (refinementPrompt)
-    userPrompt += `\n\nTeacher's extra instruction: "${refinementPrompt}"`;
+  if (refinementPrompt) userPrompt += `\n\nTeacher's extra instruction: "${refinementPrompt}"`;
 
-  userPrompt += '\n\nGenerate JSON now.';
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}\n\nGenerate JSON now.`;
 
-  // --- запрос ---------------------------------------------------------
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: TEMP_HIGH,
-      response_format: { type: 'json_object' },
-      max_tokens: 600,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    });
-
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw new Error('No content from OpenAI');
-
-    const data = JSON.parse(raw);
+    const data = await callGemini(fullPrompt, TEMP_HIGH, true);
     if (
       typeof data.storyText !== 'string' ||
       typeof data.imagePrompt !== 'string' ||
       typeof data.useCharacterReference !== 'boolean'
     )
-      throw new Error('Invalid JSON structure');
-
+      throw new Error('Invalid JSON structure from Gemini');
     return data;
   } catch (err) {
     console.error('Error generating story snippet:', err);
@@ -234,7 +235,7 @@ export const generateCharacter = async (
   basePrompt: string,
   language: string,
 ): Promise<{ name: string; description: string; imagePrompt: string }> => {
-  const systemPrompt = `You are a creative writer for children's educational stories.
+  const prompt = `You are a creative writer for children's educational stories.
 The story is about "${subject}" in a "${setting}" setting for a ${age}-year-old.
 User idea: "${basePrompt}".
 Respond ONLY with JSON:
@@ -246,61 +247,34 @@ Respond ONLY with JSON:
 "imagePrompt" in ENGLISH, comma‑separated keywords.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: 0.55,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: 'Generate character now.' },
-      ],
-    });
-
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw new Error('No content for character');
-
-    return JSON.parse(raw);
+    return await callGemini(prompt, 0.55, true);
   } catch (err) {
     console.error('Error generating character:', err);
     throw new Error('Failed to generate character');
   }
 };
 
+
 //----------------------------------------------------------------
 // 5.  ДВУХ‑ШАГОВАЯ ОЦЕНКА ответов ученика
 //----------------------------------------------------------------
 
-//---- Шаг 1. Проверяем ответы (строгая логика) ------------------
 async function gradeAnswers(
   context: string,
-  studentAge: number,
-  language: string,
 ) {
-  const { choices } = await openai.chat.completions.create({
-    model: 'gpt-4o-latest',
-    temperature: TEMP_LOW,
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: `You are a meticulous grader. 
-FIRST, think step‑by‑step inside <scratchpad></scratchpad>. 
+  const prompt = `You are a meticulous grader. 
+FIRST, think step‑by‑step. 
 THEN output ONLY JSON:
 {
   "analysis": [
     { "task": "...", "studentAnswer": "...", "isCorrect": true|false }
   ],
   "hasErrors": true|false
-}`,
-      },
-      { role: 'user', content: context },
-    ],
-  });
+}
 
-  const raw = choices[0]?.message?.content;
-  if (!raw) throw new Error('[gradeAnswers] Empty response');
-
-  const result = JSON.parse(raw);
+Here is the context:
+${context}`;
+  const result = await callGemini(prompt, TEMP_LOW, true);
   if (
     !result ||
     !Array.isArray(result.analysis) ||
@@ -314,20 +288,13 @@ THEN output ONLY JSON:
   };
 }
 
-//---- Шаг 2. Формируем дружелюбный ответ репетитора -------------
+
 async function buildTutorMessage(
   grading: { hasErrors: boolean; analysis: any[] },
   studentAge: number,
   language: string,
 ) {
-  const { choices } = await openai.chat.completions.create({
-    model: 'gpt-4o-latest',
-    temperature: TEMP_MID,
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content: `You are a fun, friendly AI tutor for a ${studentAge}-year-old, speaking ${language}.
+   const prompt = `You are a fun, friendly AI tutor for a ${studentAge}-year-old, speaking ${language}.
 Input JSON = grading result. 
 Rules:
 - If hasErrors == false → ONLY praise, "isSessionComplete": true, "newQuestion": null.
@@ -337,16 +304,12 @@ Respond ONLY with:
   "responseText": "...",
   "isSessionComplete": boolean,
   "newQuestion": { "content": "...", "type": "practice" } | null
-}`,
-      },
-      { role: 'user', content: JSON.stringify(grading) },
-    ],
-  });
+}
 
-  const raw = choices[0]?.message?.content;
-  if (!raw) throw new Error('[buildTutorMessage] Empty');
-
-  const data = JSON.parse(raw);
+Here is the input JSON:
+${JSON.stringify(grading)}
+`;
+  const data = await callGemini(prompt, TEMP_MID, true);
   if (
     typeof data.responseText !== 'string' ||
     typeof data.isSessionComplete !== 'boolean' ||
@@ -363,7 +326,6 @@ Respond ONLY with:
   };
 }
 
-//---- Экспортируемая функция getAIAssessment --------------------
 export const getAIAssessment = async (
   lesson: { title: string; content: any },
   studentAnswers: string[],
@@ -371,9 +333,7 @@ export const getAIAssessment = async (
   language: string,
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
 ) => {
-  // ------------- если первая итерация --------------------------
   if (chatHistory.length === 0) {
-    // —‑‑‑ соберём контекст -------------------------------------
     const practiceBlocks: string[] = (lesson.content?.blocks || [])
       .filter((b: any) => b.type === 'practice')
       .map((b: any) => b.content);
@@ -385,41 +345,25 @@ export const getAIAssessment = async (
       }"\n`;
     });
 
-    // —‑‑‑ Шаг 1: строгая проверка ------------------------------
-    const grading = await gradeAnswers(context, studentAge, language);
-
-    // —‑‑‑ Шаг 2: дружелюбный ответ -----------------------------
+    const grading = await gradeAnswers(context);
     return await buildTutorMessage(grading, studentAge, language);
   }
 
-  // ------------- если сессия уже идёт --------------------------
-  // Передаём историю как есть, но усиливаем «scratchpad» для логики
+  // Handle follow-up chat
   const systemPrompt = `You are a friendly AI tutor, continuing practice with the student.
-First, think step‑by‑step in <scratchpad></scratchpad>, then output ONLY JSON:
+CRITICAL:
+- If you ask a new question, newQuestion MUST be non‑null.
+- If you declare session complete, set newQuestion = null.
+Respond ONLY with JSON:
 {
   "responseText": "...",
   "isSessionComplete": boolean,
   "newQuestion": { "content": "...", "type": "practice" } | null
-}
-CRITICAL:
-- If you ask a new question, newQuestion MUST be non‑null.
-- If you declare session complete, set newQuestion = null.`;
-
+}`;
+  
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: TEMP_MID,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...chatHistory.map((h) => ({ role: h.role, content: h.content })),
-      ],
-    });
-
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw new Error('Empty continuation response');
-
-    return JSON.parse(raw);
+      const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
+      return await callGeminiWithChat(geminiHistory, TEMP_MID, true);
   } catch (err) {
     console.error('[getAIAssessment] continuation error:', err);
     throw new Error('Failed to get AI assessment');
@@ -444,46 +388,20 @@ Goal: build a learning plan on "${subject}" for a ${age}-year-old. Respond ONLY 
   ]
 }`;
 
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemPrompt },
-  ];
-
-  if (chatHistory.length === 0) {
-    messages.push({
-      role: 'user',
-      content: 'Create the initial complete, sectioned learning plan.',
-    });
-  } else {
-    messages.push(
-      ...chatHistory.map((m) => ({ role: m.role, content: m.content })),
-    );
-  }
-
   try {
-    const { choices } = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: 0.45,
-      response_format: { type: 'json_object' },
-      messages,
-    });
-
-    const raw = choices[0]?.message?.content;
-    if (!raw) throw new Error('No roadmap content');
-
-    const data = JSON.parse(raw);
-    if (
-      !data ||
-      typeof data.chatResponse !== 'string' ||
-      !Array.isArray(data.roadmap)
-    )
-      throw new Error('Invalid roadmap JSON');
-
-    return data;
+      if (chatHistory.length === 0) {
+        const prompt = `${systemPrompt}\n\nCreate the initial complete, sectioned learning plan.`;
+        return await callGemini(prompt, TEMP_MID, true);
+      } else {
+        const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
+        return await callGeminiWithChat(geminiHistory, TEMP_MID, true);
+      }
   } catch (err) {
     console.error('[generateRoadmap] error:', err);
     throw new Error('Failed to generate roadmap');
   }
 };
+
 
 //----------------------------------------------------------------
 // 7.  Краткое резюме истории для напоминания ученику
@@ -492,28 +410,16 @@ export const generateStorySummary = async (
   storyHistory: string,
   language: string,
 ): Promise<{ summary: string }> => {
-  const systemPrompt = `You are an assistant great at summarising stories for children.
-Return ONLY JSON: { "summary": "..." } (2‑3 concise sentences in ${language}).`;
+  const prompt = `You are an assistant great at summarising stories for children.
+Return ONLY JSON: { "summary": "..." } (2‑3 concise sentences in ${language}).
+
+Here is the story history:
+${storyHistory}`;
 
   try {
-    const { choices } = await openai.chat.completions.create({
-      model: 'gpt-4o-latest',
-      temperature: 0.35,
-      response_format: { type: 'json_object' },
-      max_tokens: 250,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: storyHistory },
-      ],
-    });
-
-    const raw = choices[0]?.message?.content;
-    if (!raw) throw new Error('No summary content');
-
-    const data = JSON.parse(raw);
+    const data = await callGemini(prompt, 0.35, true);
     if (!data || typeof data.summary !== 'string')
       throw new Error('Invalid summary JSON');
-
     return data;
   } catch (err) {
     console.error('Error generating story summary:', err);

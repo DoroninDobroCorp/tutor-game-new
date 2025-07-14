@@ -1,7 +1,7 @@
 import { Request as ExpressRequest, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateStorySnippet } from '../services/openai.service';
+import { generateStorySnippet } from '../services/gemini.service';
 import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
 import { WebSocketService } from '../services/websocket.service';
 import { createAndSendMessage } from '../services/chat.service';

@@ -28,6 +28,7 @@ const envSchema = z.object({
   
   // External APIs
   OPENAI_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
   LEONARDO_API_KEY: z.string().optional(),
   LEONARDO_MODEL_ID: z.string().optional(),
   
@@ -70,6 +71,7 @@ export const config = {
   
   // External APIs
   openaiApiKey: envVars.data.OPENAI_API_KEY,
+  geminiApiKey: envVars.data.GEMINI_API_KEY,
   leonardoApiKey: envVars.data.LEONARDO_API_KEY,
   leonardoModelId: envVars.data.LEONARDO_MODEL_ID,
   
