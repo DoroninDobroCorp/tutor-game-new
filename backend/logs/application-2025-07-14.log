@@ -1,3 +1,6 @@
 {"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-14T09:16:36.099Z"}
 {"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-14T09:56:48.738Z"}
 {"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-14T10:47:55.440Z"}
+{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-14T13:14:17.595Z"}
+{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-14T13:57:46.612Z"}
+{"level":"info","message":"Cleaned up 1 expired blacklisted tokens","service":"tutor-game-api","timestamp":"2025-07-14T14:13:42.832Z"}
