@@ -126,31 +126,8 @@ export const lessonPracticeChatHandler = async (req: Request, res: Response) => 
         throw new AppError('Lesson not found or access denied', 404);
     }
     
-    // Log initial practice answers to persistence storage
-    if (initialAnswers && Array.isArray(initialAnswers)) {
-        const practiceBlocks = (lesson.content?.blocks || [])
-            .map((block: any, index: number) => ({ ...block, originalIndex: index }))
-            .filter((block: any) => block.type === 'practice');
-
-        if (practiceBlocks.length > 0) {
-            const logsToCreate = practiceBlocks
-                .map((block, i) => ({
-                    studentId,
-                    lessonId,
-                    question: String(block.content),
-                    answer: String(initialAnswers[i] || ''),
-                    blockType: block.type,
-                    blockIndex: block.originalIndex,
-                }))
-                .filter(log => log.answer && log.answer.trim() !== ''); // Do not log empty/whitespace answers
-
-            if (logsToCreate.length > 0) {
-                await prisma.studentPerformanceLog.createMany({
-                    data: logsToCreate,
-                });
-            }
-        }
-    }
+    // MODIFIED: Logging of practice answers is removed from here.
+    // It will be done in submitLessonHandler upon full lesson completion.
 
     const aiResponse = await getAIAssessment(
         { title: lesson.title, content: lesson.content },
@@ -230,7 +207,7 @@ export const endLessonForReviewHandler = async (req: Request, res: Response) => 
 export const submitLessonHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
     const studentId = req.user?.userId;
-    const { studentResponseText } = req.body;
+    const { studentResponseText, practiceAnswers: practiceAnswersJSON } = req.body;
     
     if (!studentId) throw new AppError('Not authenticated', 401);
     if (!studentResponseText) throw new AppError('Story continuation is required', 400);
@@ -267,8 +244,39 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
 
         const { learningGoal } = lesson.section;
 
-        // Note: Practice answers from the main lesson content are no longer logged here.
-        // They are now handled during the AI chat phase.
+        // NEW: Log practice answers here upon full lesson completion.
+        if (practiceAnswersJSON) {
+            try {
+                const practiceAnswers = JSON.parse(practiceAnswersJSON);
+                if (Array.isArray(practiceAnswers)) {
+                    const practiceBlocks = (lesson.content?.blocks || [])
+                        .map((block: any, index: number) => ({ ...block, originalIndex: index }))
+                        .filter((block: any) => block.type === 'practice');
+
+                    if (practiceBlocks.length > 0) {
+                        const logsToCreate = practiceBlocks
+                            .map((block: any, i: number) => ({
+                                studentId,
+                                lessonId,
+                                question: String(block.content),
+                                answer: String(practiceAnswers[i] || ''),
+                                blockType: block.type,
+                                blockIndex: block.originalIndex,
+                            }))
+                            .filter((log: any) => log.answer && log.answer.trim() !== '');
+
+                        if (logsToCreate.length > 0) {
+                            await tx.studentPerformanceLog.createMany({
+                                data: logsToCreate,
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to parse or process practice answers:", error);
+                // Decide if this should be a critical error or just a warning
+            }
+        }
 
         const storyUpdateData: {
             studentSnippetText: string;

@@ -180,9 +180,25 @@ export default function StudentAdventurePage() {
     };
 
     const handleSubmitLesson = async () => {
-        if (!lesson || !storyResponse.trim()) { toast.error("Напиши, что будет дальше в истории!"); return;}
+        if (!lesson || !storyResponse.trim()) {
+            toast.error("Напиши, что будет дальше в истории!");
+            return;
+        }
+
+        // Collect practice answers in the correct order
+        const practiceAnswersArray = blocks
+            .map((block: any, index: number) => ({ block, index }))
+            .filter(({ block }: any) => block.type === 'practice')
+            .map(({ index }: any) => practiceAnswers[index] || '');
+
         const formData = new FormData();
         formData.append('studentResponseText', storyResponse);
+        // Important: Send practice answers as a JSON string
+        formData.append('practiceAnswers', JSON.stringify(practiceAnswersArray));
+        
+        // Note: The backend route supports an image upload here, but the UI doesn't have an input.
+        // If an image input were added, its file would also be appended to formData.
+
         try {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
             toast.success("Отлично! Урок отправлен учителю на проверку.", { duration: 4000 });
