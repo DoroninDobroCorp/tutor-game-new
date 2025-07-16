@@ -74,12 +74,13 @@ export const register = async (
   firstName: string,
   lastName: string,
 ): Promise<AuthResponse> => {
-  logger.info(`Registration attempt for email: ${email}, role: ${role}`);
+  const lowercasedEmail = email.toLowerCase();
+  logger.info(`Registration attempt for email: ${lowercasedEmail}, role: ${role}`);
   
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    logger.warn(`Invalid email format: ${email}`);
+  if (!emailRegex.test(lowercasedEmail)) {
+    logger.warn(`Invalid email format: ${lowercasedEmail}`);
     throw new AppError('Invalid email format', 400);
   }
 
@@ -91,12 +92,12 @@ export const register = async (
   try {
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: lowercasedEmail },
       select: { id: true },
     });
 
     if (existingUser) {
-      logger.warn(`Registration failed - user already exists: ${email}`);
+      logger.warn(`Registration failed - user already exists: ${lowercasedEmail}`);
       throw new AppError('User with this email already exists', 400);
     }
 
@@ -108,7 +109,7 @@ export const register = async (
       // Create user
       const user = await tx.user.create({
         data: {
-          email,
+          email: lowercasedEmail,
           password: hashedPassword,
           role,
           firstName,
@@ -148,10 +149,11 @@ export const register = async (
 };
 
 export const login = async (email: string, password: string, ipAddress: string): Promise<{ user: SafeUser; accessToken: string; refreshToken: string }> => {
+  const lowercasedEmail = email.toLowerCase();
   const MAX_ATTEMPTS = 5;
   const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
   
-  logger.info(`Login attempt for email: ${email} from IP: ${ipAddress}`);
+  logger.info(`Login attempt for email: ${lowercasedEmail} from IP: ${ipAddress}`);
   
   // Check rate limiting
   const now = Date.now();
@@ -170,7 +172,7 @@ export const login = async (email: string, password: string, ipAddress: string):
 
   // Find user with password
   const user = await prisma.user.findUnique({ 
-    where: { email },
+    where: { email: lowercasedEmail },
     include: { teacher: true, student: true },
   });
   

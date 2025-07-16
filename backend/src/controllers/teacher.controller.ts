@@ -28,9 +28,9 @@ export const connectStudentHandler = async (req: Request, res: Response) => {
   }
 
   try {
-    // Find student by email
+    // Find student by email, case-insensitively
     const studentUser = await prisma.user.findUnique({
-      where: { email: email },
+      where: { email: email.toLowerCase() },
       include: { student: true },
     });
 
