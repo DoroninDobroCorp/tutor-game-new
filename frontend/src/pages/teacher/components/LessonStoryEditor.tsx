@@ -158,7 +158,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
                             type="checkbox"
                             checked={useCharacterReference}
                             onChange={(e) => setUseCharacterReference(e.target.checked)}
-                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            className="h-4 w-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
                             disabled={isLoading}
                         />
                         <label htmlFor="use-character-ref" className="ml-2 block text-sm text-gray-900">

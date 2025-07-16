@@ -234,7 +234,7 @@ export default function StudentAdventurePage() {
                             {currentBlock.type === 'practice' && (
                                 <div className="mt-4">
                                     <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">Ваш ответ:</label>
-                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [currentBlockIndex]: e.target.value }))} placeholder="Введите ваш ответ здесь..." />
+                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [currentBlockIndex]: e.target.value }))} placeholder="Введите ваш ответ здесь..." />
                                 </div>
                             )}
                         </div>
@@ -259,11 +259,11 @@ export default function StudentAdventurePage() {
 
                 {lessonPhase === 'assessment' && (<>
                     <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-                        <div className="flex items-center gap-3 text-xl font-semibold text-indigo-800"><FiZap />Проверка знаний с AI-помощником</div>
+                        <div className="flex items-center gap-3 text-xl font-semibold text-gray-800"><FiZap />Проверка знаний с AI-помощником</div>
                         <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
                             {chatHistory.map((msg, index) => (
                                 <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-lg px-4 py-2 rounded-lg shadow ${msg.role === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
+                                    <div className={`max-w-lg px-4 py-2 rounded-lg shadow ${msg.role === 'user' ? 'bg-gray-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
                                         {msg.content}
                                     </div>
                                 </div>
@@ -277,8 +277,8 @@ export default function StudentAdventurePage() {
                             </div>
                         ) : (
                             <form onSubmit={handleStudentChatSubmit} className="flex gap-2">
-                                <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={aiResponse?.newQuestion ? "Введите ответ на вопрос..." : "Напишите что-нибудь..."} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
-                                <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                                <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={aiResponse?.newQuestion ? "Введите ответ на вопрос..." : "Напишите что-нибудь..."} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500" disabled={isChatLoading} />
+                                <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 disabled:opacity-50"><FiSend /></button>
                             </form>
                         )}
                         <div className="text-center pt-4 border-t">
@@ -288,10 +288,10 @@ export default function StudentAdventurePage() {
                 </>)}
 
                 {lessonPhase === 'story' && (<>
-                    <div className="bg-indigo-50 rounded-lg shadow-md p-6">
+                    <div className="bg-gray-50 rounded-lg shadow-md p-6">
                         <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-2xl font-bold text-indigo-700">Продолжение истории...</h2>
-                            <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-indigo-200 text-indigo-800 rounded-md hover:bg-indigo-300 flex items-center gap-2">
+                            <h2 className="text-2xl font-bold text-gray-700">Продолжение истории...</h2>
+                            <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
                                 <FiHelpCircle /> Краткое содержание
                             </button>
                         </div>
@@ -302,7 +302,7 @@ export default function StudentAdventurePage() {
                             </div>
                             <div className="mt-6">
                                 <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
-                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
+                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
                             </div>
                             <div className="flex justify-end mt-4">
                                 <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>

@@ -20,7 +20,7 @@ const StoryHistoryPage = () => {
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="mb-6">
-                <Link to="/student" className="flex items-center text-indigo-600 hover:text-indigo-800">
+                <Link to="/student" className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
                     Назад к панели управления
                 </Link>
@@ -31,7 +31,7 @@ const StoryHistoryPage = () => {
                 {storyChapters && storyChapters.length > 0 ? (
                     storyChapters.map((chapter, index) => (
                         <div key={chapter.id} className="bg-white rounded-lg shadow-md p-6">
-                            <h2 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-indigo-200">
+                            <h2 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-gray-200">
                                 Глава {index + 1}: {chapter.lesson.title}
                             </h2>
                             
@@ -45,7 +45,7 @@ const StoryHistoryPage = () => {
                                         />
                                     )}
                                     <div className="flex-1">
-                                        <p className="font-semibold text-indigo-700">Рассказчик:</p>
+                                        <p className="font-semibold text-gray-700">Рассказчик:</p>
                                         <p className="mt-2 text-gray-700 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
                                     </div>
                                 </div>

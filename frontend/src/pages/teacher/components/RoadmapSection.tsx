@@ -58,12 +58,12 @@ export const RoadmapSection = ({
                                     onBlur={() => setEditingSectionIndex(null)}
                                     onKeyDown={(e) => e.key === 'Enter' && setEditingSectionIndex(null)}
                                     autoFocus
-                                    className="text-xl font-semibold border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
+                                    className="text-xl font-semibold border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"
                                 />
                             ) : (
                                 <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
                                     <button 
-                                        className="mr-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" 
                                         title="Редактировать название"
                                     >
                                         <FiEdit2 />
@@ -118,12 +118,12 @@ export const RoadmapSection = ({
                                                                 onBlur={stopEditing}
                                                                 onKeyDown={(e) => e.key === 'Enter' && stopEditing()}
                                                                 autoFocus
-                                                                className="border-b-2 border-indigo-500 bg-transparent w-full focus:outline-none"
+                                                                className="border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"
                                                             />
                                                         ) : (
                                                             <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, lessonIndex)}>
                                                                 <button 
-                                                                    className="mr-2 text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
                                                                     title="Редактировать название"
                                                                 >
                                                                     <FiEdit2 size={14} />
@@ -143,7 +143,7 @@ export const RoadmapSection = ({
                                                                 'transition-opacity flex items-center',
                                                                 isNewLesson 
                                                                     ? 'cursor-not-allowed text-gray-300'
-                                                                    : 'text-gray-500 hover:text-indigo-600 opacity-0 group-hover:opacity-100'
+                                                                    : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100'
                                                             )}
                                                             title={!isNewLesson ? "Настроить контент" : undefined}
                                                         >

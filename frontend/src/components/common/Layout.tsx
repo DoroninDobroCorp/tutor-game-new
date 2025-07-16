@@ -10,6 +10,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
   DocumentTextIcon,
   ChevronDoubleLeftIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
@@ -29,6 +30,7 @@ interface NavigationItem {
 
 const studentNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
+  { name: 'Continue Adventure', href: '/student/adventure', icon: RocketLaunchIcon, current: false },
   { name: 'My Adventures', href: '/student/stories', icon: BookOpenIcon, current: false },
   {
     name: 'Chat',
@@ -41,7 +43,7 @@ const studentNavigation: NavigationItem[] = [
 
 const teacherNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
-  { name: 'Учебные Планы', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
+  { name: 'Learning Plans', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
   { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
   {
     name: 'Chat',
@@ -100,7 +102,7 @@ export default function Layout() {
     const items = user?.role === 'teacher' ? teacherNavigation : studentNavigation;
     return items.map(item => ({
       ...item,
-      current: location.pathname === item.href,
+      current: location.pathname.startsWith(item.href) && (item.href !== '/' || location.pathname === '/'),
     }));
   };
   
@@ -157,7 +159,7 @@ export default function Layout() {
                   leaveTo="-translate-x-full"
                 >
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-4">
+                    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
                         <h1 className="text-2xl font-bold text-white">Tutor Game</h1>
                       </div>
@@ -171,8 +173,8 @@ export default function Layout() {
                             to={item.href}
                             className={classNames(
                               item.current
-                                ? 'bg-indigo-700 text-white'
-                                : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
+                                ? 'bg-gray-900 text-white'
+                                : 'text-gray-300 hover:bg-gray-700 hover:text-white',
                               'group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6'
                             )}
                             onClick={() => setSidebarOpen(false)}
@@ -180,7 +182,7 @@ export default function Layout() {
                             <div className="flex items-center gap-x-3">
                               <item.icon
                                 className={classNames(
-                                  item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
+                                  item.current ? 'text-white' : 'text-gray-300 group-hover:text-white',
                                   'h-6 w-6 shrink-0'
                                 )}
                                 aria-hidden="true"
@@ -199,12 +201,12 @@ export default function Layout() {
                             </ul>
                           </li>
                           <li className="mt-auto">
-                            <div className="text-xs font-semibold leading-6 text-indigo-200">
+                            <div className="text-xs font-semibold leading-6 text-gray-400">
                               {user?.email}
                             </div>
                             <button
                               onClick={handleLogout}
-                              className="mt-2 flex items-center gap-x-2 text-sm font-medium text-indigo-200 hover:text-white"
+                              className="mt-2 flex items-center gap-x-2 text-sm font-medium text-gray-300 hover:text-white"
                             >
                               <ArrowRightOnRectangleIcon className="h-5 w-5" />
                               Sign out
@@ -224,7 +226,7 @@ export default function Layout() {
             'hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300 ease-in-out',
             isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
           )}>
-            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-4 pb-4">
+            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 px-4 pb-4">
               <div className="flex h-16 shrink-0 items-center justify-between px-2">
                 <Link to="/" className={classNames(
                   'text-xl font-bold text-white whitespace-nowrap transition-opacity duration-200',
@@ -234,8 +236,8 @@ export default function Layout() {
                 </Link>
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    className="text-indigo-200 hover:text-white p-2"
-                    title={isSidebarCollapsed ? "Развернуть панель" : "Свернуть панель"}
+                    className="text-gray-300 hover:text-white p-2"
+                    title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
                 >
                     <ChevronDoubleLeftIcon className={classNames("h-6 w-6 transition-transform duration-300", isSidebarCollapsed && "rotate-180")}/>
                 </button>
@@ -251,8 +253,8 @@ export default function Layout() {
                             title={isSidebarCollapsed ? item.name : undefined}
                             className={classNames(
                               item.current
-                                ? 'bg-indigo-700 text-white'
-                                : 'text-indigo-200 hover:bg-indigo-700 hover:text-white',
+                                ? 'bg-gray-900 text-white'
+                                : 'text-gray-300 hover:bg-gray-700 hover:text-white',
                               'group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6'
                             )}
                           >
@@ -262,7 +264,7 @@ export default function Layout() {
                             )}>
                               <item.icon
                                 className={classNames(
-                                  item.current ? 'text-white' : 'text-indigo-200 group-hover:text-white',
+                                  item.current ? 'text-white' : 'text-gray-300 group-hover:text-white',
                                   'h-6 w-6 shrink-0'
                                 )}
                                 aria-hidden="true"
@@ -277,21 +279,21 @@ export default function Layout() {
                             )}
                           </Link>
                           {item.showBadge && totalUnreadCount > 0 && isSidebarCollapsed && (
-                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-indigo-600" />
+                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-800" />
                           )}
                         </li>
                       ))}
                     </ul>
                   </li>
                   <li className="mt-auto">
-                    <div className={classNames('px-2 text-xs font-semibold leading-6 text-indigo-200 truncate', isSidebarCollapsed && 'hidden')}>
+                    <div className={classNames('px-2 text-xs font-semibold leading-6 text-gray-400 truncate', isSidebarCollapsed && 'hidden')}>
                       {user?.email}
                     </div>
                     <button
                       onClick={handleLogout}
                       title={isSidebarCollapsed ? 'Sign out' : undefined}
                       className={classNames(
-                          'mt-2 flex w-full items-center gap-x-2 rounded-md p-2 text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-700',
+                          'mt-2 flex w-full items-center gap-x-2 rounded-md p-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700',
                           isSidebarCollapsed && 'justify-center'
                       )}
                     >

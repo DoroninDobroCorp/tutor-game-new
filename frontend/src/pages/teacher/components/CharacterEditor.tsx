@@ -123,7 +123,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                     <p className="text-gray-600 italic">"{goal.characterPrompt}"</p>
                     <button 
                         onClick={() => setIsEditing(true)}
-                        className="mt-4 px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 flex items-center gap-2"
+                        className="mt-4 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2"
                     >
                         <FiRefreshCcw /> Изменить
                     </button>
@@ -142,7 +142,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                 value={prompt} 
                 onChange={(e) => setPrompt(e.target.value)} 
                 placeholder="Например: отважная девочка-исследователь с телескопом..." 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 mb-2" 
                 rows={2}
                 disabled={isLoading} 
             />
@@ -160,7 +160,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                 <button 
                     onClick={handleGenerate} 
                     disabled={isLoading || !prompt.trim()} 
-                    className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                    className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
                 >
                     {isGenerating ? <Spinner size="sm" className="mr-2" /> : <FiUserPlus className="mr-2" />}
                     {isGenerating ? "Создание..." : (goal.characterImageUrl ? "Новый персонаж и фото" : "Создать")}

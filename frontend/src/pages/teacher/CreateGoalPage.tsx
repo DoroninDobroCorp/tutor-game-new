@@ -118,7 +118,7 @@ export default function CreateGoalPage() {
                 <button 
                     type="submit" 
                     disabled={isCreating || !students?.length}
-                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isCreating ? 'Создание...' : 'Создать и перейти к плану'}
                 </button>

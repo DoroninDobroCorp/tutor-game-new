@@ -42,7 +42,7 @@ export default function HomePage() {
                 <>
                   <Link
                     to="/register"
-                    className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    className="rounded-md bg-gray-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
                   >
                     Get started
                   </Link>
@@ -75,7 +75,7 @@ export default function HomePage() {
       <div className="bg-white py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-indigo-600">Learn better</h2>
+            <h2 className="text-base font-semibold leading-7 text-gray-600">Learn better</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Everything you need to master math
             </p>
@@ -108,7 +108,7 @@ export default function HomePage() {
               ].map((feature) => (
                 <div key={feature.name} className="relative pl-16">
                   <dt className="text-base font-semibold leading-7 text-gray-900">
-                    <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                    <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-600">
                       <feature.icon className="h-6 w-6 text-white" aria-hidden="true" />
                     </div>
                     {feature.name}
@@ -124,20 +124,20 @@ export default function HomePage() {
       </div>
       
       {/* CTA section */}
-      <div className="bg-indigo-700">
+      <div className="bg-gray-700">
         <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Ready to start your adventure?
             </h2>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-indigo-200">
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-200">
               Join thousands of students who are already improving their math skills through 
               engaging stories and interactive problems.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
                 to="/register"
-                className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-600 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Get started
               </Link>

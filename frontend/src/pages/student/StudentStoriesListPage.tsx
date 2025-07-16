@@ -31,10 +31,10 @@ export default function StudentStoriesListPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-indigo-700">{goal.subject}</h2>
+                  <h2 className="text-xl font-semibold text-gray-700">{goal.subject}</h2>
                   <p className="text-sm text-gray-500 mt-1">Сеттинг: {goal.setting}</p>
                 </div>
-                <FiBookOpen className="w-8 h-8 text-indigo-300" />
+                <FiBookOpen className="w-8 h-8 text-gray-300" />
               </div>
             </Link>
           ))}

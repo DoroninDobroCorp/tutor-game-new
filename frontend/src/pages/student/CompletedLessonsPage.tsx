@@ -22,7 +22,7 @@ const CompletedLessonsPage = () => {
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="mb-6">
-                <Link to="/student" className="flex items-center text-indigo-600 hover:text-indigo-800">
+                <Link to="/student" className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
                     Назад к панели управления
                 </Link>
