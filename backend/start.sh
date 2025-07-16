@@ -1,5 +1,5 @@
 #!/bin/sh
-# This script ensures the server restarts automatically after a crash.
+# This script ensures the server restarts automatically after a crash. (test)
 
 while true; do
   echo "[Auto-Restart] Starting Node.js server..."
