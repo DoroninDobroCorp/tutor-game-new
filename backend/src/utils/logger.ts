@@ -61,19 +61,29 @@ const logger: Logger = winston.createLogger({
   format: fileFormat,
   defaultMeta: { service: 'tutor-game-api' },
   transports,
-  exitOnError: false,
+  exitOnError: false, // We handle exit manually
 });
 
-// Handle uncaught exceptions
-if (config.isProduction) {
-  process
-    .on('unhandledRejection', (reason) => {
-      logger.error('Unhandled Rejection:', { reason });
-    })
-    .on('uncaughtException', (error) => {
-      logger.error('Uncaught Exception:', { error });
+// --- Centralized Unhandled Exception and Rejection Handlers ---
+
+const exitHandler = (type: string, error: Error | any) => {
+    logger.error(`${type} found. Shutting down...`, {
+        error: error?.stack || error,
     });
-}
+    // Give logger time to write file, then exit.
+    setTimeout(() => {
+        process.exit(1);
+    }, 500).unref();
+};
+
+process.on('unhandledRejection', (reason: Error | any) => {
+    exitHandler('Unhandled Rejection', reason);
+});
+
+process.on('uncaughtException', (error: Error) => {
+    exitHandler('Uncaught Exception', error);
+});
+
 
 // Create a child logger with a specific context
 export const createLogger = (context: string) => {
