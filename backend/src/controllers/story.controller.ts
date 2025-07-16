@@ -195,24 +195,35 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
     const teacherId = req.user?.userId;
 
     if (!text || !file) {
-        if (file) fs.unlinkSync(file.path);
+        if (file && file.path) fs.unlinkSync(file.path);
         throw new AppError('Text and image file are required', 400);
     }
 
     const lesson = await prisma.lesson.findFirst({
         where: { id: lessonId, section: { learningGoal: { teacherId } } },
-        include: { section: { select: { learningGoalId: true } } }
+        select: {
+            id: true,
+            title: true,
+            section: { 
+                select: { 
+                    learningGoalId: true, 
+                    learningGoal: { 
+                        select: { studentId: true, teacherId: true } 
+                    } 
+                }
+            }
+        }
     });
 
     if (!lesson) {
-        if (file) fs.unlinkSync(file.path);
+        if (file && file.path) fs.unlinkSync(file.path);
         throw new AppError('Lesson not found or you do not have permission', 404);
     }
 
     const imageUrl = `/uploads/${file.filename}`;
 
     const storyChapter = await prisma.$transaction(async (tx) => {
-        return await tx.storyChapter.upsert({
+        const chapter = await tx.storyChapter.upsert({
             where: { lessonId },
             update: {
                 teacherSnippetText: text,
@@ -230,7 +241,31 @@ export const approveStorySnippetWithUploadHandler = async (req: Request, res: Re
                 teacherSnippetStatus: 'APPROVED'
             }
         });
+
+        await tx.lesson.update({ where: { id: lessonId }, data: { status: 'APPROVED' } });
+        return chapter;
     });
+
+    const teacherUser = await prisma.user.findUnique({ where: { id: lesson.section.learningGoal.teacherId } });
+    
+    const wsService = req.app.get('wsService') as WebSocketService;
+    wsService.emitToUser(lesson.section.learningGoal.studentId, 'teacher_reviewed_lesson', {
+        message: `Учитель ${teacherUser?.firstName} проверил ваш урок.`,
+        lessonId: lesson.id,
+        goalId: lesson.section.learningGoalId,
+        teacherName: teacherUser?.firstName || 'Учитель',
+        timestamp: new Date().toISOString(),
+        hasImage: !!imageUrl
+    });
+
+    try {
+        const messageContent = `Отлично! Я проверил(а) твой ответ. Тебя ждет продолжение приключения в уроке "${lesson.title}"!`;
+        if (teacherId) {
+             await createAndSendMessage(wsService, teacherId, lesson.section.learningGoal.studentId, messageContent);
+        }
+    } catch (error) {
+        console.error('Failed to send system message on lesson approval:', error);
+    }
 
     res.json({ success: true, data: storyChapter });
 };
