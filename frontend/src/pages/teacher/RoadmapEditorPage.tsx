@@ -7,14 +7,15 @@ import { useLazyGetPerformanceLogsQuery } from '../../features/teacher/teacherAp
 import { 
     useGetLearningGoalByIdQuery,
     useGenerateRoadmapProposalMutation,
-    useUpdateRoadmapMutation
+    useUpdateRoadmapMutation,
+    useLazyGetGoalStoryHistoryQuery
 } from '../../features/goal/goalApi';
 import { type ContentSection, type Lesson } from '../../types/models';
 
 import { CharacterEditor } from './components/CharacterEditor';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiZap } from 'react-icons/fi';
+import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiZap, FiBookOpen } from 'react-icons/fi';
 import { RoadmapSection } from './components/RoadmapSection';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 
@@ -53,8 +54,10 @@ const RoadmapEditorPage = () => {
     const [isEditingTitle, setIsEditingTitle] = useState<{section: number | null, lesson: number | null}>({section: null, lesson: null});
     const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
     const [showLogsModal, setShowLogsModal] = useState(false);
+    const [showStoryModal, setShowStoryModal] = useState(false);
     
     const [getLogs, { data: performanceLogs, isLoading: isLoadingLogs }] = useLazyGetPerformanceLogsQuery();
+    const [getStoryHistory, { data: storyHistory, isLoading: isLoadingStory }] = useLazyGetGoalStoryHistoryQuery();
     const [generateRoadmap, { isLoading: isGenerating }] = useGenerateRoadmapProposalMutation();
     const [updateRoadmap, { isLoading: isSaving }] = useUpdateRoadmapMutation();
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -162,7 +165,6 @@ const RoadmapEditorPage = () => {
         handleSave(); // Auto-save on reorder
     };
     
-    // --- Other handlers (add/remove section/lesson) ---
     const handleAddSection = () => setRoadmap([...roadmap, { id: `new-section-${Date.now()}`, title: `Новый раздел ${roadmap.length + 1}`, order: roadmap.length, lessons: [] }]);
     const handleAddLesson = (sectionIndex: number) => {
         const newRoadmap = [...roadmap];
@@ -203,9 +205,12 @@ const RoadmapEditorPage = () => {
                     </div>
 
                     <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="mb-6 flex justify-between items-center">
+                        <div className="mb-6 flex justify-between items-center flex-wrap gap-2">
                             <h2 className="text-xl font-semibold">План Уроков</h2>
-                            <button onClick={async () => { if (!goalId) return; await getLogs({ studentId: currentGoal.student.id, goalId }).unwrap(); setShowLogsModal(true); }} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><FiEye /> Посмотреть ответы</button>
+                             <div className="flex gap-2">
+                                <button onClick={async () => { if (!goalId) return; await getLogs({ studentId: currentGoal.student.id, goalId }).unwrap(); setShowLogsModal(true); }} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><FiEye /> Посмотреть ответы</button>
+                                <button onClick={async () => { if (!goalId) return; getStoryHistory(goalId); setShowStoryModal(true);}} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><FiBookOpen /> Просмотреть историю</button>
+                            </div>
                         </div>
                         <DragDropContext onDragEnd={onDragEnd}>
                             <Droppable droppableId="all-sections" direction="vertical" type="SECTIONS">
@@ -258,6 +263,59 @@ const RoadmapEditorPage = () => {
                                     ))}
                                 </div>
                             ) : (<p className="text-gray-500">Ответов от ученика по этому плану пока нет.</p>)}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showStoryModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowStoryModal(false)}>
+                    <div className="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold mb-4">История приключения</h2>
+                        <div className="overflow-y-auto flex-grow pr-4">
+                            {isLoadingStory ? <Spinner /> : storyHistory?.length ? (
+                                <div className="space-y-12">
+                                    {storyHistory.map((chapter, index) => (
+                                        <div key={chapter.id} className="bg-gray-50 rounded-lg p-6 border">
+                                            <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-indigo-200">
+                                                Глава {index + 1}: {chapter.lesson.title}
+                                            </h3>
+                                            
+                                            {chapter.teacherSnippetText && (
+                                                <div className="flex flex-col md:flex-row gap-6 items-start mb-6">
+                                                    {chapter.teacherSnippetImageUrl && (
+                                                        <img
+                                                            src={chapter.teacherSnippetImageUrl}
+                                                            alt={`Illustration for chapter ${index + 1}`}
+                                                            className="w-full md:w-1/3 rounded-lg shadow-md object-cover"
+                                                        />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <p className="font-semibold text-indigo-700">Рассказчик:</p>
+                                                        <p className="mt-2 text-gray-600 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {chapter.studentSnippetText && (
+                                                <div className="flex justify-end mt-4">
+                                                    <div className="w-full md:w-5/6 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-300">
+                                                        <p className="font-semibold text-blue-800">Ответ ученика:</p>
+                                                         {chapter.studentSnippetImageUrl && (
+                                                            <img
+                                                                src={chapter.studentSnippetImageUrl}
+                                                                alt="Student submitted image"
+                                                                className="mt-2 w-full md:w-1/2 rounded-lg shadow-md object-cover"
+                                                            />
+                                                        )}
+                                                        <p className="mt-2 text-gray-700 leading-relaxed whitespace-pre-wrap">{chapter.studentSnippetText}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (<p className="text-gray-500">История этого приключения еще не началась.</p>)}
                         </div>
                     </div>
                 </div>

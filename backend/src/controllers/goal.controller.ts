@@ -142,3 +142,55 @@ export const deleteGoalHandler = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Goal deleted successfully' });
 };
+
+export const getGoalStoryHistoryHandler = async (req: Request, res: Response) => {
+    const { goalId } = req.params;
+    const teacherId = req.user?.userId;
+
+    if (!teacherId) {
+        throw new AppError('User not authenticated', 401);
+    }
+
+    const goal = await prisma.learningGoal.findFirst({
+        where: { 
+            id: goalId,
+            teacherId
+        },
+        select: { id: true }
+    });
+
+    if (!goal) {
+        throw new AppError('Goal not found or access denied', 404);
+    }
+
+    const storyChapters = await prisma.storyChapter.findMany({
+        where: {
+            learningGoalId: goalId,
+            teacherSnippetStatus: 'APPROVED',
+        },
+        select: {
+            id: true,
+            teacherSnippetText: true,
+            teacherSnippetImageUrl: true,
+            studentSnippetText: true,
+            studentSnippetImageUrl: true,
+            lesson: {
+                select: {
+                    title: true,
+                    order: true,
+                    section: {
+                        select: {
+                            order: true
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: [
+            { lesson: { section: { order: 'asc' } } },
+            { lesson: { order: 'asc' } }
+        ],
+    });
+
+    res.json({ success: true, data: storyChapters });
+};

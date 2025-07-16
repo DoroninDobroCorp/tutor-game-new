@@ -372,11 +372,17 @@ export const getStoryHistoryHandler = async (req: Request, res: Response) => {
             lesson: {
                 select: {
                     title: true,
-                    order: true
+                    order: true,
+                    section: {
+                        select: {
+                            order: true
+                        }
+                    }
                 }
             }
         },
         orderBy: [
+            { lesson: { section: { order: 'asc' } } },
             { lesson: { order: 'asc' } }
         ],
     });

@@ -77,6 +77,9 @@ export interface StoryChapterHistory extends StoryChapter {
     lesson: {
         title: string;
         order: number;
+        section: {
+            order: number;
+        }
     };
 }
 

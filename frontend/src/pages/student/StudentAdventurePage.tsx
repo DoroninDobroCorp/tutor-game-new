@@ -3,7 +3,7 @@ import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeCha
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FiSend, FiCoffee, FiChevronsRight, FiZap, FiHelpCircle, FiX } from 'react-icons/fi';
+import { FiSend, FiCoffee, FiZap, FiHelpCircle, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { AIAssessmentResponse } from '../../types/models';
 import { Dialog, Transition } from '@headlessui/react';
 
@@ -151,6 +151,12 @@ export default function StudentAdventurePage() {
         }
     };
 
+    const handlePreviousBlock = () => {
+        if (currentBlockIndex > 0) {
+            setCurrentBlockIndex(prev => prev - 1);
+        }
+    };
+
     const handleStudentChatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!studentChatMessage.trim() || !lesson) return;
@@ -236,8 +242,21 @@ export default function StudentAdventurePage() {
                             </div>
                         )}
                     </div>
-                    <div className="flex justify-end mt-4">
-                        <button onClick={handleNextBlock} disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2">Далее <FiChevronsRight /></button>
+                    <div className="flex justify-between items-center mt-4">
+                        <button
+                            onClick={handlePreviousBlock}
+                            disabled={currentBlockIndex === 0}
+                            className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <FiChevronLeft /> Назад
+                        </button>
+                        <button
+                            onClick={handleNextBlock}
+                            disabled={isSubmitting}
+                            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2"
+                        >
+                            {currentBlockIndex >= blocks.length - 1 ? 'Завершить практику' : 'Далее'} <FiChevronRight />
+                        </button>
                     </div>
                 </div>
             </>)}

@@ -3,7 +3,8 @@ import { toast } from 'react-hot-toast';
 import type { 
     LearningGoal,
     RoadmapProposal,
-    ContentSection
+    ContentSection,
+    StoryChapterHistory
 } from '../../types/models';
 
 export const goalApi = apiSlice.injectEndpoints({
@@ -63,6 +64,16 @@ export const goalApi = apiSlice.injectEndpoints({
                 { type: 'Goal', id: goalId },
                 { type: 'Goal', id: 'LIST' }
             ],
+        }),
+
+        getGoalStoryHistory: builder.query<StoryChapterHistory[], string>({
+            query: (goalId) => ({
+                url: `/goals/${goalId}/story-history`,
+                method: 'GET',
+            }),
+            transformResponse: (response: { data: StoryChapterHistory[] }) => response.data || [],
+            providesTags: (result, _error, goalId) => 
+                result ? [{ type: 'Goal' as const, id: `STORY_HISTORY_${goalId}` }] : [],
         }),
 
         generateRoadmapProposal: builder.mutation<RoadmapProposal, { 
@@ -142,6 +153,8 @@ export const {
     useGetLearningGoalByIdQuery,
     useCreateLearningGoalMutation,
     useDeleteLearningGoalMutation,
+    useGetGoalStoryHistoryQuery,
+    useLazyGetGoalStoryHistoryQuery,
     useGenerateRoadmapProposalMutation,
     useUpdateRoadmapMutation,
     useGenerateCharacterForGoalMutation,

@@ -3,7 +3,8 @@ import {
     createGoalHandler, 
     getGoalsHandler, 
     deleteGoalHandler,
-    getGoalByIdHandler 
+    getGoalByIdHandler,
+    getGoalStoryHistoryHandler
 } from '../controllers/goal.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 
@@ -13,6 +14,7 @@ router.use(authenticate, authorize('TEACHER'));
 // Routes for managing LearningGoal entity
 router.get('/', getGoalsHandler);
 router.get('/:goalId', getGoalByIdHandler);
+router.get('/:goalId/story-history', getGoalStoryHistoryHandler);
 router.post('/', createGoalHandler);
 router.delete('/:goalId', deleteGoalHandler);
 

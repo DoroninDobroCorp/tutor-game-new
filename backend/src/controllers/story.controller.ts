@@ -41,23 +41,28 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
     const allLessons = allGoalSections.flatMap(section => section.lessons);
     const currentLessonIndex = allLessons.findIndex(l => l.id === lessonId);
     
-    let storyContext: string | undefined = undefined;
+    const previousLessons = allLessons.slice(0, currentLessonIndex);
+    const storyContextParts: string[] = [];
 
-    if (currentLessonIndex > 0) {
-        // Iterate backwards from the lesson before the current one
-        for (let i = currentLessonIndex - 1; i >= 0; i--) {
-            const previousLesson = allLessons[i];
-            if (previousLesson?.storyChapter) {
-                const { teacherSnippetText, studentSnippetText } = previousLesson.storyChapter;
-                storyContext = `КОНТЕКСТ ПРЕДЫДУЩЕГО ШАГА:\n`;
-                if (teacherSnippetText) storyContext += `Учитель написал: "${teacherSnippetText}"\n`;
-                if (studentSnippetText) storyContext += `Ученик ответил: "${studentSnippetText}"\n`;
-                storyContext += `---`;
-                // Break the loop once we've found the most recent context
-                break; 
+    for (const prevLesson of previousLessons) {
+        if (prevLesson.storyChapter) {
+            const { teacherSnippetText, studentSnippetText } = prevLesson.storyChapter;
+            let chapterContext = '';
+            if (teacherSnippetText) {
+                chapterContext += `Рассказчик: "${teacherSnippetText}"\n`;
+            }
+            if (studentSnippetText) {
+                chapterContext += `Ученик ответил: "${studentSnippetText}"\n`;
+            }
+            if (chapterContext) {
+                storyContextParts.push(chapterContext);
             }
         }
     }
+
+    const storyContext: string | undefined = storyContextParts.length > 0
+        ? `КОНТЕКСТ ВСЕЙ ПРЕДЫДУЩЕЙ ИСТОРИИ:\n---\n${storyContextParts.join('---\n')}\n---`
+        : undefined;
 
     try {
         const totalLessons = allLessons.length;
@@ -285,7 +290,7 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
         const generationResult = await startImageGeneration({
             prompt,
             characterImageId: referenceImageId, // This is null if reference is not used
-            characterWeight: 1.15,
+            characterWeight: 1.05,
             presetStyle: illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined,
             characterImageType: imageType
         });

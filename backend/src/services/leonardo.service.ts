@@ -55,7 +55,7 @@ export async function startImageGeneration(params: GenerateImageParams): Promise
             initImageType: params.characterImageType || 'UPLOADED',
             preprocessorId: 133,  // Character Reference Preprocessor ID
             // Используем 'weight', как в рабочем скрипте. Это правильно.
-            weight: params.characterWeight || 1.15,
+            weight: params.characterWeight || 1.05,
         }];
     }
 
