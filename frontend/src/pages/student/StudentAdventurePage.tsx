@@ -153,7 +153,7 @@ export default function StudentAdventurePage() {
 
     const handlePreviousBlock = () => {
         if (currentBlockIndex > 0) {
-            setCurrentBlockIndex(prev => prev - 1);
+            setCurrentBlockIndex(prev => prev + 1);
         }
     };
 
@@ -191,7 +191,6 @@ export default function StudentAdventurePage() {
             return;
         }
 
-        // Collect practice answers in the correct order
         const practiceAnswersArray = blocks
             .map((block: any, index: number) => ({ block, index }))
             .filter(({ block }: any) => block.type === 'practice')
@@ -199,12 +198,8 @@ export default function StudentAdventurePage() {
 
         const formData = new FormData();
         formData.append('studentResponseText', storyResponse);
-        // Important: Send practice answers as a JSON string
         formData.append('practiceAnswers', JSON.stringify(practiceAnswersArray));
         
-        // Note: The backend route supports an image upload here, but the UI doesn't have an input.
-        // If an image input were added, its file would also be appended to formData.
-
         try {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
             toast.success("Отлично! Урок отправлен учителю на проверку.", { duration: 4000 });
@@ -216,104 +211,114 @@ export default function StudentAdventurePage() {
     
     if (isLoading) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
     if (isError) return <div className="text-center text-red-500 p-10">Ошибка загрузки урока. Пожалуйста, <button onClick={() => refetch()} className="underline">обновите</button>.</div>;
-    if (!lesson) return (
-            <div className="text-center p-10 bg-white rounded-lg shadow">
-                <h2 className="text-2xl font-bold text-green-600">🎉 Поздравляем! 🎉</h2>
-                <p className="mt-4 text-lg text-gray-700">Ты прошел все доступные уроки. Так держать!</p>
-                <button onClick={() => navigate('/student')} className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md">Вернуться в кабинет</button>
-            </div>
-    );
+
+    const renderContent = () => {
+        if (!lesson) {
+             return (
+                <div className="text-center p-10 bg-white rounded-lg shadow">
+                    <h2 className="text-2xl font-bold text-green-600">🎉 Поздравляем! 🎉</h2>
+                    <p className="mt-4 text-lg text-gray-700">Ты прошел все доступные уроки. Так держать!</p>
+                    <button onClick={() => navigate('/student')} className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md">Вернуться в кабинет</button>
+                </div>
+            );
+        }
+        return (
+             <>
+                <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
+                {lessonPhase === 'content' && (<>
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
+                        <div className={`p-4 border-l-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' : 'border-red-500 bg-red-50' }`}>
+                            <h3 className="font-semibold capitalize text-lg mb-2">{currentBlock.type === 'youtube' ? "📺 Видео" : currentBlock.type}</h3>
+                            {currentBlock.type === 'youtube' ? <YoutubeEmbed url={currentBlock.content} /> : <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />}
+                            {currentBlock.type === 'practice' && (
+                                <div className="mt-4">
+                                    <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">Ваш ответ:</label>
+                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [currentBlockIndex]: e.target.value }))} placeholder="Введите ваш ответ здесь..." />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-between items-center mt-4">
+                            <button
+                                onClick={handlePreviousBlock}
+                                disabled={currentBlockIndex === 0}
+                                className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <FiChevronLeft /> Назад
+                            </button>
+                            <button
+                                onClick={handleNextBlock}
+                                disabled={isSubmitting}
+                                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2"
+                            >
+                                {currentBlockIndex >= blocks.length - 1 ? 'Завершить практику' : 'Далее'} <FiChevronRight />
+                            </button>
+                        </div>
+                    </div>
+                </>)}
+
+                {lessonPhase === 'assessment' && (<>
+                    <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+                        <div className="flex items-center gap-3 text-xl font-semibold text-indigo-800"><FiZap />Проверка знаний с AI-помощником</div>
+                        <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
+                            {chatHistory.map((msg, index) => (
+                                <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-lg px-4 py-2 rounded-lg shadow ${msg.role === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {isChatLoading && <div className="flex justify-start"><div className="px-4 py-2 rounded-lg shadow bg-white"><Spinner size="sm"/></div></div>}
+                        </div>
+                        {aiResponse && aiResponse.isSessionComplete ? (
+                            <div className="text-center p-4 bg-green-50 rounded-lg">
+                                <p className="text-green-700 font-semibold mb-4">Отлично! С этим разобрались. Можно двигаться дальше!</p>
+                                <button onClick={() => setLessonPhase('story')} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">Продолжить историю</button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleStudentChatSubmit} className="flex gap-2">
+                                <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={aiResponse?.newQuestion ? "Введите ответ на вопрос..." : "Напишите что-нибудь..."} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
+                                <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                            </form>
+                        )}
+                        <div className="text-center pt-4 border-t">
+                            <button onClick={handleEndForReview} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
+                        </div>
+                    </div>
+                </>)}
+
+                {lessonPhase === 'story' && (<>
+                    <div className="bg-indigo-50 rounded-lg shadow-md p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-2xl font-bold text-indigo-700">Продолжение истории...</h2>
+                            <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-indigo-200 text-indigo-800 rounded-md hover:bg-indigo-300 flex items-center gap-2">
+                                <FiHelpCircle /> Краткое содержание
+                            </button>
+                        </div>
+                        {lesson.storyChapter ? (<>
+                            <div className="flex flex-col md:flex-row gap-6 items-start">
+                                {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
+                                <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
+                            </div>
+                            <div className="mt-6">
+                                <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
+                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
+                            </div>
+                            <div className="flex justify-end mt-4">
+                                <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
+                            </div>
+                        </>) : <p>К этому уроку нет истории. Можно переходить к следующему.</p>}
+                    </div>
+                </>)}
+            </>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
             <SummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} summary={summaryText} isLoading={isSummaryLoading} />
-            <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
-
-            {lessonPhase === 'content' && (<>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
-                    <div className={`p-4 border-l-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' : 'border-red-500 bg-red-50' }`}>
-                        <h3 className="font-semibold capitalize text-lg mb-2">{currentBlock.type === 'youtube' ? "📺 Видео" : currentBlock.type}</h3>
-                        {currentBlock.type === 'youtube' ? <YoutubeEmbed url={currentBlock.content} /> : <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />}
-                        {currentBlock.type === 'practice' && (
-                            <div className="mt-4">
-                                <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">Ваш ответ:</label>
-                                <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [currentBlockIndex]: e.target.value }))} placeholder="Введите ваш ответ здесь..." />
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex justify-between items-center mt-4">
-                        <button
-                            onClick={handlePreviousBlock}
-                            disabled={currentBlockIndex === 0}
-                            className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                            <FiChevronLeft /> Назад
-                        </button>
-                        <button
-                            onClick={handleNextBlock}
-                            disabled={isSubmitting}
-                            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2"
-                        >
-                            {currentBlockIndex >= blocks.length - 1 ? 'Завершить практику' : 'Далее'} <FiChevronRight />
-                        </button>
-                    </div>
-                </div>
-            </>)}
-
-            {lessonPhase === 'assessment' && (<>
-                <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-                    <div className="flex items-center gap-3 text-xl font-semibold text-indigo-800"><FiZap />Проверка знаний с AI-помощником</div>
-                    <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
-                        {chatHistory.map((msg, index) => (
-                            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-lg px-4 py-2 rounded-lg shadow ${msg.role === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
-                                    {msg.content}
-                                </div>
-                            </div>
-                        ))}
-                        {isChatLoading && <div className="flex justify-start"><div className="px-4 py-2 rounded-lg shadow bg-white"><Spinner size="sm"/></div></div>}
-                    </div>
-                    {aiResponse && aiResponse.isSessionComplete ? (
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <p className="text-green-700 font-semibold mb-4">Отлично! С этим разобрались. Можно двигаться дальше!</p>
-                            <button onClick={() => setLessonPhase('story')} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">Продолжить историю</button>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleStudentChatSubmit} className="flex gap-2">
-                            <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={aiResponse?.newQuestion ? "Введите ответ на вопрос..." : "Напишите что-нибудь..."} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
-                            <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
-                        </form>
-                    )}
-                    <div className="text-center pt-4 border-t">
-                        <button onClick={handleEndForReview} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
-                    </div>
-                </div>
-            </>)}
-
-            {lessonPhase === 'story' && (<>
-                <div className="bg-indigo-50 rounded-lg shadow-md p-6">
-                     <div className="flex justify-between items-start mb-4">
-                        <h2 className="text-2xl font-bold text-indigo-700">Продолжение истории...</h2>
-                        <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-indigo-200 text-indigo-800 rounded-md hover:bg-indigo-300 flex items-center gap-2">
-                            <FiHelpCircle /> Краткое содержание
-                        </button>
-                     </div>
-                     {lesson.storyChapter ? (<>
-                         <div className="flex flex-col md:flex-row gap-6 items-start">
-                             {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
-                             <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
-                         </div>
-                         <div className="mt-6">
-                            <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
-                            <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
-                         </div>
-                         <div className="flex justify-end mt-4">
-                             <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
-                         </div>
-                     </>) : <p>К этому уроку нет истории. Можно переходить к следующему.</p>}
-                 </div>
-            </>)}
+            {renderContent()}
         </div>
     );
 }
+

@@ -33,6 +33,15 @@ export const studentApi = apiSlice.injectEndpoints({
         result ? [{ type: 'Student' as const, id: 'CURRENT_LESSON' }] : [],
     }),
 
+    getCompletedLessons: builder.query<LessonType[], string>({
+        query: (goalId) => ({
+            url: `/student/goals/${goalId}/completed-lessons`,
+            method: 'GET',
+        }),
+        transformResponse: (response: { data: LessonType[] }) => response.data || [],
+        providesTags: (result = [], _error, goalId) => [{ type: 'Student', id: `COMPLETED_LIST_${goalId}` }],
+    }),
+
     submitLesson: builder.mutation<{ success: boolean; message: string }, SubmitLessonApiPayload>({
       query: ({ lessonId, formData }) => ({
         url: `/student/lessons/${lessonId}/submit`,
@@ -40,7 +49,7 @@ export const studentApi = apiSlice.injectEndpoints({
         data: formData,
         isFormData: true,
       }),
-      invalidatesTags: () => [{ type: 'Student' as const, id: 'CURRENT_LESSON' }],
+      invalidatesTags: () => [{ type: 'Student' as const, id: 'CURRENT_LESSON' }, { type: 'Student', id: 'PROFILE' }],
     }),
     
     getStoryHistory: builder.query<StoryChapterHistory[], string>({
@@ -83,6 +92,8 @@ export const studentApi = apiSlice.injectEndpoints({
 export const { 
   useGetStudentProfileQuery,
   useGetCurrentLessonQuery, 
+  useGetCompletedLessonsQuery,
+  useLazyGetCompletedLessonsQuery,
   useSubmitLessonMutation,
   useGetStoryHistoryQuery,
   useLazyGetStorySummaryQuery,

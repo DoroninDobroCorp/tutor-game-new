@@ -342,6 +342,48 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
     });
 };
 
+export const getCompletedLessonsHandler = async (req: Request, res: Response) => {
+    const studentId = req.user?.userId;
+    const { goalId } = req.params;
+
+    if (!studentId) throw new AppError('Not authenticated', 401);
+    if (!goalId) throw new AppError('Goal ID is required', 400);
+
+    const completedLessons = await prisma.lesson.findMany({
+        where: {
+            status: 'COMPLETED',
+            section: {
+                learningGoalId: goalId,
+                learningGoal: {
+                    studentId: studentId,
+                },
+            },
+        },
+        include: {
+            performanceLogs: {
+                where: {
+                    studentId: studentId,
+                },
+                orderBy: {
+                    blockIndex: 'asc'
+                }
+            },
+            section: {
+                select: {
+                    title: true,
+                    order: true,
+                },
+            },
+        },
+        orderBy: [
+            { section: { order: 'asc' } },
+            { order: 'asc' },
+        ],
+    });
+
+    res.json({ success: true, data: completedLessons });
+}
+
 export const getStoryHistoryHandler = async (req: Request, res: Response) => {
     const studentId = req.user?.userId;
     const { goalId } = req.params;

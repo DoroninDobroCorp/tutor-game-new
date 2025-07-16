@@ -7,6 +7,7 @@ import {
   submitLessonHandler,
   getStoryHistoryHandler,
   getStorySummaryHandler,
+  getCompletedLessonsHandler,
 } from '../controllers/student.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../utils/errors';
@@ -22,6 +23,9 @@ router.get('/current-lesson', asyncHandler(getCurrentLessonHandler));
 router.post('/lessons/:lessonId/practice-chat', authorize('STUDENT'), asyncHandler(lessonPracticeChatHandler));
 router.post('/lessons/:lessonId/end-for-review', authorize('STUDENT'), asyncHandler(endLessonForReviewHandler));
 router.post('/lessons/:lessonId/submit', authorize('STUDENT'), upload.single('image'), asyncHandler(submitLessonHandler));
+
+// Completed lessons
+router.get('/goals/:goalId/completed-lessons', authorize('STUDENT'), asyncHandler(getCompletedLessonsHandler));
 
 // Story history
 router.get('/story/:goalId', authorize('STUDENT'), asyncHandler(getStoryHistoryHandler));

@@ -59,6 +59,7 @@ export interface Lesson {
     storyChapter?: StoryChapter | null;
     // This field is useful for frontend but not for API
     previousLesson?: Lesson | null; 
+    performanceLogs?: PerformanceLog[];
 }
 
 // --- Story Models ---
@@ -86,12 +87,14 @@ export interface StoryChapterHistory extends StoryChapter {
 // --- API & Other Models ---
 
 export interface PerformanceLog {
-    id: string;
+    id:string;
     question?: string | null;
     answer: string;
     isCorrect: boolean | null;
     createdAt: string;
-    lesson: {
+    blockIndex?: number | null;
+    blockType?: string | null;
+    lesson?: {
         title: string;
     };
 }

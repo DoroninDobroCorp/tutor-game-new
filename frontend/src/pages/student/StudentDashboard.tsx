@@ -74,12 +74,18 @@ export default function StudentDashboard() {
                       <p className="text-sm text-gray-500 mt-1">Возраст: {goal.studentAge}</p>
                     )}
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2">
                     <Link 
                       to={`/student/story/${goal.id}`}
-                      className="block w-full text-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="flex-1 text-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
                     >
                       Читать историю
+                    </Link>
+                    <Link 
+                      to={`/student/goal/${goal.id}/completed`}
+                      className="flex-1 text-center px-4 py-2 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 transition-colors"
+                    >
+                      Прошлые уроки
                     </Link>
                   </div>
                 </div>

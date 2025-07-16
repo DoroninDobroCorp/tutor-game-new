@@ -24,6 +24,7 @@ import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 import StudentsPage from './features/teacher/StudentsPage';
 import StoryHistoryPage from './pages/student/StoryHistoryPage';
+import CompletedLessonsPage from './pages/student/CompletedLessonsPage';
 
 // Создаем единый компонент-обертку для защищенных маршрутов по ролям
 const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' }) => {
@@ -65,6 +66,7 @@ function App() {
             <Route path="stories" element={<StudentStoriesListPage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="story/:goalId" element={<StoryHistoryPage />} />
+            <Route path="goal/:goalId/completed" element={<CompletedLessonsPage />} />
           </Route>
           
           {/* Защищенные роуты для Учителя */}
