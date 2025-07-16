@@ -26,3 +26,11 @@
 # Файлы, генерируемые ОС
 .DS_Store
 Thumbs.db
+
+
+message_1.txt
+AskGpt.py
+sloth.py
+sloth_history.json
+sloth_debug_prompt.txt
+package-lock.json
