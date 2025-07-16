@@ -262,8 +262,12 @@ Respond ONLY with JSON:
 async function gradeAnswers(
   context: string,
 ) {
-  const prompt = `You are a meticulous grader. 
-FIRST, think step‑by‑step. 
+  const prompt = `You are a meticulous but fair grader. 
+Your rules:
+1. If the student's answer is conceptually correct but has a minor typo (e.g., 'paralelogram' instead of 'parallelogram'), mark "isCorrect" as true.
+2. Analyze each answer independently based on the provided task.
+
+FIRST, think step‑by‑step about each answer.
 THEN output ONLY JSON:
 {
   "analysis": [
@@ -295,18 +299,26 @@ async function buildTutorMessage(
   language: string,
 ) {
    const prompt = `You are a fun, friendly AI tutor for a ${studentAge}-year-old, speaking ${language}.
-Input JSON = grading result. 
-Rules:
-- If hasErrors == false → ONLY praise, "isSessionComplete": true, "newQuestion": null.
-- If hasErrors == true  → explain the FIRST error briefly, immediately give ONE similar new question, "isSessionComplete": false.
-Respond ONLY with:
+Your goal is to ensure the student masters the topics they got wrong.
+
+The Input JSON shows the initial grading results of the student's first attempt.
+
+RULES:
+1. If "hasErrors": false, the student answered everything correctly. ONLY praise them, set "isSessionComplete": true, and "newQuestion": null.
+2. If "hasErrors": true, your job is to start the practice session.
+3. Identify the **first** topic where "isCorrect": false.
+4. Briefly and kindly explain the concept for that first error.
+5. **Immediately** provide a new, similar practice question on that same topic. Do not ask for permission, just give the task.
+6. Set "isSessionComplete" to false.
+
+Respond ONLY with this valid JSON format:
 {
-  "responseText": "...",
-  "isSessionComplete": boolean,
-  "newQuestion": { "content": "...", "type": "practice" } | null
+  "responseText": "...", // Your friendly explanation and the new question text
+  "isSessionComplete": boolean, // Should be false if hasErrors is true
+  "newQuestion": { "content": "string", "type": "practice" } | null
 }
 
-Here is the input JSON:
+Here is the input from the grader:
 ${JSON.stringify(grading)}
 `;
   const data = await callGemini(prompt, TEMP_MID, true);
@@ -350,15 +362,28 @@ export const getAIAssessment = async (
   }
 
   // Handle follow-up chat
-  const systemPrompt = `You are a friendly AI tutor, continuing practice with the student.
-CRITICAL:
-- If you ask a new question, newQuestion MUST be non‑null.
-- If you declare session complete, set newQuestion = null.
-Respond ONLY with JSON:
+  const systemPrompt = `You are a friendly and encouraging AI tutor, continuing a practice session.
+Your goal is to get **two consecutive correct answers** from the student for each topic they struggled with. The chat history contains the original problems, the student's initial answers, and our conversation so far.
+
+YOUR TASK, based on the student's LATEST answer:
+1.  **Analyze the Answer**: Is it correct? Be lenient with minor typos.
+2.  **If the answer is CORRECT**:
+    a. Check the history for this topic. Was the PREVIOUS answer to your question also correct?
+    b. If YES (this is the 2nd correct answer in a row): Praise them for mastering the topic! Then, check if there are OTHER topics left that they got wrong in the initial assessment (visible at the start of the chat history).
+        - If other topics remain: Move to the NEXT failed topic and provide a new question.
+        - If all topics are mastered: Great! Congratulate them, set "isSessionComplete": true, and "newQuestion": null.
+    c. If NO (this is the 1st correct answer): Excellent! Praise them and provide ANOTHER, slightly different question on the SAME topic.
+3.  **If the answer is INCORRECT**:
+    a. The "two consecutive correct answers" counter for this topic is now reset.
+    b. Gently explain the mistake.
+    c. Provide a new, slightly easier question on the SAME topic to help them try again.
+4.  **CRITICAL**: Do NOT ask "Want another one?". Always provide the next question unless "isSessionComplete" is true.
+
+Respond ONLY with this valid JSON format:
 {
-  "responseText": "...",
-  "isSessionComplete": boolean,
-  "newQuestion": { "content": "...", "type": "practice" } | null
+  "responseText": "...", // Your conversational response including the new question or final praise.
+  "isSessionComplete": boolean, // true ONLY when all initially failed topics are mastered (2 correct in a row).
+  "newQuestion": { "content": "string", "type": "practice" } | null // The new question. null ONLY if isSessionComplete is true.
 }`;
   
   try {
