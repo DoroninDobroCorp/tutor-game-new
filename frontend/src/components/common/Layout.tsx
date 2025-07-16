@@ -29,11 +29,11 @@ interface NavigationItem {
 }
 
 const studentNavigation: NavigationItem[] = [
-  { name: 'Dashboard', href: '/student', icon: HomeIcon, current: false },
-  { name: 'Continue Adventure', href: '/student/adventure', icon: RocketLaunchIcon, current: false },
-  { name: 'My Adventures', href: '/student/stories', icon: BookOpenIcon, current: false },
+  { name: 'Панель управления', href: '/student', icon: HomeIcon, current: false },
+  { name: 'Продолжить приключение', href: '/student/adventure', icon: RocketLaunchIcon, current: false },
+  { name: 'Архив заданий', href: '/student/stories', icon: BookOpenIcon, current: false },
   {
-    name: 'Chat',
+    name: 'Чат',
     href: '/student/chat',
     icon: ChatBubbleLeftEllipsisIcon,
     current: false,
@@ -42,11 +42,11 @@ const studentNavigation: NavigationItem[] = [
 ];
 
 const teacherNavigation: NavigationItem[] = [
-  { name: 'Dashboard', href: '/teacher', icon: HomeIcon, current: false },
-  { name: 'Learning Plans', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
-  { name: 'Students', href: '/teacher/students', icon: UserGroupIcon, current: false },
+  { name: 'Панель управления', href: '/teacher', icon: HomeIcon, current: false },
+  { name: 'Учебные планы', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
+  { name: 'Студенты', href: '/teacher/students', icon: UserGroupIcon, current: false },
   {
-    name: 'Chat',
+    name: 'Чат',
     href: '/teacher/chat',
     icon: ChatBubbleLeftEllipsisIcon,
     current: false,

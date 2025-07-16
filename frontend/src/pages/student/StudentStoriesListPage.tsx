@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useGetStudentProfileQuery } from '../../features/student/studentApi';
 import type { LearningGoal } from '../../types/models';
 import Spinner from '../../components/common/Spinner';
-import { FiBookOpen } from 'react-icons/fi';
+import { FiBookOpen, FiClock } from 'react-icons/fi';
 
 export default function StudentStoriesListPage() {
   const { data: profile, isLoading, isError } = useGetStudentProfileQuery();
@@ -19,15 +19,14 @@ export default function StudentStoriesListPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Мои Приключения</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Архив заданий</h1>
       
       {learningGoals.length > 0 ? (
         <div className="space-y-4">
           {learningGoals.map((goal: LearningGoal) => (
-            <Link 
-              key={goal.id} 
-              to={`/student/story/${goal.id}`}
-              className="block bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+            <div 
+              key={goal.id}
+              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -36,7 +35,17 @@ export default function StudentStoriesListPage() {
                 </div>
                 <FiBookOpen className="w-8 h-8 text-gray-300" />
               </div>
-            </Link>
+              <div className="mt-4 pt-4 border-t border-gray-200 flex items-center space-x-6">
+                <Link to={`/student/story/${goal.id}`} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                    <FiBookOpen className="mr-2" />
+                    Читать историю
+                </Link>
+                <Link to={`/student/goal/${goal.id}/completed`} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                    <FiClock className="mr-2" />
+                    Пройденные уроки
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
