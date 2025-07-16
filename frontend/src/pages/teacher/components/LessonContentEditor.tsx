@@ -101,7 +101,6 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
         try {
             await updateContent({ lessonId: lesson.id, content: { blocks: blocksToSave } }).unwrap();
             toast.success('Контент урока сохранен!');
-            onCloseModal();
         } catch {
             toast.error('Не удалось сохранить контент.');
         }
@@ -161,8 +160,22 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                 </form>
             </div>
             
-            <div className="mt-6 flex justify-end">
-                <button type="button" onClick={handleSaveContent} disabled={isSaving || isGenerating || blocks.length === 0} className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">{isSaving ? 'Сохранение...' : 'Сохранить и закрыть'}</button>
+            <div className="mt-6 flex justify-end gap-x-4">
+                <button 
+                    type="button" 
+                    onClick={onCloseModal} 
+                    className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                    Закрыть
+                </button>
+                <button 
+                    type="button" 
+                    onClick={handleSaveContent} 
+                    disabled={isSaving || isGenerating || blocks.length === 0} 
+                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                    {isSaving ? 'Сохранение...' : 'Сохранить контент'}
+                </button>
             </div>
         </div>
     );
