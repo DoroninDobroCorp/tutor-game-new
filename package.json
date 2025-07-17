@@ -10,7 +10,8 @@
     "build": "cd backend && npm run build && cd ../frontend && npm run build",
     "start": "cd backend && npm start",
     "seed": "dotenv -e backend/.env -- npx prisma generate && dotenv -e backend/.env -- npx ts-node backend/scripts/createTestUsers.ts",
-    "db:lowercase-emails": "dotenv -e backend/.env -- npx ts-node backend/scripts/lowercase-emails.ts"
+    "db:lowercase-emails": "dotenv -e backend/.env -- npx ts-node backend/scripts/lowercase-emails.ts",
+    "push": "f() { if [ -z \"$1\" ]; then echo 'Error: Commit message is required. Usage: npm run push -- \"your message\"'; exit 1; fi; git add . && git commit -m \"$1\" && git push; }; f"
   },
   "workspaces": [
     "backend",
