@@ -138,7 +138,8 @@ RULES:
 2. "type" is one of "theory" | "practice" | "youtube".
 3. For "youtube" blocks "content" MUST be a full YouTube URL.
 4. Be conversational in "chatResponse", but strict with JSON format.
-5. The theme "${setting}" is for framing; do not sacrifice pedagogy for it.`;
+5. The theme "${setting}" is for framing; do not sacrifice pedagogy for it.
+6. For "theory" and "practice" blocks, use simple HTML tags for formatting in the "content" field. Use <h3> for subheadings, <b> for bold text, <i> for italics, and <p> for paragraphs to ensure correct spacing. Do not use Markdown (e.g., **, ###).`;
 
   if (performanceContext) {
     systemPrompt += `

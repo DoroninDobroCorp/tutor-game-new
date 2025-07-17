@@ -6,9 +6,17 @@ import { useNavigate } from 'react-router-dom';
 import { FiSend, FiCoffee, FiZap, FiHelpCircle, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { AIAssessmentResponse } from '../../types/models';
 import { Dialog, Transition } from '@headlessui/react';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import {
+    startLesson,
+    updatePracticeAnswer,
+    updateStoryResponse,
+    resetAdventureState,
+    selectPracticeAnswers,
+    selectStoryResponse,
+} from '../../features/student/adventureSlice';
 
-
-const YoutubeEmbed = ({ url }: { url: string }) => {
+const YoutubeEmbed = ({ url }: { url:string }) => {
     const getYouTubeId = (url: string) => {
         if (!url) return null;
         try {
@@ -70,6 +78,7 @@ type LessonPhase = 'content' | 'assessment' | 'story';
 type ChatMessage = { role: 'user' | 'assistant', content: string };
 
 export default function StudentAdventurePage() {
+    const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { data: lesson, isLoading, isError, refetch } = useGetCurrentLessonQuery();
     const [submitLesson, { isLoading: isSubmitting }] = useSubmitLessonMutation();
@@ -79,8 +88,10 @@ export default function StudentAdventurePage() {
 
     const [lessonPhase, setLessonPhase] = useState<LessonPhase>('content');
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
-    const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
-    const [storyResponse, setStoryResponse] = useState('');
+
+    const practiceAnswers = useAppSelector(selectPracticeAnswers);
+    const storyResponse = useAppSelector(selectStoryResponse);
+
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [studentChatMessage, setStudentChatMessage] = useState('');
     const [aiResponse, setAiResponse] = useState<AIAssessmentResponse | null>(null);
@@ -94,18 +105,25 @@ export default function StudentAdventurePage() {
 
     useEffect(() => {
         if (lesson) {
+            dispatch(startLesson(lesson.id));
             setLessonPhase('content');
             setCurrentBlockIndex(0);
-            setPracticeAnswers({});
-            setStoryResponse('');
             setChatHistory([]);
             setAiResponse(null);
         }
-    }, [lesson]);
+    }, [lesson, dispatch]);
     
     useEffect(() => {
       chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight);
     }, [chatHistory]);
+
+    const handlePracticeAnswerChange = (blockIndex: number, answer: string) => {
+        dispatch(updatePracticeAnswer({ blockIndex, answer }));
+    };
+    
+    const handleStoryResponseChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        dispatch(updateStoryResponse(e.target.value));
+    };
 
     const handleShowSummary = async () => {
         if (!lesson?.section?.learningGoal?.id) return;
@@ -153,7 +171,7 @@ export default function StudentAdventurePage() {
 
     const handlePreviousBlock = () => {
         if (currentBlockIndex > 0) {
-            setCurrentBlockIndex(prev => prev + 1);
+            setCurrentBlockIndex(prev => prev - 1);
         }
     };
 
@@ -203,6 +221,7 @@ export default function StudentAdventurePage() {
         try {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
             toast.success("Отлично! Урок отправлен учителю на проверку.", { duration: 4000 });
+            dispatch(resetAdventureState());
             navigate('/student');
         } catch (err) {
             toast.error("Не удалось завершить урок.");
@@ -234,7 +253,7 @@ export default function StudentAdventurePage() {
                             {currentBlock.type === 'practice' && (
                                 <div className="mt-4">
                                     <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">Ваш ответ:</label>
-                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [currentBlockIndex]: e.target.value }))} placeholder="Введите ваш ответ здесь..." />
+                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => handlePracticeAnswerChange(currentBlockIndex, e.target.value)} placeholder="Введите ваш ответ здесь..." />
                                 </div>
                             )}
                         </div>
@@ -302,7 +321,7 @@ export default function StudentAdventurePage() {
                             </div>
                             <div className="mt-6">
                                 <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
-                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={(e) => setStoryResponse(e.target.value)} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
+                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={handleStoryResponseChange} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
                             </div>
                             <div className="flex justify-end mt-4">
                                 <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
@@ -321,4 +340,3 @@ export default function StudentAdventurePage() {
         </div>
     );
 }
-
