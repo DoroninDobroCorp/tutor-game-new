@@ -50,9 +50,12 @@ export interface ContentSection {
     lessons: Lesson[];
 }
 
+export type LessonType = 'THEORY' | 'PRACTICE' | 'WITH_TEACHER' | 'CONTROL_WORK';
+
 export interface Lesson {
     id:string;
     title: string;
+    type: LessonType;
     status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
     order: number;
     content?: { blocks: any[] } | null;

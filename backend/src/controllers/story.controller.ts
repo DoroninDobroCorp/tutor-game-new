@@ -76,6 +76,7 @@ export const generateStorySnippetHandler = async (req: Request, res: Response) =
             language || 'Russian',
             currentLessonNumber,
             totalLessons,
+            lesson.type,
             refinementPrompt,
             storyContext
         );

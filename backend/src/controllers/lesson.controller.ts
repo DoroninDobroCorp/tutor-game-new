@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateLessonContent } from '../services/gemini.service';
+import { generateLessonContent, generateControlWorkExercises } from '../services/gemini.service';
 
 export const generateLessonContentHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
@@ -118,4 +118,41 @@ export const updateLessonContentHandler = async (req: Request, res: Response) =>
     });
 
     res.json({ success: true, data: updatedLesson });
+};
+
+export const generateControlWorkContentHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const teacherId = req.user?.userId;
+
+    const lesson = await prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: { section: { include: { learningGoal: true, lessons: true } } }
+    });
+
+    if (!lesson || lesson.section.learningGoal.teacherId !== teacherId) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+
+    if (lesson.type !== 'CONTROL_WORK') {
+        throw new AppError('This function is only for control work lessons', 400);
+    }
+    
+    // Get all other lesson titles from the same section
+    const sectionTopics = lesson.section.lessons
+        .filter(l => l.id !== lessonId && l.type !== 'CONTROL_WORK') // Exclude self and other control works
+        .map(l => l.title);
+
+    if (sectionTopics.length === 0) {
+        throw new AppError('Cannot generate a control work for a section with no other lessons.', 400);
+    }
+
+    const { learningGoal } = lesson.section;
+    const { subject, studentAge, language } = learningGoal;
+
+    const generatedData = await generateControlWorkExercises(
+        sectionTopics, subject, studentAge, language || 'Russian'
+    );
+    
+    // Return the AI's proposal, do not save to DB yet.
+    res.json({ success: true, data: generatedData });
 };

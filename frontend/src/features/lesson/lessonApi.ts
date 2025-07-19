@@ -27,6 +27,14 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
         
+        generateControlWorkContent: builder.mutation<{ data: { blocks: any[] } }, { lessonId: string }>({
+            query: ({ lessonId }) => ({
+                url: `/lessons/${lessonId}/generate-control-work`,
+                method: 'POST',
+            }),
+            invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Lesson', id: lessonId }],
+        }),
+
         updateLessonContent: builder.mutation<Lesson, { lessonId: string; content: any }>({
             query: ({ lessonId, content }) => ({
                 url: `/lessons/${lessonId}/content`,
@@ -88,4 +96,5 @@ export const {
     useApproveStorySnippetWithUploadMutation,
     useLazyCheckStoryImageStatusQuery,
     useRegenerateStoryImageMutation,
+    useGenerateControlWorkContentMutation,
 } = lessonApi;

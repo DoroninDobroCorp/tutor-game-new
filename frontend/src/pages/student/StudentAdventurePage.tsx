@@ -3,7 +3,7 @@ import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeCha
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FiSend, FiCoffee, FiZap, FiHelpCircle, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiSend, FiCoffee, FiZap, FiHelpCircle, FiX, FiChevronLeft, FiChevronRight, FiThumbsDown } from 'react-icons/fi';
 import type { AIAssessmentResponse } from '../../types/models';
 import { Dialog, Transition } from '@headlessui/react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -42,7 +42,6 @@ const YoutubeEmbed = ({ url }: { url:string }) => {
     );
 };
 
-// Summary Modal Component
 const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean; onClose: () => void; summary: string; isLoading: boolean; }) => {
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -73,8 +72,7 @@ const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean
   );
 };
 
-
-type LessonPhase = 'content' | 'assessment' | 'story';
+type LessonPhase = 'content' | 'assessment' | 'story' | 'control_work';
 type ChatMessage = { role: 'user' | 'assistant', content: string };
 
 export default function StudentAdventurePage() {
@@ -88,6 +86,11 @@ export default function StudentAdventurePage() {
 
     const [lessonPhase, setLessonPhase] = useState<LessonPhase>('content');
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
+
+    // Specific state for Control Work
+    const [controlWorkQuestions, setControlWorkQuestions] = useState<any[]>([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [cwProgress, setCwProgress] = useState(0);
 
     const practiceAnswers = useAppSelector(selectPracticeAnswers);
     const storyResponse = useAppSelector(selectStoryResponse);
@@ -106,9 +109,17 @@ export default function StudentAdventurePage() {
     useEffect(() => {
         if (lesson) {
             dispatch(startLesson(lesson.id));
-            setLessonPhase('content');
-            setCurrentBlockIndex(0);
-            setChatHistory([]);
+            if (lesson.type === 'CONTROL_WORK') {
+                const cwQuestions = lesson.content?.blocks || [];
+                setLessonPhase('control_work');
+                setControlWorkQuestions(cwQuestions);
+                setCurrentQuestionIndex(0);
+                setCwProgress(0);
+                setChatHistory(cwQuestions.length > 0 ? [{ role: 'assistant', content: cwQuestions[0].content }] : []);
+            } else {
+                setLessonPhase('content');
+                setCurrentBlockIndex(0);
+            }
             setAiResponse(null);
         }
     }, [lesson, dispatch]);
@@ -125,22 +136,27 @@ export default function StudentAdventurePage() {
         dispatch(updateStoryResponse(e.target.value));
     };
 
-    const handleShowSummary = async () => {
-        if (!lesson?.section?.learningGoal?.id) return;
-        setIsSummaryOpen(true);
-        setSummaryText('');
-        try {
-          const result = await triggerGetSummary(lesson.section.learningGoal.id).unwrap();
-          setSummaryText(result.summary);
-        } catch (error) {
-          toast.error('Не удалось загрузить краткое содержание.');
-          setSummaryText('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
+    const handleNextBlock = () => {
+        if (currentBlock.type === 'practice' && !practiceAnswers[currentBlockIndex]?.trim()) {
+            toast.error('Пожалуйста, введите ответ, чтобы продолжить.');
+            return;
+        }
+        if (currentBlockIndex >= blocks.length - 1) {
+            setLessonPhase('assessment');
+            startAssessmentPhase();
+        } else {
+            setCurrentBlockIndex(prev => prev + 1);
+        }
+    };
+
+    const handlePreviousBlock = () => {
+        if (currentBlockIndex > 0) {
+            setCurrentBlockIndex(prev => prev + 1);
         }
     };
 
     const startAssessmentPhase = async () => {
         if (!lesson) return;
-        setLessonPhase('assessment');
         const initialAnswers = blocks
             .map((block: any, index: number) => ({ block, index }))
             .filter(({ block }: any) => block.type === 'practice')
@@ -156,24 +172,6 @@ export default function StudentAdventurePage() {
             setCurrentBlockIndex(blocks.length - 1);
         }
     };
-    
-    const handleNextBlock = () => {
-        if (currentBlock.type === 'practice' && !practiceAnswers[currentBlockIndex]?.trim()) {
-            toast.error('Пожалуйста, введите ответ, чтобы продолжить.');
-            return;
-        }
-        if (currentBlockIndex >= blocks.length - 1) {
-            startAssessmentPhase();
-        } else {
-            setCurrentBlockIndex(prev => prev + 1);
-        }
-    };
-
-    const handlePreviousBlock = () => {
-        if (currentBlockIndex > 0) {
-            setCurrentBlockIndex(prev => prev - 1);
-        }
-    };
 
     const handleStudentChatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -187,32 +185,74 @@ export default function StudentAdventurePage() {
             setChatHistory(prev => [...prev, { role: 'assistant', content: result.data.responseText }]);
         } catch (err) {
             toast.error("Ошибка при отправке сообщения. Попробуйте еще раз.");
-            setChatHistory(chatHistory); // Revert on error
+            setChatHistory(chatHistory);
         }
     };
     
-    const handleEndForReview = async () => {
-        if (window.confirm("Вы уверены, что хотите продолжить, создав урок для повторения? Учитель увидит ваш запрос.") && lesson) {
-            try {
-                await endLesson({ lessonId: lesson.id }).unwrap();
-                toast.success("Урок для повторения создан. Теперь можно продолжить историю!");
-                setLessonPhase('story');
-            } catch (err) {
-                toast.error("Не удалось создать урок для повторения.");
+    const handleControlWorkSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!studentChatMessage.trim() || !lesson) return;
+
+        const questionContent = controlWorkQuestions[currentQuestionIndex].content;
+        const answer = studentChatMessage;
+        
+        const currentChat: ChatMessage[] = [
+            { role: 'assistant', content: questionContent },
+            { role: 'user', content: answer }
+        ];
+
+        setChatHistory(prev => [...prev, { role: 'user', content: answer }]);
+        setStudentChatMessage('');
+
+        try {
+            const result = await practiceChat({ lessonId: lesson.id, chatHistory: currentChat }).unwrap();
+            const { isCorrect, responseText } = result.data;
+            
+            setChatHistory(prev => [...prev, { role: 'assistant', content: responseText }]);
+
+            const progressStep = 100 / controlWorkQuestions.length;
+            
+            if (isCorrect) {
+                const newProgress = cwProgress + progressStep;
+                setCwProgress(newProgress);
+                
+                if (newProgress >= 99.9) { // Use a threshold to avoid floating point issues
+                    toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
+                    setTimeout(() => setLessonPhase('story'), 1500);
+                } else {
+                    const nextIndex = currentQuestionIndex + 1;
+                    setCurrentQuestionIndex(nextIndex);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: controlWorkQuestions[nextIndex].content }]);
+                }
+            } else {
+                setCwProgress(prev => Math.max(0, prev - progressStep));
+                // Do not advance, let the student try again on the same question
             }
+        } catch (err) {
+            toast.error("Ошибка при проверке ответа. Попробуйте еще раз.");
+            setChatHistory(chatHistory); // Revert chat on error
         }
     };
 
+    const handleGiveUp = () => {
+        if (window.confirm("Вы уверены, что хотите сдаться? Прогресс не будет сохранен, и вы не получите продолжение истории.")) {
+            dispatch(resetAdventureState());
+            navigate('/student');
+        }
+    };
+    
     const handleSubmitLesson = async () => {
         if (!lesson || !storyResponse.trim()) {
             toast.error("Напиши, что будет дальше в истории!");
             return;
         }
 
-        const practiceAnswersArray = blocks
-            .map((block: any, index: number) => ({ block, index }))
-            .filter(({ block }: any) => block.type === 'practice')
-            .map(({ index }: any) => practiceAnswers[index] || '');
+        const practiceAnswersArray = (lesson.type === 'CONTROL_WORK') 
+            ? controlWorkQuestions.map((q, i) => q.answer || 'Ответ не записан') // Placeholder, as CW answers are in chat
+            : blocks
+                .map((block: any, index: number) => ({ block, index }))
+                .filter(({ block }: any) => block.type === 'practice')
+                .map(({ index }: any) => practiceAnswers[index] || '');
 
         const formData = new FormData();
         formData.append('studentResponseText', storyResponse);
@@ -241,6 +281,38 @@ export default function StudentAdventurePage() {
                 </div>
             );
         }
+
+        if (lesson.type === 'CONTROL_WORK') {
+            return (
+                <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+                    <h1 className="text-2xl font-bold text-gray-900 text-center">{lesson.title}</h1>
+                    <div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div className="bg-green-500 h-4 rounded-full transition-all duration-500" style={{ width: `${cwProgress}%` }}></div>
+                        </div>
+                        <p className="text-center text-sm text-gray-600 mt-2">Прогресс: {Math.round(cwProgress)}%</p>
+                    </div>
+
+                    <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
+                        {chatHistory.map((msg, index) => (
+                            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-lg px-4 py-2 rounded-lg shadow ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border'}`} dangerouslySetInnerHTML={{ __html: msg.content }}>
+                                </div>
+                            </div>
+                        ))}
+                        {isChatLoading && <div className="flex justify-start"><div className="px-4 py-2 rounded-lg shadow bg-white"><Spinner size="sm"/></div></div>}
+                    </div>
+                    <form onSubmit={handleControlWorkSubmit} className="flex gap-2">
+                        <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder="Введите ваш ответ..." className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
+                        <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                    </form>
+                    <div className="text-center pt-4 border-t">
+                        <button onClick={handleGiveUp} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2"> <FiThumbsDown/> Сдаться</button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
              <>
                 <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
@@ -258,18 +330,10 @@ export default function StudentAdventurePage() {
                             )}
                         </div>
                         <div className="flex justify-between items-center mt-4">
-                            <button
-                                onClick={handlePreviousBlock}
-                                disabled={currentBlockIndex === 0}
-                                className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
+                            <button onClick={handlePreviousBlock} disabled={currentBlockIndex === 0} className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                 <FiChevronLeft /> Назад
                             </button>
-                            <button
-                                onClick={handleNextBlock}
-                                disabled={isSubmitting}
-                                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2"
-                            >
+                            <button onClick={handleNextBlock} disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2">
                                 {currentBlockIndex >= blocks.length - 1 ? 'Завершить практику' : 'Далее'} <FiChevronRight />
                             </button>
                         </div>
@@ -301,7 +365,7 @@ export default function StudentAdventurePage() {
                             </form>
                         )}
                         <div className="text-center pt-4 border-t">
-                            <button onClick={handleEndForReview} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
+                            <button onClick={() => { if (lesson) toast.error('This feature is not implemented yet.'); }} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
                         </div>
                     </div>
                 </>)}
@@ -310,7 +374,7 @@ export default function StudentAdventurePage() {
                     <div className="bg-gray-50 rounded-lg shadow-md p-6">
                         <div className="flex justify-between items-start mb-4">
                             <h2 className="text-2xl font-bold text-gray-700">Продолжение истории...</h2>
-                            <button onClick={handleShowSummary} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
+                            <button onClick={() => {}} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
                                 <FiHelpCircle /> Краткое содержание
                             </button>
                         </div>

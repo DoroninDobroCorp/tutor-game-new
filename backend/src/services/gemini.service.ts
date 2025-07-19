@@ -4,6 +4,7 @@
 //---------------------------------------------------------------
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/generative-ai';
 import { config } from '../config/env';
+import { AppError } from '../utils/errors';
 
 //--- инициализация клиента -------------------------------------
 if (!config.geminiApiKey) {
@@ -12,7 +13,7 @@ if (!config.geminiApiKey) {
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 
 //--- Вспомогательные константы ---------------------------------
-const MODEL_NAME = "gemini-2.5-flash"; // Используем актуальную быструю модель
+const MODEL_NAME = "gemini-1.5-flash"; // Используем актуальную быструю модель
 const TEMP_LOW = 0.2;
 const TEMP_MID = 0.45;
 const TEMP_HIGH = 0.85;
@@ -179,6 +180,7 @@ export const generateStorySnippet = async (
   language: string,
   currentLessonNumber: number,
   totalLessons: number,
+  lessonType: string,
   refinementPrompt?: string,
   storyContext?: string,
 ): Promise<{
@@ -186,7 +188,7 @@ export const generateStorySnippet = async (
   imagePrompt: string;
   useCharacterReference: boolean;
 }> => {
-  const systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
+  let systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
 You are writing chapter ${currentLessonNumber} of ${totalLessons} for a ${studentAge}-year-old. 
 Main character: "${characterPrompt}".
 Respond ONLY with valid JSON:
@@ -199,7 +201,11 @@ Rules:
 - storyText = 2‑3 paragraphs, end with open question about next action;
 - imagePrompt = 15‑25 English keywords, comma‑separated, describing the scene;
 - if useCharacterReference=true, include the main character in prompt; else do not.
-- subtle link to lesson topic "${lessonTitle}", no direct tasks.`;
+- The story is a reward for completing the lesson on "${lessonTitle}". A direct mention of the lesson topic is not required, the story should primarily continue the adventure.`;
+  
+  if (lessonType === 'CONTROL_WORK') {
+    systemPrompt += `\n- SPECIAL INSTRUCTION: This chapter is for a 'Control Work' lesson. The story should describe a difficult challenge, a final test, or a battle that the main character must overcome. The tone should be more serious and climactic.`;
+  }
   
   let userPrompt = '';
   if (storyContext) {
@@ -345,7 +351,42 @@ export const getAIAssessment = async (
   studentAge: number,
   language: string,
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
+  lessonType?: string,
 ) => {
+    // NEW LOGIC FOR CONTROL WORK
+    if (lessonType === 'CONTROL_WORK') {
+        if (chatHistory.length > 0) {
+            const systemPrompt = `You are a strict but fair AI examiner conducting a control work in ${language} for a ${studentAge}-year-old.
+The student has just answered a question. Your task is to:
+1.  Evaluate if the answer is correct. Be precise. Minor typos in text-based answers are acceptable if the meaning is correct. For math, the calculation must be right.
+2.  Provide a brief, one-sentence response.
+    - If correct, say something like "Верно." or "Правильно, молодец!".
+    - If incorrect, briefly explain the mistake in one sentence, for example: "Не совсем, здесь нужно было сначала выполнить умножение."
+3.  Do NOT give a new question. The frontend will handle the question flow.
+4.  Respond ONLY with this valid JSON format:
+    {
+      "responseText": "...",
+      "isCorrect": boolean,
+      "isSessionComplete": false,
+      "newQuestion": null
+    }
+`;
+            const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
+            try {
+                const rawResponse = await callGeminiWithChat(geminiHistory, TEMP_LOW, true);
+                if (typeof rawResponse.responseText !== 'string' || typeof rawResponse.isCorrect !== 'boolean') {
+                     throw new Error('Invalid JSON structure from Gemini for control work');
+                }
+                return { ...rawResponse, isSessionComplete: false, newQuestion: null };
+            } catch (err) {
+                console.error('[getAIAssessment] control work error:', err);
+                throw new Error('Failed to get AI assessment for control work');
+            }
+        }
+        throw new AppError('Control work assessment requires a chat history with a question and answer.', 400);
+    }
+    
+  // --- EXISTING LOGIC FOR REGULAR LESSONS ---
   if (chatHistory.length === 0) {
     const practiceBlocks: string[] = (lesson.content?.blocks || [])
       .filter((b: any) => b.type === 'practice')
@@ -450,5 +491,38 @@ ${storyHistory}`;
   } catch (err) {
     console.error('Error generating story summary:', err);
     throw new Error('Failed to generate story summary');
+  }
+};
+
+//----------------------------------------------------------------
+// 8.  Генерация контрольной работы по темам раздела
+//----------------------------------------------------------------
+export const generateControlWorkExercises = async (
+  sectionTopics: string[],
+  subject: string,
+  studentAge: number,
+  language: string,
+): Promise<{ blocks: any[] }> => {
+  const prompt = `You are an expert curriculum designer for children in ${language}.
+Your task is to create a set of exercises for a control work on the subject "${subject}" for a ${studentAge}-year-old student.
+The control work must cover the following topics from the current section:
+- ${sectionTopics.join('\n- ')}
+
+RULES:
+1. Respond with ONLY valid JSON: { "blocks": [ { "type": "practice", "content": "..." } ] }
+2. Create one "practice" block for EACH topic listed above.
+3. The "content" of each block should be a clear exercise or question.
+4. Use simple HTML for formatting task content: <h3>, <b>, <i>, <p>. No Markdown.
+5. The difficulty should be appropriate for a control work, testing the student's understanding of the topics.`;
+
+  try {
+    const result = await callGemini(prompt, TEMP_MID, true);
+    if (!result || !Array.isArray(result.blocks)) {
+        throw new Error('Invalid JSON structure for control work from Gemini');
+    }
+    return result;
+  } catch (err) {
+    console.error('[generateControlWorkExercises] error:', err);
+    throw new Error('Failed to generate control work exercises');
   }
 };

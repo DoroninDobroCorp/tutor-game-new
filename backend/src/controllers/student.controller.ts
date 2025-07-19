@@ -134,7 +134,8 @@ export const lessonPracticeChatHandler = async (req: Request, res: Response) => 
         initialAnswers || [], // Pass initial answers only on the first call
         lesson.section.learningGoal.studentAge,
         lesson.section.learningGoal.language || 'Russian',
-        chatHistory || []
+        chatHistory || [],
+        lesson.type // Pass lesson type for new control work logic
     );
 
     res.json({ success: true, data: aiResponse });

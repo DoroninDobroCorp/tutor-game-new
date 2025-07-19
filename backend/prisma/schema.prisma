@@ -20,6 +20,7 @@ enum LessonType {
   THEORY
   PRACTICE
   WITH_TEACHER
+  CONTROL_WORK
 }
 
 enum LessonStatus {

@@ -4,6 +4,7 @@ import { FiX } from 'react-icons/fi';
 import { type Lesson } from '../../types/models';
 import { LessonContentEditor } from './components/LessonContentEditor';
 import LessonStoryEditor from './components/LessonStoryEditor';
+import { ControlWorkContentEditor } from './components/ControlWorkContentEditor';
 
 // Lightbox component is now defined and managed within the modal
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
@@ -105,10 +106,17 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                     </Tab.List>
                                     <Tab.Panels className="mt-4">
                                         <Tab.Panel>
-                                            <LessonContentEditor 
-                                                lesson={lesson} 
-                                                onCloseModal={handleCloseModal}
-                                            />
+                                            {lesson.type === 'CONTROL_WORK' ? (
+                                                <ControlWorkContentEditor 
+                                                    lesson={lesson} 
+                                                    onCloseModal={handleCloseModal}
+                                                />
+                                            ) : (
+                                                <LessonContentEditor 
+                                                    lesson={lesson} 
+                                                    onCloseModal={handleCloseModal}
+                                                />
+                                            )}
                                         </Tab.Panel>
                                         <Tab.Panel>
                                             <LessonStoryEditor 
