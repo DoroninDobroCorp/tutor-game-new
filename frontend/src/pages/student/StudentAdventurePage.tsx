@@ -51,7 +51,7 @@ const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean
         </Transition.Child>
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0 scale-95">
+            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100" to="opacity-0 scale-95">
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-start">
                   Краткое содержание
@@ -288,16 +288,13 @@ export default function StudentAdventurePage() {
 
         const isControlWorkSuccess = lesson.type === 'CONTROL_WORK' && cwProgress >= 99.9;
         
-        // For control work, we don't submit answers, just story. And only on success.
-        // For regular lessons, we submit everything.
         if (lesson.type === 'CONTROL_WORK' && !isControlWorkSuccess) {
-            // This case should ideally not happen, but as a safeguard:
             toast.error("Контрольная работа не завершена успешно.");
             return;
         }
 
         const practiceAnswersArray = (lesson.type === 'CONTROL_WORK') 
-            ? [] // Answers for CW are in the chat, not logged this way.
+            ? [] 
             : blocks
                 .map((block: any, index: number) => ({ block, index }))
                 .filter(({ block }: any) => block.type === 'practice')
@@ -331,23 +328,52 @@ export default function StudentAdventurePage() {
             );
         }
 
-        if (lesson.type === 'CONTROL_WORK') {
-            if (isControlWorkComplete) {
-                return (
-                    <div className="text-center p-10 bg-white rounded-lg shadow-lg relative overflow-hidden">
-                        <Confetti />
-                        <h2 className="text-3xl font-bold text-green-600 z-10 relative">🎉 Поздравляем! 🎉</h2>
-                        <p className="mt-4 text-lg text-gray-700 z-10 relative">Контрольная работа успешно пройдена!</p>
-                        <button 
-                            onClick={() => { setLessonPhase('story'); setIsControlWorkComplete(false); }} 
-                            className="mt-8 px-8 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600 transition-transform transform hover:scale-105 z-10 relative"
-                        >
-                            Перейти к истории!
+        // 1. Story phase is the final destination, check it first.
+        if (lessonPhase === 'story') {
+            return (
+                 <div className="bg-gray-50 rounded-lg shadow-md p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-2xl font-bold text-gray-700">Продолжение истории...</h2>
+                        <button onClick={() => {}} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
+                            <FiHelpCircle /> Краткое содержание
                         </button>
                     </div>
-                );
-            }
+                    {lesson.storyChapter ? (<>
+                        <div className="flex flex-col md:flex-row gap-6 items-start">
+                            {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
+                            <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
+                        </div>
+                        <div className="mt-6">
+                            <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
+                            <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={handleStoryResponseChange} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
+                        </div>
+                        <div className="flex justify-end mt-4">
+                            <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
+                        </div>
+                    </>) : <p>К этому уроку нет истории. Можно переходить к следующему.</p>}
+                </div>
+            );
+        }
 
+        // 2. Intermediate success screen for completed control work
+        if (lesson.type === 'CONTROL_WORK' && isControlWorkComplete) {
+            return (
+                <div className="text-center p-10 bg-white rounded-lg shadow-lg relative overflow-hidden">
+                    <Confetti />
+                    <h2 className="text-3xl font-bold text-green-600 z-10 relative">🎉 Поздравляем! 🎉</h2>
+                    <p className="mt-4 text-lg text-gray-700 z-10 relative">Контрольная работа успешно пройдена!</p>
+                    <button 
+                        onClick={() => setLessonPhase('story')} 
+                        className="mt-8 px-8 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600 transition-transform transform hover:scale-105 z-10 relative"
+                    >
+                        Перейти к истории!
+                    </button>
+                </div>
+            );
+        }
+
+        // 3. Control work solving phase
+        if (lessonPhase === 'control_work') {
             return (
                 <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
                     <h1 className="text-2xl font-bold text-gray-900 text-center">{lesson.title}</h1>
@@ -357,7 +383,6 @@ export default function StudentAdventurePage() {
                         </div>
                         <p className="text-center text-sm text-gray-600 mt-2">Прогресс: {Math.round(cwProgress)}%</p>
                     </div>
-
                     <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
                         {chatHistory.map((msg, index) => (
                             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -377,11 +402,12 @@ export default function StudentAdventurePage() {
                 </div>
             );
         }
-
+        
+        // 4. Regular lesson phases (content & assessment)
         return (
              <>
                 <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
-                {lessonPhase === 'content' && (<>
+                {lessonPhase === 'content' && (
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
                         <div className={`p-4 border-l-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' : 'border-red-500 bg-red-50' }`}>
@@ -403,9 +429,9 @@ export default function StudentAdventurePage() {
                             </button>
                         </div>
                     </div>
-                </>)}
-
-                {lessonPhase === 'assessment' && (<>
+                 )}
+    
+                {lessonPhase === 'assessment' && (
                     <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
                         <div className="flex items-center gap-3 text-xl font-semibold text-gray-800"><FiZap />Проверка знаний с AI-помощником</div>
                         <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
@@ -433,34 +459,10 @@ export default function StudentAdventurePage() {
                             <button onClick={() => { if (lesson) toast.error('This feature is not implemented yet.'); }} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
                         </div>
                     </div>
-                </>)}
-
-                {lessonPhase === 'story' && (<>
-                    <div className="bg-gray-50 rounded-lg shadow-md p-6">
-                        <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-2xl font-bold text-gray-700">Продолжение истории...</h2>
-                            <button onClick={() => {}} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
-                                <FiHelpCircle /> Краткое содержание
-                            </button>
-                        </div>
-                        {lesson.storyChapter ? (<>
-                            <div className="flex flex-col md:flex-row gap-6 items-start">
-                                {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
-                                <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
-                            </div>
-                            <div className="mt-6">
-                                <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
-                                <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={handleStoryResponseChange} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
-                            </div>
-                            <div className="flex justify-end mt-4">
-                                <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
-                            </div>
-                        </>) : <p>К этому уроку нет истории. Можно переходить к следующему.</p>}
-                    </div>
-                </>)}
+                )}
             </>
         );
-    }
+    };
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">

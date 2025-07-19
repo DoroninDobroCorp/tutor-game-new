@@ -509,9 +509,9 @@ The control work must cover the following topics from the current section:
 - ${sectionTopics.join('\n- ')}
 
 RULES:
-1. Respond with ONLY valid JSON: { "blocks": [ { "type": "practice", "content": "..." } ] }
-2. Create one "practice" block for EACH topic listed above.
-3. The "content" of each block should be a clear exercise or question.
+1. Respond with ONLY valid JSON in the format: { "blocks": [ { "type": "practice", "content": "..." } ] }
+2. For EACH topic listed above, you MUST create a separate and distinct JSON object in the "blocks" array. For example, if there are 3 topics, the "blocks" array must contain exactly 3 objects.
+3. The "content" of each block should be a clear exercise or question related to one of the topics.
 4. Use simple HTML for formatting task content: <h3>, <b>, <i>, <p>. No Markdown.
 5. The difficulty should be appropriate for a control work, testing the student's understanding of the topics.`;
 
