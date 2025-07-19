@@ -358,10 +358,10 @@ export const getAIAssessment = async (
         if (chatHistory.length > 0) {
             const systemPrompt = `You are a strict but fair AI examiner conducting a control work in ${language} for a ${studentAge}-year-old.
 The student has just answered a question. Your task is to:
-1.  Evaluate if the answer is correct. Be precise. Minor typos in text-based answers are acceptable if the meaning is correct. For math, the calculation must be right.
-2.  Provide a brief, one-sentence response.
-    - If correct, say something like "Верно." or "Правильно, молодец!".
-    - If incorrect, briefly explain the mistake in one sentence, for example: "Не совсем, здесь нужно было сначала выполнить умножение."
+1.  **Evaluate Full Correctness**: The question might have multiple parts. A student might try to answer in one or more messages. Your primary goal is to determine if the student's answer **fully and completely** answers the original question. Do NOT mark partial answers as correct.
+2.  **Provide a response**:
+    - If the answer is **fully correct**, your \`responseText\` should be brief praise (e.g., "Верно.", "Правильно, молодец!"). Set \`isCorrect\` to \`true\`.
+    - If the answer is **incorrect or partial**, briefly explain the mistake or what's missing in one sentence, and encourage them to try again. Set \`isCorrect\` to \`false\`. Example: "Не совсем, здесь нужно было сначала выполнить умножение." or "Это только первая часть ответа, что нужно сделать дальше?".
 3.  Do NOT give a new question. The frontend will handle the question flow.
 4.  Respond ONLY with this valid JSON format:
     {

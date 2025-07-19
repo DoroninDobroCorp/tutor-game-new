@@ -72,6 +72,42 @@ const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean
   );
 };
 
+// Simple confetti component
+const ConfettiPiece = ({ style, color }: {style: React.CSSProperties, color: string}) => (
+    <div 
+        className={`absolute w-2 h-4 rounded-full ${color}`}
+        style={style}
+    />
+);
+
+const Confetti = () => {
+    const colors = ['bg-yellow-300', 'bg-green-400', 'bg-blue-400', 'bg-red-400', 'bg-purple-400'];
+    const pieces = [...Array(100)].map((_, i) => ({
+        id: i,
+        style: {
+            top: '-10%',
+            left: `${Math.random() * 100}%`,
+            animation: `fall ${Math.random() * 3 + 4}s ${Math.random() * 2}s linear infinite`,
+            transform: `rotate(${Math.random() * 360}deg)`,
+        },
+        color: colors[i % colors.length],
+    }));
+
+    return (
+        <div className="absolute inset-0 pointer-events-none z-0">
+            <style>{`
+            @keyframes fall {
+                to {
+                    transform: translateY(100vh) rotate(720deg);
+                    opacity: 0;
+                }
+            }
+            `}</style>
+            {pieces.map(p => <ConfettiPiece key={p.id} style={p.style} color={p.color}/>)}
+        </div>
+    );
+}
+
 type LessonPhase = 'content' | 'assessment' | 'story' | 'control_work';
 type ChatMessage = { role: 'user' | 'assistant', content: string };
 
@@ -91,6 +127,7 @@ export default function StudentAdventurePage() {
     const [controlWorkQuestions, setControlWorkQuestions] = useState<any[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [cwProgress, setCwProgress] = useState(0);
+    const [isControlWorkComplete, setIsControlWorkComplete] = useState(false);
 
     const practiceAnswers = useAppSelector(selectPracticeAnswers);
     const storyResponse = useAppSelector(selectStoryResponse);
@@ -115,6 +152,7 @@ export default function StudentAdventurePage() {
                 setControlWorkQuestions(cwQuestions);
                 setCurrentQuestionIndex(0);
                 setCwProgress(0);
+                setIsControlWorkComplete(false);
                 setChatHistory(cwQuestions.length > 0 ? [{ role: 'assistant', content: cwQuestions[0].content }] : []);
             } else {
                 setLessonPhase('content');
@@ -151,7 +189,7 @@ export default function StudentAdventurePage() {
 
     const handlePreviousBlock = () => {
         if (currentBlockIndex > 0) {
-            setCurrentBlockIndex(prev => prev + 1);
+            setCurrentBlockIndex(prev => prev - 1);
         }
     };
 
@@ -191,7 +229,7 @@ export default function StudentAdventurePage() {
     
     const handleControlWorkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!studentChatMessage.trim() || !lesson) return;
+        if (!studentChatMessage.trim() || !lesson || controlWorkQuestions.length === 0) return;
 
         const questionContent = controlWorkQuestions[currentQuestionIndex].content;
         const answer = studentChatMessage;
@@ -216,17 +254,18 @@ export default function StudentAdventurePage() {
                 const newProgress = cwProgress + progressStep;
                 setCwProgress(newProgress);
                 
-                if (newProgress >= 99.9) { // Use a threshold to avoid floating point issues
+                if (newProgress >= 99.9) {
                     toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
-                    setTimeout(() => setLessonPhase('story'), 1500);
+                    setIsControlWorkComplete(true);
                 } else {
                     const nextIndex = currentQuestionIndex + 1;
                     setCurrentQuestionIndex(nextIndex);
-                    setChatHistory(prev => [...prev, { role: 'assistant', content: controlWorkQuestions[nextIndex].content }]);
+                    if (controlWorkQuestions[nextIndex]) {
+                       setChatHistory(prev => [...prev, { role: 'assistant', content: controlWorkQuestions[nextIndex].content }]);
+                    }
                 }
             } else {
-                setCwProgress(prev => Math.max(0, prev - progressStep));
-                // Do not advance, let the student try again on the same question
+                setCwProgress(prev => Math.max(0, prev - (progressStep / 2) )); // Penalty is half a step
             }
         } catch (err) {
             toast.error("Ошибка при проверке ответа. Попробуйте еще раз.");
@@ -247,8 +286,18 @@ export default function StudentAdventurePage() {
             return;
         }
 
+        const isControlWorkSuccess = lesson.type === 'CONTROL_WORK' && cwProgress >= 99.9;
+        
+        // For control work, we don't submit answers, just story. And only on success.
+        // For regular lessons, we submit everything.
+        if (lesson.type === 'CONTROL_WORK' && !isControlWorkSuccess) {
+            // This case should ideally not happen, but as a safeguard:
+            toast.error("Контрольная работа не завершена успешно.");
+            return;
+        }
+
         const practiceAnswersArray = (lesson.type === 'CONTROL_WORK') 
-            ? controlWorkQuestions.map((q, i) => q.answer || 'Ответ не записан') // Placeholder, as CW answers are in chat
+            ? [] // Answers for CW are in the chat, not logged this way.
             : blocks
                 .map((block: any, index: number) => ({ block, index }))
                 .filter(({ block }: any) => block.type === 'practice')
@@ -283,6 +332,22 @@ export default function StudentAdventurePage() {
         }
 
         if (lesson.type === 'CONTROL_WORK') {
+            if (isControlWorkComplete) {
+                return (
+                    <div className="text-center p-10 bg-white rounded-lg shadow-lg relative overflow-hidden">
+                        <Confetti />
+                        <h2 className="text-3xl font-bold text-green-600 z-10 relative">🎉 Поздравляем! 🎉</h2>
+                        <p className="mt-4 text-lg text-gray-700 z-10 relative">Контрольная работа успешно пройдена!</p>
+                        <button 
+                            onClick={() => { setLessonPhase('story'); setIsControlWorkComplete(false); }} 
+                            className="mt-8 px-8 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600 transition-transform transform hover:scale-105 z-10 relative"
+                        >
+                            Перейти к истории!
+                        </button>
+                    </div>
+                );
+            }
+
             return (
                 <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
                     <h1 className="text-2xl font-bold text-gray-900 text-center">{lesson.title}</h1>
