@@ -122,6 +122,7 @@ export const updateLessonContentHandler = async (req: Request, res: Response) =>
 
 export const generateControlWorkContentHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
+    const { chatHistory } = req.body; // <-- get chat history
     const teacherId = req.user?.userId;
 
     const lesson = await prisma.lesson.findUnique({
@@ -142,7 +143,7 @@ export const generateControlWorkContentHandler = async (req: Request, res: Respo
         .filter(l => l.id !== lessonId && l.type !== 'CONTROL_WORK') // Exclude self and other control works
         .map(l => l.title);
 
-    if (sectionTopics.length === 0) {
+    if (sectionTopics.length === 0 && (!chatHistory || chatHistory.length === 0)) { // allow generation if chat has context
         throw new AppError('Cannot generate a control work for a section with no other lessons.', 400);
     }
 
@@ -150,7 +151,7 @@ export const generateControlWorkContentHandler = async (req: Request, res: Respo
     const { subject, studentAge, language } = learningGoal;
 
     const generatedData = await generateControlWorkExercises(
-        sectionTopics, subject, studentAge, language || 'Russian'
+        sectionTopics, subject, studentAge, language || 'Russian', chatHistory // <-- pass chat history
     );
     
     // Return the AI's proposal, do not save to DB yet.

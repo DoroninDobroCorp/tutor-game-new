@@ -502,25 +502,31 @@ export const generateControlWorkExercises = async (
   subject: string,
   studentAge: number,
   language: string,
-): Promise<{ blocks: any[] }> => {
-  const prompt = `You are an expert curriculum designer for children in ${language}.
-Your task is to create a set of exercises for a control work on the subject "${subject}" for a ${studentAge}-year-old student.
-The control work must cover the following topics from the current section:
+  chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
+): Promise<{ chatResponse: string, blocks: any[] }> => {
+  const systemPrompt = `You are an expert curriculum designer for children in ${language}.
+Your task is to have a conversation with a teacher to create exercises for a control work on the subject "${subject}" for a ${studentAge}-year-old student.
+The control work must cover these topics:
 - ${sectionTopics.join('\n- ')}
 
 RULES:
-1. Respond with ONLY valid JSON in the format: { "blocks": [ { "type": "practice", "content": "..." } ] }
-2. For EACH topic listed above, you MUST create a separate and distinct JSON object in the "blocks" array. For example, if there are 3 topics, the "blocks" array must contain exactly 3 objects.
-3. The "content" of each block should be a clear exercise or question related to one of the topics.
-4. Use simple HTML for formatting task content: <h3>, <b>, <i>, <p>. No Markdown.
-5. The difficulty should be appropriate for a control work, testing the student's understanding of the topics.`;
+1. Respond ONLY with valid JSON in the format: { "chatResponse": "string", "blocks": [ { "type": "practice", "content": "..." } ] }
+2. "chatResponse" is your conversational message to the teacher.
+3. The "blocks" array must contain a separate JSON object for EACH exercise. ONE exercise per block.
+4. For EACH topic listed above, create AT LEAST ONE exercise block.
+5. If there are fewer than 3 topics, create more exercises to ensure there are AT LEAST 3 blocks in total.
+6. "content" field should contain a clear exercise. Use simple HTML for formatting: <h3>, <b>, <i>, <p>. No Markdown.
+7. Difficulty should be appropriate for a test.
+8. In "chatResponse", explain your choices and ask for feedback.`;
 
   try {
-    const result = await callGemini(prompt, TEMP_MID, true);
-    if (!result || !Array.isArray(result.blocks)) {
-        throw new Error('Invalid JSON structure for control work from Gemini');
-    }
-    return result;
+      if (chatHistory.length === 0) {
+        const prompt = `${systemPrompt}\n\nTeacher: "Generate the initial set of exercises for the control work based on the topics."\n\nNow, generate your JSON response.`;
+        return await callGemini(prompt, TEMP_MID, true);
+      } else {
+        const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
+        return await callGeminiWithChat(geminiHistory, TEMP_MID, true);
+      }
   } catch (err) {
     console.error('[generateControlWorkExercises] error:', err);
     throw new Error('Failed to generate control work exercises');

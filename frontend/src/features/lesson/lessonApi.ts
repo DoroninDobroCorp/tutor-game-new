@@ -27,10 +27,11 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
         
-        generateControlWorkContent: builder.mutation<{ data: { blocks: any[] } }, { lessonId: string }>({
-            query: ({ lessonId }) => ({
+        generateControlWorkContent: builder.mutation<{ data: { chatResponse: string; blocks: any[] } }, { lessonId: string; chatHistory: any[] }>({
+            query: ({ lessonId, chatHistory }) => ({
                 url: `/lessons/${lessonId}/generate-control-work`,
                 method: 'POST',
+                data: { chatHistory },
             }),
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Lesson', id: lessonId }],
         }),
