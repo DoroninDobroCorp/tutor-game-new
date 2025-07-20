@@ -126,7 +126,8 @@ export default function StudentAdventurePage() {
     // Specific state for Control Work
     const [controlWorkQuestions, setControlWorkQuestions] = useState<any[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [cwProgress, setCwProgress] = useState(0);
+    const [requiredAnswers, setRequiredAnswers] = useState(0);
+    const [correctAnswers, setCorrectAnswers] = useState(0);
     const [isControlWorkComplete, setIsControlWorkComplete] = useState(false);
 
     const practiceAnswers = useAppSelector(selectPracticeAnswers);
@@ -151,7 +152,8 @@ export default function StudentAdventurePage() {
                 setLessonPhase('control_work');
                 setControlWorkQuestions(cwQuestions);
                 setCurrentQuestionIndex(0);
-                setCwProgress(0);
+                setRequiredAnswers(cwQuestions.length);
+                setCorrectAnswers(0);
                 setIsControlWorkComplete(false);
                 setChatHistory(cwQuestions.length > 0 ? [{ role: 'assistant', content: cwQuestions[0].content }] : []);
             } else {
@@ -189,7 +191,7 @@ export default function StudentAdventurePage() {
 
     const handlePreviousBlock = () => {
         if (currentBlockIndex > 0) {
-            setCurrentBlockIndex(prev => prev - 1);
+            setCurrentBlockIndex(prev => prev + 1);
         }
     };
 
@@ -229,47 +231,58 @@ export default function StudentAdventurePage() {
     
     const handleControlWorkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!studentChatMessage.trim() || !lesson || controlWorkQuestions.length === 0) return;
+        if (!studentChatMessage.trim() || !lesson || isChatLoading) return;
 
-        const questionContent = controlWorkQuestions[currentQuestionIndex].content;
         const answer = studentChatMessage;
-        
-        const currentChat: ChatMessage[] = [
-            { role: 'assistant', content: questionContent },
-            { role: 'user', content: answer }
-        ];
-
-        setChatHistory(prev => [...prev, { role: 'user', content: answer }]);
+        const currentFullHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: answer }];
+        setChatHistory(currentFullHistory);
         setStudentChatMessage('');
 
-        try {
-            const result = await practiceChat({ lessonId: lesson.id, chatHistory: currentChat }).unwrap();
-            const { isCorrect, responseText } = result.data;
-            
-            setChatHistory(prev => [...prev, { role: 'assistant', content: responseText }]);
+        const evaluationChat = currentFullHistory.slice(-2);
 
-            const progressStep = 100 / controlWorkQuestions.length;
+        try {
+            const result = await practiceChat({ lessonId: lesson.id, chatHistory: evaluationChat }).unwrap();
+            const { isCorrect, responseText, newQuestion } = result.data;
             
+            let assistantResponse = responseText;
+            if (newQuestion) {
+                 assistantResponse += `\n\n<hr class='my-2'>\n\n${newQuestion.content}`;
+            }
+            setChatHistory(prev => [...prev, { role: 'assistant', content: assistantResponse }]);
+
             if (isCorrect) {
-                const newProgress = cwProgress + progressStep;
-                setCwProgress(newProgress);
-                
-                if (newProgress >= 99.9) {
+                 const newCorrectCount = correctAnswers + 1;
+                setCorrectAnswers(newCorrectCount);
+
+                const newProgress = requiredAnswers > 0 ? (newCorrectCount / requiredAnswers) * 100 : 0;
+                if (newProgress >= 100) {
                     toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
                     setIsControlWorkComplete(true);
-                } else {
-                    const nextIndex = currentQuestionIndex + 1;
+                    return;
+                }
+
+                const nextIndex = currentQuestionIndex + 1;
+                if (nextIndex < controlWorkQuestions.length) {
                     setCurrentQuestionIndex(nextIndex);
-                    if (controlWorkQuestions[nextIndex]) {
-                       setChatHistory(prev => [...prev, { role: 'assistant', content: controlWorkQuestions[nextIndex].content }]);
+                    setChatHistory(prev => [...prev, { role: 'assistant', content: controlWorkQuestions[nextIndex].content }]);
+                } else {
+                    const commandHistory: ChatMessage[] = [...currentFullHistory, { role: 'user', content: "GENERATE_NEW_QUESTION_ON_FAILED_TOPIC" }];
+                    const newQuestionResult = await practiceChat({ lessonId: lesson.id, chatHistory: commandHistory }).unwrap();
+                    const { responseText: newQResponseText, newQuestion: newQ } = newQuestionResult.data;
+                    
+                    if (newQ) {
+                        setChatHistory(prev => [...prev, { role: 'assistant', content: `${newQResponseText}\n\n<hr class='my-2'>\n\n${newQ.content}` }]);
+                    } else {
+                        toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
+                        setIsControlWorkComplete(true);
                     }
                 }
             } else {
-                setCwProgress(prev => Math.max(0, prev - (progressStep / 2) )); // Penalty is half a step
+                setRequiredAnswers(prev => prev + 3);
             }
         } catch (err) {
             toast.error("Ошибка при проверке ответа. Попробуйте еще раз.");
-            setChatHistory(chatHistory); // Revert chat on error
+            setChatHistory(chatHistory);
         }
     };
 
@@ -286,7 +299,8 @@ export default function StudentAdventurePage() {
             return;
         }
 
-        const isControlWorkSuccess = lesson.type === 'CONTROL_WORK' && cwProgress >= 99.9;
+        const progress = requiredAnswers > 0 ? (correctAnswers / requiredAnswers) * 100 : 0;
+        const isControlWorkSuccess = lesson.type === 'CONTROL_WORK' && progress >= 100;
         
         if (lesson.type === 'CONTROL_WORK' && !isControlWorkSuccess) {
             toast.error("Контрольная работа не завершена успешно.");
@@ -374,14 +388,15 @@ export default function StudentAdventurePage() {
 
         // 3. Control work solving phase
         if (lessonPhase === 'control_work') {
+            const progress = requiredAnswers > 0 ? Math.min(100, (correctAnswers / requiredAnswers) * 100) : 0;
             return (
                 <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
                     <h1 className="text-2xl font-bold text-gray-900 text-center">{lesson.title}</h1>
                     <div>
                         <div className="w-full bg-gray-200 rounded-full h-4">
-                            <div className="bg-green-500 h-4 rounded-full transition-all duration-500" style={{ width: `${cwProgress}%` }}></div>
+                            <div className="bg-green-500 h-4 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                         </div>
-                        <p className="text-center text-sm text-gray-600 mt-2">Прогресс: {Math.round(cwProgress)}%</p>
+                        <p className="text-center text-sm text-gray-600 mt-2">Прогресс: {Math.round(progress)}% ({correctAnswers} из {requiredAnswers})</p>
                     </div>
                     <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
                         {chatHistory.map((msg, index) => (

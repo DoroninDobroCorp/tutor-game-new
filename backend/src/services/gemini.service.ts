@@ -198,13 +198,13 @@ Respond ONLY with valid JSON:
   "useCharacterReference": true|false
 }
 Rules:
-- storyText = 2‑3 paragraphs, end with open question about next action;
+- storyText = 2‑3 paragraphs, end with open question about next action (UNLESS it is a CONTROL_WORK lesson).
 - imagePrompt = 15‑25 English keywords, comma‑separated, describing the scene;
 - if useCharacterReference=true, include the main character in prompt; else do not.
 - The story is a reward for completing the lesson on "${lessonTitle}". A direct mention of the lesson topic is not required, the story should primarily continue the adventure.`;
   
   if (lessonType === 'CONTROL_WORK') {
-    systemPrompt += `\n- SPECIAL INSTRUCTION: This chapter is for a 'Control Work' lesson. The story should describe a difficult challenge, a final test, or a battle that the main character must overcome. The tone should be more serious and climactic.`;
+    systemPrompt += `\n- SPECIAL INSTRUCTION: This chapter is for a 'Control Work' lesson. The story must describe a difficult challenge, a final test, or a battle from its beginning to its epic conclusion. The story must be conclusive and NOT end with an open question for the student. The tone should be serious and climactic.`;
   }
   
   let userPrompt = '';
@@ -357,33 +357,28 @@ export const getAIAssessment = async (
     if (lessonType === 'CONTROL_WORK') {
         if (chatHistory.length > 0) {
             const systemPrompt = `You are a strict but fair AI examiner conducting a control work in ${language} for a ${studentAge}-year-old.
-The student has just answered a question. Your task is to:
-1.  **Evaluate Full Correctness**: The question might have multiple parts. A student might try to answer in one or more messages. Your primary goal is to determine if the student's answer **fully and completely** answers the original question. Do NOT mark partial answers as correct.
-2.  **Provide a response**:
-    - If the answer is **fully correct**, your \`responseText\` should be brief praise (e.g., "Верно.", "Правильно, молодец!"). Set \`isCorrect\` to \`true\`.
-    - If the answer is **incorrect or partial**, briefly explain the mistake or what's missing in one sentence, and encourage them to try again. Set \`isCorrect\` to \`false\`. Example: "Не совсем, здесь нужно было сначала выполнить умножение." or "Это только первая часть ответа, что нужно сделать дальше?".
-3.  Do NOT give a new question. The frontend will handle the question flow.
-4.  Respond ONLY with this valid JSON format:
+Your task is based on the LAST user message in the chat history:
+1.  **If the last message is an ANSWER to a question**: Evaluate if it's correct.
+    - If CORRECT: Respond with \`"isCorrect": true\`, \`"responseText": "Верно."\`, and \`"newQuestion": null\`.
+    - If INCORRECT: Explain the error briefly, and create a NEW, similar question on the same topic. Respond with \`"isCorrect": false\`, your explanation in \`"responseText"\`, and the new question object in \`"newQuestion"\`.
+2.  **If the last message is the exact phrase "GENERATE_NEW_QUESTION_ON_FAILED_TOPIC"**: This is a command. Analyze the entire chat history, find a topic where the student struggled, and generate a new practice question on that topic. Respond with \`"isCorrect": true\`, \`"responseText": "Вот новое задание."\`, and the new question in \`"newQuestion"\`.
+3.  Respond ONLY with this valid JSON format:
     {
       "responseText": "...",
       "isCorrect": boolean,
       "isSessionComplete": false,
-      "newQuestion": null
+      "newQuestion": { "content": "string", "type": "practice" } | null
     }
 `;
             const geminiHistory = createGeminiHistory(systemPrompt, chatHistory);
             try {
-                const rawResponse = await callGeminiWithChat(geminiHistory, TEMP_LOW, true);
-                if (typeof rawResponse.responseText !== 'string' || typeof rawResponse.isCorrect !== 'boolean') {
-                     throw new Error('Invalid JSON structure from Gemini for control work');
-                }
-                return { ...rawResponse, isSessionComplete: false, newQuestion: null };
+                return await callGeminiWithChat(geminiHistory, TEMP_LOW, true);
             } catch (err) {
                 console.error('[getAIAssessment] control work error:', err);
                 throw new Error('Failed to get AI assessment for control work');
             }
         }
-        throw new AppError('Control work assessment requires a chat history with a question and answer.', 400);
+        throw new AppError('Control work assessment requires a chat history.', 400);
     }
     
   // --- EXISTING LOGIC FOR REGULAR LESSONS ---
@@ -413,7 +408,7 @@ YOUR TASK, based on the student's LATEST answer:
     a. Check the history for this topic. Was the PREVIOUS answer to your question also correct?
     b. If YES (this is the 2nd correct answer in a row): Praise them for mastering the topic! Then, check if there are OTHER topics left that they got wrong in the initial assessment (visible at the start of the chat history).
         - If other topics remain: Move to the NEXT failed topic and provide a new question.
-        - If all topics are mastered: Great! Congratulate them, set "isSessionComplete": true, and "newQuestion": null.
+        - If all initially failed topics are mastered: Great! Now, review our follow-up conversation. If the student made any errors on the questions you generated, find the topic of their LAST mistake and ask one more new question on that topic. Only if ALL initially failed topics are mastered AND there are no errors in our follow-up chat, should you congratulate them, set "isSessionComplete": true, and set "newQuestion": null.
     c. If NO (this is the 1st correct answer): Excellent! Praise them and provide ANOTHER, slightly different question on the SAME topic.
 3.  **If the answer is INCORRECT**:
     a. The "two consecutive correct answers" counter for this topic is now reset.

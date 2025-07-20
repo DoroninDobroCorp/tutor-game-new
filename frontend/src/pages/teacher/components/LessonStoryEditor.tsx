@@ -128,7 +128,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
                 await approveWithUrl({ lessonId: lesson.id, text: storyText, imageUrl: imageUrl || '', imagePrompt }).unwrap();
             }
             toast.success('История утверждена!');
-            onCloseModal();
+            // onCloseModal(); // Removed to keep the modal open
         } catch (error) {
             toast.error('Не удалось утвердить историю.');
         }
