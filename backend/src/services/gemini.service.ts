@@ -13,7 +13,7 @@ if (!config.geminiApiKey) {
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 
 //--- Вспомогательные константы ---------------------------------
-const MODEL_NAME = "gemini-1.5-flash"; // Используем актуальную быструю модель
+const MODEL_NAME = "gemini-2.5-flash"; // не менять на полтора никогда!
 const TEMP_LOW = 0.2;
 const TEMP_MID = 0.45;
 const TEMP_HIGH = 0.85;
@@ -50,6 +50,7 @@ async function callGemini(prompt: string, temperature: number, isJson: boolean) 
             safetySettings,
             generationConfig: {
                 temperature,
+                maxOutputTokens: 24576,
                 responseMimeType: isJson ? 'application/json' : 'text/plain',
             },
         });
@@ -71,6 +72,7 @@ async function callGeminiWithChat(history: Content[], temperature: number, isJso
             safetySettings,
             generationConfig: {
                 temperature,
+                maxOutputTokens: 24576,
                 responseMimeType: isJson ? 'application/json' : 'text/plain',
             },
         });
