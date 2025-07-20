@@ -93,6 +93,8 @@ export const RoadmapSection = ({
                             >
                                 {regularLessons.map((lesson, lessonIndex) => {
                                     const isNewLesson = lesson.id.startsWith('new-');
+                                    const originalLessonIndex = section.lessons.findIndex(l => l.id === lesson.id);
+
                                     return (
                                         <Draggable key={lesson.id} draggableId={lesson.id} index={lessonIndex}>
                                             {(provided) => (
@@ -105,19 +107,19 @@ export const RoadmapSection = ({
                                                     <div {...provided.dragHandleProps} className="mr-2 text-gray-400 cursor-grab"><FiMove /></div>
                                                     <LessonStatusIndicator lesson={lesson} />
                                                     <div className="ml-2 flex-grow min-w-0">
-                                                        {editingTitle.section === sectionIndex && editingTitle.lesson === lessonIndex ? (
-                                                            <input type="text" value={lesson.title} onChange={(e) => onTitleChange(e.target.value, sectionIndex, lessonIndex)} onBlur={stopEditing} onKeyDown={(e) => e.key === 'Enter' && stopEditing()} autoFocus className="border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"/>
+                                                        {editingTitle.section === sectionIndex && editingTitle.lesson === originalLessonIndex ? (
+                                                            <input type="text" value={lesson.title} onChange={(e) => onTitleChange(e.target.value, sectionIndex, originalLessonIndex)} onBlur={stopEditing} onKeyDown={(e) => e.key === 'Enter' && stopEditing()} autoFocus className="border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"/>
                                                         ) : (
-                                                            <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, lessonIndex)}>
+                                                            <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
                                                                 <button className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Редактировать название"><FiEdit2 size={14} /></button>
                                                                 <span className="cursor-pointer truncate">{lesson.title}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                     <span className="relative ml-2" title={isNewLesson ? "Сначала сохраните план, чтобы редактировать урок" : undefined}>
-                                                        <button onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, lessonIndex)} disabled={isNewLesson} className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? "Настроить контент" : undefined}><FiSettings /></button>
+                                                        <button onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, originalLessonIndex)} disabled={isNewLesson} className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? "Настроить контент" : undefined}><FiSettings /></button>
                                                     </span>
-                                                    <button onClick={() => onRemoveLesson(sectionIndex, lessonIndex)} className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Удалить урок"><FiTrash2 size={14} /></button>
+                                                    <button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Удалить урок"><FiTrash2 size={14} /></button>
                                                 </li>
                                             )}
                                         </Draggable>
@@ -136,7 +138,24 @@ export const RoadmapSection = ({
                                     <FiShield className="mr-2 text-amber-600 flex-shrink-0" />
                                     <LessonStatusIndicator lesson={cw} />
                                     <div className="ml-2 flex-grow min-w-0">
-                                        <span className="font-semibold truncate text-amber-800">{cw.title}</span>
+                                        {editingTitle.section === sectionIndex && editingTitle.lesson === originalLessonIndex ? (
+                                            <input 
+                                                type="text" 
+                                                value={cw.title} 
+                                                onChange={(e) => onTitleChange(e.target.value, sectionIndex, originalLessonIndex)} 
+                                                onBlur={stopEditing} 
+                                                onKeyDown={(e) => e.key === 'Enter' && stopEditing()} 
+                                                autoFocus 
+                                                className="border-b-2 border-amber-500 bg-transparent w-full focus:outline-none font-semibold text-amber-800"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center group min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
+                                                <button className="mr-2 text-amber-600 hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Редактировать название">
+                                                    <FiEdit2 size={14} />
+                                                </button>
+                                                <span className="font-semibold truncate text-amber-800 cursor-pointer">{cw.title}</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <span className="relative ml-4">
                                          <button onClick={() => onEditLesson(cw, sectionIndex, originalLessonIndex)} className='text-gray-500 hover:text-amber-800' title="Настроить контрольную работу"><FiSettings /></button>

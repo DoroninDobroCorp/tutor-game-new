@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateRoadmap } from '../services/gemini.service';
+import { LessonType } from '@prisma/client';
 
 export const generateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
@@ -36,23 +37,24 @@ export const generateRoadmapHandler = async (req: Request, res: Response) => {
 
 export const updateRoadmapHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
-    const roadmapSections = req.body.roadmap as { 
-        id?: string; 
-        title: string; 
+    const roadmapSections = req.body.roadmap as {
+        id?: string;
+        title: string;
         order: number;
-        lessons: { 
-            id?: string; 
+        lessons: {
+            id?: string;
             title: string;
             order: number;
+            type?: LessonType;
         }[];
     }[];
-    
+
     const teacherId = req.user?.userId;
 
     if (!roadmapSections || !Array.isArray(roadmapSections)) {
         throw new AppError('Roadmap data must be an array of sections', 400);
     }
-    
+
     const goal = await prisma.learningGoal.findFirst({
         where: { id: goalId, teacherId },
         select: { id: true }
@@ -63,47 +65,27 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
     }
 
     await prisma.$transaction(async (tx) => {
-        // 1. Collect IDs from the frontend payload. We only care about normal lessons,
-        // as control works are managed by the backend.
-        const receivedSectionIds = new Set<string>();
-        const receivedLessonIds = new Set<string>();
+        // 1. Collect all IDs from the frontend payload.
+        const receivedSectionIds = new Set<string>(
+            roadmapSections.map(s => s.id).filter((id): id is string => !!id && !id.startsWith('new-'))
+        );
+        const receivedLessonIds = new Set<string>(
+            roadmapSections.flatMap(s => s.lessons).map(l => l.id).filter((id): id is string => !!id && !id.startsWith('new-'))
+        );
 
-        for (const sectionData of roadmapSections) {
-            if (sectionData.id && !sectionData.id.startsWith('new-')) {
-                receivedSectionIds.add(sectionData.id);
-            }
-            for (const lessonData of sectionData.lessons) {
-                 if (lessonData.id && !lessonData.id.startsWith('new-')) {
-                    receivedLessonIds.add(lessonData.id);
-                }
-            }
-        }
-        
-        // 2. Find all existing sections and their lessons for this goal
-        const existingSectionsAndLessons = await tx.contentSection.findMany({ 
+        // 2. Find all existing sections and lessons for this goal from the DB.
+        const existingSections = await tx.contentSection.findMany({
             where: { learningGoalId: goalId },
-            include: { 
-                lessons: { 
-                    select: { id: true, type: true } 
-                } 
-            }
+            include: { lessons: { select: { id: true } } }
         });
+        const existingSectionIds = new Set(existingSections.map(s => s.id));
+        const existingLessonIds = new Set(existingSections.flatMap(s => s.lessons.map(l => l.id)));
 
-        const existingSectionIds = new Set(existingSectionsAndLessons.map(s => s.id));
-        
-        // 3. Find IDs of NORMAL lessons (non-control-work) that exist in the DB
-        const existingNormalLessonIds = new Set<string>();
-        existingSectionsAndLessons.flatMap(s => s.lessons).forEach(l => {
-            if (l.type !== 'CONTROL_WORK') {
-                existingNormalLessonIds.add(l.id);
-            }
-        });
-
-        // 4. Determine which IDs to delete. Only delete sections and NORMAL lessons.
+        // 3. Determine which items to delete.
         const sectionIdsToDelete = [...existingSectionIds].filter(id => !receivedSectionIds.has(id));
-        const lessonIdsToDelete = [...existingNormalLessonIds].filter(id => !receivedLessonIds.has(id));
+        const lessonIdsToDelete = [...existingLessonIds].filter(id => !receivedLessonIds.has(id));
 
-        // 5. Delete lessons and sections no longer in the plan
+        // 4. Perform deletions.
         if (lessonIdsToDelete.length > 0) {
             await tx.lesson.deleteMany({ where: { id: { in: lessonIdsToDelete } } });
         }
@@ -111,10 +93,10 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
             await tx.contentSection.deleteMany({ where: { id: { in: sectionIdsToDelete } } });
         }
 
-        // 6. Upsert sections, normal lessons, and manage control work lessons
+        // 5. Upsert all sections and lessons from the payload.
         for (const [sectionIndex, sectionData] of roadmapSections.entries()) {
             const isNewSection = !sectionData.id || sectionData.id.startsWith('new-');
-            
+
             const section = await tx.contentSection.upsert({
                 where: { id: sectionData.id || `new-section-placeholder-${Date.now()}` },
                 update: { title: sectionData.title, order: sectionIndex },
@@ -125,13 +107,13 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
                 },
             });
 
-            // Handle normal lessons from payload
+            // Upsert all lessons provided for this section.
             for (const [lessonIndex, lessonData] of sectionData.lessons.entries()) {
                 await tx.lesson.upsert({
                     where: { id: lessonData.id || `new-lesson-placeholder-${Date.now()}` },
-                    update: { 
-                        title: lessonData.title, 
-                        order: lessonIndex, 
+                    update: {
+                        title: lessonData.title,
+                        order: lessonIndex,
                         sectionId: section.id,
                     },
                     create: {
@@ -139,16 +121,17 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
                         order: lessonIndex,
                         sectionId: section.id,
                         status: 'DRAFT',
-                        type: 'PRACTICE', // Default type for new lessons from roadmap
+                        type: lessonData.type || 'PRACTICE',
                     },
                 });
             }
 
-            const controlWorkTitle = `Контрольная работа по разделу: "${section.title}"`;
-            const controlWorkOrder = sectionData.lessons.length;
-
+            // 6. If the section is brand new, create a control work for it.
             if (isNewSection) {
-                // If the section is brand new, create a control work for it.
+                const controlWorkTitle = `Контрольная работа по разделу: "${section.title}"`;
+                // New lessons are not yet in the DB, so order is based on payload
+                const controlWorkOrder = sectionData.lessons.length;
+
                 await tx.lesson.create({
                     data: {
                         title: controlWorkTitle,
@@ -158,24 +141,10 @@ export const updateRoadmapHandler = async (req: Request, res: Response) => {
                         type: 'CONTROL_WORK',
                     }
                 });
-            } else {
-                // If section already exists, update its control work title/order, but don't re-create it if deleted.
-                const existingControlWork = await tx.lesson.findFirst({
-                    where: { sectionId: section.id, type: 'CONTROL_WORK' }
-                });
-
-                if (existingControlWork) {
-                    await tx.lesson.update({
-                        where: { id: existingControlWork.id },
-                        data: {
-                            title: controlWorkTitle,
-                            order: controlWorkOrder,
-                        }
-                    });
-                }
             }
         }
     });
+
 
     // Return the fully updated roadmap
     const updatedGoal = await prisma.learningGoal.findUnique({
