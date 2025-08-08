@@ -28,7 +28,7 @@ class WebSocketService {
                 const token = socket.handshake.auth.token;
                 if (!token)
                     return next(new Error('Authentication error'));
-                const decoded = await (0, auth_service_1.verifyToken)(token);
+                const decoded = await (0, auth_service_1.verifyAccessToken)(token);
                 if (!decoded)
                     return next(new Error('Invalid token'));
                 socket.user = { userId: decoded.userId, role: decoded.role };
@@ -38,6 +38,22 @@ class WebSocketService {
                 next(new Error('Authentication error'));
             }
         });
+    }
+    /**
+     * Emits an event to a specific user if they are connected
+     * @param userId The ID of the user to send the event to
+     * @param event The event name
+     * @param data The data to send with the event
+     */
+    emitToUser(userId, event, data) {
+        const socketId = this.connectedUsers.get(userId);
+        if (socketId) {
+            this.io.to(socketId).emit(event, data);
+            console.log(`[WebSocket] Emitted event '${event}' to user ${userId} on socket ${socketId}`);
+        }
+        else {
+            console.log(`[WebSocket] User ${userId} not connected. Cannot emit event '${event}'.`);
+        }
     }
     initializeConnection() {
         this.io.on('connection', (socket) => {
@@ -123,6 +139,7 @@ class WebSocketService {
                     const formattedMessages = messages.map((msg) => ({
                         id: msg.id,
                         senderId: msg.senderId,
+                        recipientId: msg.recipientId,
                         senderName: `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim(),
                         senderRole: msg.sender.role.toLowerCase(),
                         content: msg.content,
@@ -139,42 +156,29 @@ class WebSocketService {
                 const senderId = socket.user?.userId;
                 const { recipientId, content } = data;
                 if (!senderId || !recipientId || !content) {
-                    console.error('Missing required fields for sendMessage');
                     return;
                 }
                 try {
                     const newMessage = await db_1.default.message.create({
-                        data: {
-                            content,
-                            senderId,
-                            recipientId,
-                        },
+                        data: { content, senderId, recipientId },
                         include: {
-                            sender: {
-                                select: {
-                                    id: true,
-                                    firstName: true,
-                                    lastName: true,
-                                    role: true
-                                }
-                            },
+                            sender: { select: { id: true, firstName: true, lastName: true, role: true } },
                         },
                     });
                     const formattedMessage = {
                         id: newMessage.id,
+                        recipientId: newMessage.recipientId,
                         senderId: newMessage.senderId,
                         senderName: `${newMessage.sender.firstName || ''} ${newMessage.sender.lastName || ''}`.trim(),
                         senderRole: newMessage.sender.role.toLowerCase(),
                         content: newMessage.content,
-                        timestamp: newMessage.createdAt,
+                        timestamp: newMessage.createdAt.toISOString(),
                         read: newMessage.read,
                     };
-                    // Send to recipient if online
                     const recipientSocketId = this.connectedUsers.get(recipientId);
                     if (recipientSocketId) {
                         this.io.to(recipientSocketId).emit('message', formattedMessage);
                     }
-                    // Send back to sender
                     socket.emit('message', formattedMessage);
                 }
                 catch (error) {
@@ -193,7 +197,6 @@ class WebSocketService {
             });
         });
     }
-    // Helper method to get socket.io instance
     getIO() {
         return this.io;
     }

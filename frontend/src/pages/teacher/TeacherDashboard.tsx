@@ -2,8 +2,10 @@
 
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
+import { useTranslation } from 'react-i18next';
 
 export default function TeacherDashboard() {
+  const { t } = useTranslation();
   const { user } = useAppSelector((state) => state.auth);
 
   if (!user) {
@@ -13,12 +15,12 @@ export default function TeacherDashboard() {
   return (
     <div className="w-full p-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Добро пожаловать, {user.firstName || 'Учитель'}!
+        {t('teacherDashboard.welcome', { name: user.firstName || t('teacherDashboard.teacher') })}
       </h1>
       
       <div className="bg-white p-6 rounded-lg shadow">
         <p className="mt-2 text-lg text-gray-600 mb-6">
-          Выберите раздел для управления учебным процессом.
+          {t('teacherDashboard.selectSection')}
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -26,24 +28,24 @@ export default function TeacherDashboard() {
             to="/teacher/students" 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">👥 Управление студентами</h3>
-            <p className="text-sm text-gray-500">Просмотр и добавление ваших студентов</p>
+            <h3 className="font-medium text-lg">👥 {t('teacherDashboard.manageStudents')}</h3>
+            <p className="text-sm text-gray-500">{t('teacherDashboard.manageStudentsDesc')}</p>
           </Link>
           
           <Link
             to="/teacher/goals" 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">🎯 Учебные планы</h3>
-            <p className="text-sm text-gray-500">Создание и редактирование планов обучения</p>
+            <h3 className="font-medium text-lg">🎯 {t('teacherDashboard.learningPlans')}</h3>
+            <p className="text-sm text-gray-500">{t('teacherDashboard.learningPlansDesc')}</p>
           </Link>
           
           <Link
             to="/teacher/chat"
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">💬 Чат с учениками</h3>
-            <p className="text-sm text-gray-500">Общение и поддержка студентов</p>
+            <h3 className="font-medium text-lg">💬 {t('teacherDashboard.chatWithStudents')}</h3>
+            <p className="text-sm text-gray-500">{t('teacherDashboard.chatWithStudentsDesc')}</p>
           </Link>
 
         </div>

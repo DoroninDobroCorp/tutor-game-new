@@ -7,6 +7,7 @@ import { useRegisterMutation } from '@/features/auth/authApi';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '@/app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
+import { useTranslation } from 'react-i18next';
 
 
 const registerSchema = z
@@ -26,6 +27,7 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [registerUser, { isLoading }] = useRegisterMutation();
   const navigate = useNavigate();
   const [error, setError] = useState('');
@@ -47,7 +49,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      toast.success('Registration successful! Redirecting...');
+      toast.success(t('auth.registerSuccess'));
       const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
       navigate(targetPath, { replace: true });
     }
@@ -69,7 +71,7 @@ export default function RegisterPage() {
 
     } catch (error: unknown) {
       console.error('Registration error:', error);
-      let errorMessage = 'Registration failed. Please try again.';
+      let errorMessage = t('auth.registerFailedDefault');
       
       if (error && typeof error === 'object') {
         if ('status' in error && 'data' in error) {
@@ -91,15 +93,15 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create a new account
+            {t('register.title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
+            {t('register.alreadyMember')}{' '}
             <Link
               to="/login"
               className="font-medium text-gray-600 hover:text-gray-500"
             >
-              sign in to your existing account
+              {t('register.signIn')}
             </Link>
           </p>
         </div>
@@ -142,7 +144,7 @@ export default function RegisterPage() {
                   className={`appearance-none rounded relative block w-full px-3 py-2 border ${
                     errors.firstName ? 'border-red-300' : 'border-gray-300'
                   } placeholder-gray-500 text-gray-900 rounded-tl-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                  placeholder="First name"
+                  placeholder={t('register.firstName')}
                   {...register('firstName')}
                 />
                 {errors.firstName && (
@@ -160,7 +162,7 @@ export default function RegisterPage() {
                   className={`appearance-none rounded relative block w-full px-3 py-2 border ${
                     errors.lastName ? 'border-red-300' : 'border-gray-300'
                   } placeholder-gray-500 text-gray-900 rounded-tr-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                  placeholder="Last name"
+                  placeholder={t('register.lastName')}
                   {...register('lastName')}
                 />
                 {errors.lastName && (
@@ -180,7 +182,7 @@ export default function RegisterPage() {
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
                   errors.email ? 'border-red-300' : 'border-gray-300'
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                placeholder="Email address"
+                placeholder={t('register.email')}
                 {...register('email')}
               />
               {errors.email && (
@@ -199,7 +201,7 @@ export default function RegisterPage() {
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
                   errors.password ? 'border-red-300' : 'border-gray-300'
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                placeholder="Password"
+                placeholder={t('register.password')}
                 {...register('password')}
               />
               {errors.password && (
@@ -228,7 +230,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <p className="text-sm text-gray-600 mb-2">I am a:</p>
+            <p className="text-sm text-gray-600 mb-2">{t('register.iAmA')}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <input
@@ -246,7 +248,7 @@ export default function RegisterPage() {
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   } cursor-pointer`}
                 >
-                  Student
+                  {t('register.student')}
                 </label>
               </div>
               <div>
@@ -265,7 +267,7 @@ export default function RegisterPage() {
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   } cursor-pointer`}
                 >
-                  Teacher
+                  {t('register.teacher')}
                 </label>
               </div>
             </div>
@@ -279,19 +281,19 @@ export default function RegisterPage() {
                 isLoading ? 'opacity-75 cursor-not-allowed' : ''
               }`}
             >
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? t('register.creatingAccount') : t('register.createAccount')}
             </button>
           </div>
 
           <div className="text-sm text-center">
             <p className="text-gray-600">
-              By creating an account, you agree to our{' '}
+              {t('register.tosNote.prefix')}{' '}
               <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Terms of Service
+                {t('register.tosNote.terms')}
               </a>{' '}
-              and{' '}
+              {t('register.tosNote.and')}{' '}
               <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Privacy Policy
+                {t('register.tosNote.privacy')}
               </a>
               .
             </p>

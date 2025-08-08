@@ -3,11 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshTokens = exports.verifyToken = exports.blacklistToken = exports.isTokenBlacklisted = exports.generateTokens = exports.generateToken = exports.getCurrentUser = exports.login = exports.register = void 0;
+exports.refreshTokens = exports.verifyAccessToken = exports.blacklistToken = exports.getCurrentUser = exports.login = exports.register = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const client_1 = require("@prisma/client");
-const error_middleware_1 = require("../middlewares/error.middleware");
+const errors_1 = require("../utils/errors");
 const logger_1 = require("../utils/logger");
 const env_1 = require("../config/env");
 const prisma = new client_1.PrismaClient();
@@ -34,26 +34,27 @@ setInterval(async () => {
     }
 }, 3600000); // Run every hour
 const register = async (email, password, role, firstName, lastName) => {
-    logger_1.logger.info(`Registration attempt for email: ${email}, role: ${role}`);
+    const lowercasedEmail = email.toLowerCase();
+    logger_1.logger.info(`Registration attempt for email: ${lowercasedEmail}, role: ${role}`);
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        logger_1.logger.warn(`Invalid email format: ${email}`);
-        throw new error_middleware_1.AppError('Invalid email format', 400);
+    if (!emailRegex.test(lowercasedEmail)) {
+        logger_1.logger.warn(`Invalid email format: ${lowercasedEmail}`);
+        throw new errors_1.AppError('Invalid email format', 400);
     }
     // Validate password strength (simplified)
     if (password.length < 4) {
-        throw new error_middleware_1.AppError('Password must be at least 4 characters long', 400);
+        throw new errors_1.AppError('Password must be at least 4 characters long', 400);
     }
     try {
         // Check if user already exists
         const existingUser = await prisma.user.findUnique({
-            where: { email },
+            where: { email: lowercasedEmail },
             select: { id: true },
         });
         if (existingUser) {
-            logger_1.logger.warn(`Registration failed - user already exists: ${email}`);
-            throw new error_middleware_1.AppError('User with this email already exists', 400);
+            logger_1.logger.warn(`Registration failed - user already exists: ${lowercasedEmail}`);
+            throw new errors_1.AppError('User with this email already exists', 400);
         }
         // Hash password
         const hashedPassword = await bcryptjs_1.default.hash(password, 12);
@@ -62,7 +63,7 @@ const register = async (email, password, role, firstName, lastName) => {
             // Create user
             const user = await tx.user.create({
                 data: {
-                    email,
+                    email: lowercasedEmail,
                     password: hashedPassword,
                     role,
                     firstName,
@@ -92,18 +93,19 @@ const register = async (email, password, role, firstName, lastName) => {
             return user;
         });
         logger_1.logger.info(`User registered successfully: ${result.id}`);
-        return await (0, exports.generateTokens)(result);
+        return await generateTokens(result);
     }
     catch (error) {
         logger_1.logger.error('Registration error:', error);
-        throw new error_middleware_1.AppError('Failed to register user', 500);
+        throw new errors_1.AppError('Failed to register user', 500);
     }
 };
 exports.register = register;
 const login = async (email, password, ipAddress) => {
+    const lowercasedEmail = email.toLowerCase();
     const MAX_ATTEMPTS = 5;
     const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-    logger_1.logger.info(`Login attempt for email: ${email} from IP: ${ipAddress}`);
+    logger_1.logger.info(`Login attempt for email: ${lowercasedEmail} from IP: ${ipAddress}`);
     // Check rate limiting
     const now = Date.now();
     const attempt = loginAttempts.get(ipAddress) || { count: 0, lastAttempt: 0 };
@@ -111,7 +113,7 @@ const login = async (email, password, ipAddress) => {
         const timeSinceLastAttempt = now - attempt.lastAttempt;
         if (timeSinceLastAttempt < LOCKOUT_DURATION) {
             const timeLeft = Math.ceil((LOCKOUT_DURATION - timeSinceLastAttempt) / 60000);
-            throw new error_middleware_1.AppError(`Too many login attempts. Please try again in ${timeLeft} minutes.`, 429);
+            throw new errors_1.AppError(`Too many login attempts. Please try again in ${timeLeft} minutes.`, 429);
         }
         else {
             // Reset attempt count if lockout period has passed
@@ -120,7 +122,7 @@ const login = async (email, password, ipAddress) => {
     }
     // Find user with password
     const user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: lowercasedEmail },
         include: { teacher: true, student: true },
     });
     if (!user) {
@@ -129,7 +131,7 @@ const login = async (email, password, ipAddress) => {
             count: (loginAttempts.get(ipAddress)?.count || 0) + 1,
             lastAttempt: now
         });
-        throw new error_middleware_1.AppError('Invalid email or password', 401);
+        throw new errors_1.AppError('Invalid email or password', 401);
     }
     // Check password
     const isPasswordValid = await bcryptjs_1.default.compare(password, user.password);
@@ -139,12 +141,12 @@ const login = async (email, password, ipAddress) => {
             count: (loginAttempts.get(ipAddress)?.count || 0) + 1,
             lastAttempt: now
         });
-        throw new error_middleware_1.AppError('Invalid email or password', 401);
+        throw new errors_1.AppError('Invalid email or password', 401);
     }
     // Reset login attempts on successful login
     loginAttempts.delete(ipAddress);
     // Generate and return tokens
-    return await (0, exports.generateTokens)(user);
+    return await generateTokens(user);
 };
 exports.login = login;
 const getCurrentUser = async (userId) => {
@@ -153,97 +155,81 @@ const getCurrentUser = async (userId) => {
     });
     if (!user)
         return null;
-    const { password, ...userData } = user;
-    return userData;
+    const { password, ...safeUser } = user;
+    return safeUser;
 };
 exports.getCurrentUser = getCurrentUser;
-const generateToken = (user, type = 'access') => {
-    const now = Math.floor(Date.now() / 1000);
-    const expiresIn = type === 'access' ? '15m' : '7d';
+// Generate token helper function
+const generateToken = (user, type) => {
+    const secret = type === 'access' ? env_1.config.jwtSecret : env_1.config.jwtRefreshSecret;
+    const expiresIn = type === 'access' ? env_1.config.jwtExpiresIn : env_1.config.refreshTokenExpiresIn;
     const payload = {
         userId: user.id,
         role: user.role,
         type,
     };
-    return jsonwebtoken_1.default.sign(payload, env_1.config.jwtSecret, {
-        expiresIn,
-    });
+    return jsonwebtoken_1.default.sign(payload, secret, { expiresIn });
 };
-exports.generateToken = generateToken;
+// Generate both access and refresh tokens
 const generateTokens = async (user) => {
-    const accessToken = (0, exports.generateToken)(user, 'access');
-    const refreshToken = (0, exports.generateToken)(user, 'refresh');
-    // Get fresh user data to ensure we have all fields
-    const currentUser = await prisma.user.findUnique({
-        where: { id: user.id },
-    });
-    if (!currentUser) {
-        throw new error_middleware_1.AppError('User not found', 404);
-    }
-    const { password: _, ...userData } = currentUser;
+    const accessToken = generateToken(user, 'access');
+    const refreshToken = generateToken(user, 'refresh');
+    const { password, ...safeUser } = user;
     return {
-        user: userData,
+        user: safeUser,
         accessToken,
-        refreshToken
+        refreshToken,
     };
 };
-exports.generateTokens = generateTokens;
+// Verify refresh token
+const verifyRefreshToken = async (token) => {
+    try {
+        if (await isTokenBlacklisted(token))
+            return null;
+        return jsonwebtoken_1.default.verify(token, env_1.config.jwtRefreshSecret);
+    }
+    catch (error) {
+        return null;
+    }
+};
+// Blacklist a token
+const blacklistToken = async (token, expiresAt) => {
+    await prisma.tokenBlacklist.create({
+        data: { token, expiresAt },
+    });
+};
+exports.blacklistToken = blacklistToken;
+// Check if token is blacklisted
 const isTokenBlacklisted = async (token) => {
     const blacklistedToken = await prisma.tokenBlacklist.findUnique({
         where: { token },
     });
     return !!blacklistedToken;
 };
-exports.isTokenBlacklisted = isTokenBlacklisted;
-const blacklistToken = async (token, expiresAt) => {
-    await prisma.tokenBlacklist.create({
-        data: {
-            token,
-            expiresAt,
-        },
-    });
-    // Clean up expired tokens in the background
-    await prisma.tokenBlacklist.deleteMany({
-        where: {
-            expiresAt: {
-                lt: new Date()
-            }
-        }
-    });
-};
-exports.blacklistToken = blacklistToken;
-const verifyToken = async (token) => {
+const verifyAccessToken = async (token) => {
     try {
-        // Check if token is blacklisted
-        if (await (0, exports.isTokenBlacklisted)(token)) {
+        if (await isTokenBlacklisted(token))
             return null;
-        }
-        const decoded = jsonwebtoken_1.default.verify(token, env_1.config.jwtSecret);
-        return decoded;
+        return jsonwebtoken_1.default.verify(token, env_1.config.jwtSecret);
     }
     catch (error) {
         return null;
     }
 };
-exports.verifyToken = verifyToken;
-const refreshTokens = async (refreshToken) => {
-    // Verify refresh token
-    const decoded = await (0, exports.verifyToken)(refreshToken);
+exports.verifyAccessToken = verifyAccessToken;
+const refreshTokens = async (token) => {
+    const decoded = await verifyRefreshToken(token);
     if (!decoded || decoded.type !== 'refresh') {
-        throw new error_middleware_1.AppError('Invalid refresh token', 401);
+        throw new errors_1.AppError('Invalid or expired refresh token', 401);
     }
-    // Blacklist the used refresh token
-    await (0, exports.blacklistToken)(refreshToken, new Date(decoded.exp * 1000) // Use token expiration time
-    );
-    // Get user
     const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        include: { teacher: true, student: true },
+        include: { teacher: true, student: true }
     });
     if (!user) {
-        throw new Error('User not found');
+        throw new errors_1.AppError('User not found', 404);
     }
-    // Generate new tokens
-    return (0, exports.generateTokens)(user);
+    await (0, exports.blacklistToken)(token, new Date(decoded.exp * 1000));
+    return generateTokens(user);
 };
 exports.refreshTokens = refreshTokens;

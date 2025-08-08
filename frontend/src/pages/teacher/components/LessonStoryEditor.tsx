@@ -10,6 +10,7 @@ import { Lesson } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiRefreshCw, FiCheck, FiMaximize2, FiUpload, FiImage } from 'react-icons/fi';
+import { useTranslation } from 'react-i18next';
 
 interface LessonStoryEditorProps {
     lesson: Lesson;
@@ -17,7 +18,8 @@ interface LessonStoryEditorProps {
     setLightboxImage: (url: string | null) => void;
 }
 
-const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonStoryEditorProps) => {
+const LessonStoryEditor = ({ lesson, setLightboxImage }: LessonStoryEditorProps) => {
+    const { t } = useTranslation();
     // State management
     const [storyText, setStoryText] = useState('');
     const [imagePrompt, setImagePrompt] = useState('');
@@ -32,7 +34,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
     const [regenerateImage, { isLoading: isGeneratingImage }] = useRegenerateStoryImageMutation();
     const [approveWithUrl, { isLoading: isApprovingUrl }] = useApproveStorySnippetMutation();
     const [approveWithFile, { isLoading: isApprovingFile }] = useApproveStorySnippetWithUploadMutation();
-    const [checkImageStatus, { isFetching: isPolling }] = useLazyCheckStoryImageStatusQuery();
+    const [checkImageStatus] = useLazyCheckStoryImageStatusQuery();
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pollingInterval = useRef<NodeJS.Timeout | null>(null);
@@ -69,10 +71,10 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
             const result = await checkImageStatus(id).unwrap();
             if (result.data?.status === 'COMPLETE' && result.data?.url) {
                 setImageUrl(result.data.url);
-                toast.success('Изображение готово!');
+                toast.success(t('lessonStoryEditor.imageReady'));
                 stopPolling();
             } else if (result.data?.status === 'FAILED') {
-                toast.error('Ошибка генерации изображения');
+                toast.error(t('lessonStoryEditor.imageGenerationError'));
                 stopPolling();
             }
         };
@@ -90,22 +92,22 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
             setImageUrl(null);
             setUploadedFile(null);
             stopPolling();
-            toast.success('Текст и промпт для картинки сгенерированы!');
+            toast.success(t('lessonStoryEditor.storyAndPromptGenerated'));
         } catch (error) {
-            toast.error('Не удалось сгенерировать историю.');
+            toast.error(t('lessonStoryEditor.generateStoryError'));
         }
     };
 
     const handleGenerateImage = async () => {
-        if (!imagePrompt) { toast.error("Промпт не может быть пустым."); return; }
+        if (!imagePrompt) { toast.error(t('lessonStoryEditor.promptEmptyError')); return; }
         setUploadedFile(null);
         setImageUrl(null);
         try {
             const result = await regenerateImage({ lessonId: lesson.id, prompt: imagePrompt, useCharacterReference }).unwrap();
             startPolling(result.data.generationId);
-            toast('Начали генерацию изображения...');
+            toast(t('lessonStoryEditor.imageGenerationStarted'));
         } catch (error) {
-            toast.error('Не удалось запустить генерацию изображения.');
+            toast.error(t('lessonStoryEditor.startImageGenerationError'));
         }
     };
 
@@ -119,7 +121,7 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
     };
     
     const handleApprove = async () => {
-        if (!storyText.trim()) { toast.error("Текст истории не может быть пустым."); return; }
+        if (!storyText.trim()) { toast.error(t('lessonStoryEditor.storyTextEmptyError')); return; }
         
         try {
             if (uploadedFile) {
@@ -127,10 +129,10 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
             } else {
                 await approveWithUrl({ lessonId: lesson.id, text: storyText, imageUrl: imageUrl || '', imagePrompt }).unwrap();
             }
-            toast.success('История утверждена!');
+            toast.success(t('lessonStoryEditor.storyApproved'));
             // onCloseModal(); // Removed to keep the modal open
         } catch (error) {
-            toast.error('Не удалось утвердить историю.');
+            toast.error(t('lessonStoryEditor.approveStoryError'));
         }
     };
 
@@ -138,19 +140,19 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
         <div className="rounded-xl p-3 max-h-[85vh] flex flex-col">
             <div className="flex-grow overflow-y-auto pr-2 space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Фрагмент истории</label>
-                    <textarea value={storyText} onChange={(e) => setStoryText(e.target.value)} rows={6} className="w-full p-2 border rounded-md" placeholder="Здесь появится текст истории..." disabled={isLoading} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('lessonStoryEditor.storyFragment')}</label>
+                    <textarea value={storyText} onChange={(e) => setStoryText(e.target.value)} rows={6} className="w-full p-2 border rounded-md" placeholder={t('lessonStoryEditor.storyTextPlaceholder')} disabled={isLoading} />
                     <div className="mt-2">
-                        <input type="text" value={refinementPrompt} onChange={e => setRefinementPrompt(e.target.value)} className="w-full p-2 border rounded-md text-sm" placeholder="Уточнение для генерации (напр. 'сделай смешнее')..." disabled={isLoading} />
+                        <input type="text" value={refinementPrompt} onChange={e => setRefinementPrompt(e.target.value)} className="w-full p-2 border rounded-md text-sm" placeholder={t('lessonStoryEditor.refinementPromptPlaceholder')} disabled={isLoading} />
                     </div>
                      <button onClick={handleGenerateStory} disabled={isGeneratingStory} className="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                        {isGeneratingStory ? <Spinner size="sm" /> : <FiRefreshCw size={16} />} <span>Сгенерировать текст истории</span>
+                        {isGeneratingStory ? <Spinner size="sm" /> : <FiRefreshCw size={16} />} <span>{t('lessonStoryEditor.generateStoryText')}</span>
                     </button>
                 </div>
                 
                 <div className="border-t pt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Промпт для изображения</label>
-                    <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="w-full p-2 border rounded-md" placeholder="Здесь появится промпт для изображения..." disabled={isLoading} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('lessonStoryEditor.imagePrompt')}</label>
+                    <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="w-full p-2 border rounded-md" placeholder={t('lessonStoryEditor.imagePromptPlaceholder')} disabled={isLoading} />
                     
                     <div className="mt-2 flex items-center">
                         <input
@@ -162,25 +164,25 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
                             disabled={isLoading}
                         />
                         <label htmlFor="use-character-ref" className="ml-2 block text-sm text-gray-900">
-                            Использовать референс персонажа
+                            {t('lessonStoryEditor.useCharacterReference')}
                         </label>
                     </div>
                      
                     <div className="mt-2 grid grid-cols-2 gap-2">
                          <button onClick={handleGenerateImage} disabled={isLoading || !imagePrompt} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                            {isGeneratingImage || generationId ? <Spinner size="sm" /> : <FiImage size={16} />} <span>{isGeneratingImage || generationId ? "Генерация..." : "Создать картинку"}</span>
+                            {isGeneratingImage || generationId ? <Spinner size="sm" /> : <FiImage size={16} />} <span>{isGeneratingImage || generationId ? t('lessonStoryEditor.generating') : t('lessonStoryEditor.createImage')}</span>
                         </button>
                         <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                            <FiUpload size={16} /> <span>Загрузить свою</span>
+                            <FiUpload size={16} /> <span>{t('lessonStoryEditor.uploadOwn')}</span>
                         </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg, image/webp" />
                     </div>
                 </div>
 
                 <div className="flex flex-col items-center">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Предпросмотр изображения</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('lessonStoryEditor.imagePreview')}</label>
                     <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center relative">
-                        {generationId || isGeneratingImage ? <><Spinner size="md" /><p className="ml-2 text-gray-500">Генерация...</p></>
+                        {generationId || isGeneratingImage ? <><Spinner size="md" /><p className="ml-2 text-gray-500">{t('lessonStoryEditor.generating')}</p></>
                         : imageUrl ? (
                             <>
                                 <img src={imageUrl} alt="Story" className="w-full h-full object-contain rounded-lg" />
@@ -188,14 +190,14 @@ const LessonStoryEditor = ({ lesson, onCloseModal, setLightboxImage }: LessonSto
                                     <FiMaximize2 size={16} />
                                 </button>
                             </>
-                        ) : <span className="text-gray-400">Изображение появится здесь</span>}
+                        ) : <span className="text-gray-400">{t('lessonStoryEditor.imageWillAppearHere')}</span>}
                     </div>
                 </div>
             </div>
 
             <div className="mt-6 pt-4 border-t flex justify-end">
                 <button onClick={handleApprove} disabled={isLoading || !storyText} className="px-6 py-2 text-sm font-bold text-white bg-green-700 rounded-md hover:bg-green-800 disabled:opacity-50 flex items-center gap-2">
-                    {isApprovingFile || isApprovingUrl ? <Spinner size="sm" /> : <FiCheck size={16} />} <span>УТВЕРДИТЬ И ЗАВЕРШИТЬ</span>
+                    {isApprovingFile || isApprovingUrl ? <Spinner size="sm" /> : <FiCheck size={16} />} <span>{t('lessonStoryEditor.approveAndFinish')}</span>
                 </button>
             </div>
         </div>

@@ -39,7 +39,7 @@ export const studentApi = apiSlice.injectEndpoints({
             method: 'GET',
         }),
         transformResponse: (response: { data: LessonType[] }) => response.data || [],
-        providesTags: (result = [], _error, goalId) => [{ type: 'Student', id: `COMPLETED_LIST_${goalId}` }],
+      providesTags: (_result, _error, goalId) => [{ type: 'Student', id: `COMPLETED_LIST_${goalId}` }],
     }),
 
     submitLesson: builder.mutation<{ success: boolean; message: string }, SubmitLessonApiPayload>({

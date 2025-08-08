@@ -9,8 +9,10 @@ import { SocketContext } from '../../context/SocketContext';
 import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { StudentSubmittedLessonEvent, TeacherReviewedLessonEvent, StudentRequestedReviewEvent } from '../../types/websocket';
+import { useTranslation } from 'react-i18next';
 
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+  const { t: translate } = useTranslation();
   const { user, token } = useAppSelector((state) => ({
     user: state.auth.user,
     token: state.auth.token,
@@ -31,8 +33,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
                 <span className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-lg">📚</span>
               </div>
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">Новый ответ от ученика</p>
-                <p className="mt-1 text-sm text-gray-500">{`Ученик ${data.studentName} ждет продолжения истории!`}</p>
+                <p className="text-sm font-medium text-gray-900">{translate('webSocket.newStudentAnswer')}</p>
+                <p className="mt-1 text-sm text-gray-500">{translate('webSocket.studentWaitingForStory', { name: data.studentName })}</p>
               </div>
             </div>
           </div>
@@ -45,7 +47,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
               }}
               className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Перейти
+              {translate('webSocket.goTo')}
             </button>
           </div>
         </div>
@@ -54,7 +56,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         position: 'top-right' 
       }
     );
-  }, [navigate]);
+  }, [navigate, translate]);
 
   // Handler for when student requests a review lesson
   const handleStudentRequestedReview = useCallback((data: StudentRequestedReviewEvent) => {
@@ -68,7 +70,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
                 <span className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-lg">💡</span>
               </div>
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">Запрос на повторение</p>
+                <p className="text-sm font-medium text-gray-900">{translate('webSocket.reviewRequest')}</p>
                 <p className="mt-1 text-sm text-gray-500">{data.message}</p>
               </div>
             </div>
@@ -81,7 +83,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
               }}
               className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              К плану
+              {translate('webSocket.toPlan')}
             </button>
           </div>
         </div>
@@ -90,7 +92,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         position: 'top-right' 
       }
     );
-  }, [navigate]);
+  }, [navigate, translate]);
 
   // Обработчик для уведомления СТУДЕНТА, когда учитель утвердил урок
   const handleTeacherReviewed = useCallback((data: TeacherReviewedLessonEvent) => {
@@ -104,8 +106,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
                  <span className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-lg">🎉</span>
               </div>
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">Вас ждет новое приключение!</p>
-                <p className="mt-1 text-sm text-gray-500">{`${data.teacherName} подготовил(а) для вас продолжение.`}</p>
+                <p className="text-sm font-medium text-gray-900">{translate('webSocket.newAdventureWaiting')}</p>
+                <p className="mt-1 text-sm text-gray-500">{translate('webSocket.teacherPreparedContinuation', { name: data.teacherName })}</p>
               </div>
             </div>
           </div>
@@ -118,7 +120,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
               }}
               className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Начать
+              {translate('webSocket.start')}
             </button>
           </div>
         </div>
@@ -127,7 +129,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         position: 'top-right' 
       }
     );
-  }, [navigate]);
+  }, [navigate, translate]);
 
   useEffect(() => {
     if (user && token) {

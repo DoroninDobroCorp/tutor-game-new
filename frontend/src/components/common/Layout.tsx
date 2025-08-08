@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Fragment, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, Transition } from '@headlessui/react';
 import {
   Bars3Icon,
@@ -28,37 +29,60 @@ interface NavigationItem {
   showBadge?: boolean;
 }
 
-const studentNavigation: NavigationItem[] = [
-  { name: 'Панель управления', href: '/student', icon: HomeIcon, current: false },
-  { name: 'Продолжить приключение', href: '/student/adventure', icon: RocketLaunchIcon, current: false },
-  { name: 'Архив заданий', href: '/student/stories', icon: BookOpenIcon, current: false },
-  {
-    name: 'Чат',
-    href: '/student/chat',
-    icon: ChatBubbleLeftEllipsisIcon,
-    current: false,
-    showBadge: true,
-  },
-];
+function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
+  return [
+    { name: t('studentNavigation.dashboard'), href: '/student', icon: HomeIcon, current: false },
+    { name: t('studentNavigation.adventure'), href: '/student/adventure', icon: RocketLaunchIcon, current: false },
+    { name: t('studentNavigation.stories'), href: '/student/stories', icon: BookOpenIcon, current: false },
+    {
+      name: t('studentNavigation.chat'),
+      href: '/student/chat',
+      icon: ChatBubbleLeftEllipsisIcon,
+      current: false,
+      showBadge: true,
+    },
+  ];
+}
 
-const teacherNavigation: NavigationItem[] = [
-  { name: 'Панель управления', href: '/teacher', icon: HomeIcon, current: false },
-  { name: 'Учебные планы', href: '/teacher/goals', icon: DocumentTextIcon, current: false },
-  { name: 'Студенты', href: '/teacher/students', icon: UserGroupIcon, current: false },
-  {
-    name: 'Чат',
-    href: '/teacher/chat',
-    icon: ChatBubbleLeftEllipsisIcon,
-    current: false,
-    showBadge: true,
-  },
-];
+function getTeacherNavigation(t: (key: string) => string): NavigationItem[] {
+  return [
+    { name: t('teacherNavigation.dashboard'), href: '/teacher', icon: HomeIcon, current: false },
+    { name: t('teacherNavigation.goals'), href: '/teacher/goals', icon: DocumentTextIcon, current: false },
+    { name: t('teacherNavigation.students'), href: '/teacher/students', icon: UserGroupIcon, current: false },
+    {
+      name: t('teacherNavigation.chat'),
+      href: '/teacher/chat',
+      icon: ChatBubbleLeftEllipsisIcon,
+      current: false,
+      showBadge: true,
+    },
+  ];
+}
 
 function classNames(...classes: (string | boolean | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
+const LanguageSwitcher = () => {
+  const { i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'ru' ? 'en' : 'ru';
+    i18n.changeLanguage(newLang);
+  };
+
+  return (
+    <button
+      onClick={toggleLanguage}
+      className="px-3 py-1 text-sm rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+    >
+      {i18n.language === 'ru' ? 'EN' : 'RU'}
+    </button>
+  );
+};
+
 export default function Layout() {
+  const { t, i18n } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
@@ -88,19 +112,19 @@ export default function Layout() {
   // Update browser tab title with unread count
   useEffect(() => {
     if (totalUnreadCount > 0) {
-      document.title = `(${totalUnreadCount}) Math Quest`;
+      document.title = `(${totalUnreadCount}) ${i18n.t('app.name')}`;
     } else {
-      document.title = 'Math Quest';
+      document.title = i18n.t('app.name');
     }
     return () => {
-      document.title = 'Math Quest';
+      document.title = i18n.t('app.name');
     };
   }, [totalUnreadCount]);
 
   const getNavItems = () => {
     if (!isAuthenticated) return [];
-    const items = user?.role === 'teacher' ? teacherNavigation : studentNavigation;
-    return items.map(item => ({
+    const navigationItems = user?.role === 'teacher' ? getTeacherNavigation(t) : getStudentNavigation(t);
+    return navigationItems.map(item => ({
       ...item,
       current: location.pathname.startsWith(item.href) && (item.href !== '/' || location.pathname === '/'),
     }));
@@ -161,7 +185,7 @@ export default function Layout() {
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
                     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
-                        <h1 className="text-2xl font-bold text-white">Tutor Game</h1>
+                        <h1 className="text-2xl font-bold text-white">{t('app.name')}</h1>
                       </div>
                       <nav className="flex flex-1 flex-col">
                         <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -209,7 +233,7 @@ export default function Layout() {
                               className="mt-2 flex items-center gap-x-2 text-sm font-medium text-gray-300 hover:text-white"
                             >
                               <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                              Sign out
+                              {t('logout.signOut')}
                             </button>
                           </li>
                         </ul>
@@ -232,12 +256,12 @@ export default function Layout() {
                   'text-xl font-bold text-white whitespace-nowrap transition-opacity duration-200',
                   isSidebarCollapsed && 'opacity-0 w-0'
                 )}>
-                  Tutor Game
+                  {t('app.name')}
                 </Link>
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                     className="text-gray-300 hover:text-white p-2"
-                    title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
+                    title={isSidebarCollapsed ? t('layout.expandPanel') : t('layout.collapsePanel')}
                 >
                     <ChevronDoubleLeftIcon className={classNames("h-6 w-6 transition-transform duration-300", isSidebarCollapsed && "rotate-180")}/>
                 </button>
@@ -286,19 +310,22 @@ export default function Layout() {
                     </ul>
                   </li>
                   <li className="mt-auto">
-                    <div className={classNames('px-2 text-xs font-semibold leading-6 text-gray-400 truncate', isSidebarCollapsed && 'hidden')}>
-                      {user?.email}
+                    <div className="flex items-center justify-between px-2">
+                      <div className={classNames('text-xs font-semibold leading-6 text-gray-400 truncate', isSidebarCollapsed && 'hidden')}>
+                        {user?.email}
+                      </div>
+                      {!isSidebarCollapsed && <LanguageSwitcher />}
                     </div>
                     <button
                       onClick={handleLogout}
-                      title={isSidebarCollapsed ? 'Sign out' : undefined}
+                      title={isSidebarCollapsed ? t('logout.signOut') : undefined}
                       className={classNames(
                           'mt-2 flex w-full items-center gap-x-2 rounded-md p-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700',
                           isSidebarCollapsed && 'justify-center'
                       )}
                     >
                       <ArrowRightOnRectangleIcon className="h-5 w-5 shrink-0" />
-                      <span className={classNames(isSidebarCollapsed && 'hidden')}>Sign out</span>
+                      <span className={classNames(isSidebarCollapsed && 'hidden')}>{t('logout.signOut')}</span>
                     </button>
                   </li>
                 </ul>
@@ -317,7 +344,7 @@ export default function Layout() {
               className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
               onClick={() => setSidebarOpen(true)}
             >
-              <span className="sr-only">Open sidebar</span>
+              <span className="sr-only">{t('layout.openSidebar')}</span>
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
             </button>
           )}
@@ -327,7 +354,7 @@ export default function Layout() {
               {isAuthenticated ? (
                 <>
                   <Link to={chatPath} className="relative text-gray-400 hover:text-gray-500">
-                    <span className="sr-only">View messages</span>
+                    <span className="sr-only">{t('layout.viewMessages')}</span>
                     <ChatBubbleLeftEllipsisIcon className="h-6 w-6" aria-hidden="true" />
                     {totalUnreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
@@ -341,17 +368,18 @@ export default function Layout() {
                     className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
                     onClick={handleLogout}
                   >
-                    <span className="sr-only">Sign out</span>
+                    <span className="sr-only">{t('logout.signOut')}</span>
                     <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </>
               ) : (
                 <div className="flex items-center gap-x-4">
+                  <LanguageSwitcher />
                   <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-gray-900">
-                    Log in
+                    {t('login.short')}
                   </Link>
                   <Link to="/register" className="text-sm font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-md hover:bg-indigo-700">
-                    Register
+                    {t('register.short')}
                   </Link>
                 </div>
               )}

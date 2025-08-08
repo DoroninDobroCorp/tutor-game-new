@@ -7,6 +7,7 @@ import { useLoginMutation } from '@/features/auth/authApi';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '@/app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
+import { useTranslation } from 'react-i18next';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -16,6 +17,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [login, { isLoading }] = useLoginMutation();
   const navigate = useNavigate();
   const [error, setError] = useState('');
@@ -33,7 +35,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      toast.success('Login successful! Redirecting...');
+      toast.success(t('auth.loginSuccess'));
       const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
       navigate(targetPath, { replace: true });
     }
@@ -45,7 +47,7 @@ export default function LoginPage() {
       // Call the API and let the useEffect handle navigation
       await login(data).unwrap();
     } catch (error: unknown) {
-      let errorMessage = 'Login failed. Please check your credentials.';
+      let errorMessage = t('auth.loginFailedDefault');
 
       if (error && typeof error === 'object') {
         if ('status' in error && 'data' in error) {
@@ -66,15 +68,15 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            {t('login.title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
+            {t('login.or')}{' '}
             <Link
               to="/register"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              create a new account
+              {t('login.createAccount')}
             </Link>
           </p>
         </div>
@@ -108,7 +110,7 @@ export default function LoginPage() {
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">
-                Email address
+                {t('login.email')}
               </label>
               <input
                 id="email-address"
@@ -117,7 +119,7 @@ export default function LoginPage() {
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
                   errors.email ? 'border-red-300' : 'border-gray-300'
                 } placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                placeholder="Email address"
+                placeholder={t('login.email')}
                 {...register('email')}
               />
               {errors.email && (
@@ -126,7 +128,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
-                Password
+                {t('login.password')}
               </label>
               <input
                 id="password"
@@ -135,7 +137,7 @@ export default function LoginPage() {
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
                   errors.password ? 'border-red-300' : 'border-gray-300'
                 } placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
-                placeholder="Password"
+                placeholder={t('login.password')}
                 {...register('password')}
               />
               {errors.password && (
@@ -156,7 +158,7 @@ export default function LoginPage() {
                 htmlFor="remember-me"
                 className="ml-2 block text-sm text-gray-900"
               >
-                Remember me
+                {t('login.rememberMe')}
               </label>
             </div>
 
@@ -165,7 +167,7 @@ export default function LoginPage() {
                 href="#"
                 className="font-medium text-gray-600 hover:text-gray-500"
               >
-                Forgot your password?
+                {t('login.forgotPassword')}
               </a>
             </div>
           </div>
@@ -178,7 +180,7 @@ export default function LoginPage() {
                 isLoading ? 'opacity-75 cursor-not-allowed' : ''
               }`}
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? t('login.signingIn') : t('login.signIn')}
             </button>
           </div>
         </form>

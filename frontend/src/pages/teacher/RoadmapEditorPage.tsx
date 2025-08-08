@@ -2,7 +2,7 @@
 // Версия: Полная, с интеграцией просмотра ответов студента и чата с ИИ
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link, useOutletContext } from 'react-router-dom';
+import { useParams, Link, useOutletContext } from 'react-router-dom';
 import { useLazyGetPerformanceLogsQuery } from '../../features/teacher/teacherApi';
 import { 
     useGetLearningGoalByIdQuery,
@@ -15,9 +15,10 @@ import { type ContentSection, type Lesson } from '../../types/models';
 import { CharacterEditor } from './components/CharacterEditor';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
-import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiZap, FiBookOpen } from 'react-icons/fi';
+import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiBookOpen } from 'react-icons/fi';
 import { RoadmapSection } from './components/RoadmapSection';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+import { useTranslation } from 'react-i18next';
 
 // Тип для логов успеваемости
 interface PerformanceLog {
@@ -33,14 +34,14 @@ interface ChatMessage {
     content: string;
 }
 
-// Контекст из Outlet
 interface RoadmapEditorContext {
-  setEditingLesson: (lesson: Lesson | null) => void;
+    setEditingLesson: (lesson: Lesson | null) => void;
 }
 
 const RoadmapEditorPage = () => {
+    const { t } = useTranslation();
     const { goalId } = useParams<{ goalId: string }>();
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
     const { setEditingLesson } = useOutletContext<RoadmapEditorContext>();
 
     const { data: currentGoal, isLoading, error } = useGetLearningGoalByIdQuery(goalId!, {
@@ -82,11 +83,11 @@ const RoadmapEditorPage = () => {
     }, [chatHistory]);
 
     if (isLoading || !currentGoal) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
-    if (error) return <div className="text-center text-red-500 p-10">Ошибка загрузки плана.</div>;
+    if (error) return <div className="text-center text-red-500 p-10">{t('roadmapEditor.loadingError')}</div>;
     
     const handleGeneratePlan = async (e: React.FormEvent) => {
         e.preventDefault();
-        const messageToSend = userMessage.trim() || 'Сгенерируй первоначальный план';
+        const messageToSend = userMessage.trim() || t('roadmapEditor.generateInitialPlan');
         const newHistory = [...chatHistory, { role: 'user' as const, content: messageToSend }];
         setChatHistory(newHistory);
         setUserMessage('');
@@ -115,9 +116,9 @@ const RoadmapEditorPage = () => {
     
             setRoadmap(newSections);
             setChatHistory(prev => [...prev, aiResponse]);
-            toast.success('План обновлен!');
+            toast.success(t('roadmapEditor.planUpdated'));
         } catch (err) {
-            toast.error('Не удалось сгенерировать план.');
+            toast.error(t('roadmapEditor.generateError'));
             setChatHistory(chatHistory); // Revert on error
         }
     };
@@ -136,9 +137,9 @@ const RoadmapEditorPage = () => {
         toast.promise(
             updateRoadmap({ goalId, roadmap: roadmapWithOrder }).unwrap(),
             {
-                loading: 'Сохранение плана...',
-                success: 'План успешно сохранен!',
-                error: 'Ошибка при сохранении.',
+                loading: t('roadmapEditor.savingPlan'),
+                success: t('roadmapEditor.planSaved'),
+                error: t('roadmapEditor.saveError'),
             }
         );
     };
@@ -165,11 +166,11 @@ const RoadmapEditorPage = () => {
         handleSave(); // Auto-save on reorder
     };
     
-    const handleAddSection = () => setRoadmap([...roadmap, { id: `new-section-${Date.now()}`, title: `Новый раздел ${roadmap.length + 1}`, order: roadmap.length, lessons: [] }]);
+    const handleAddSection = () => setRoadmap([...roadmap, { id: `new-section-${Date.now()}`, title: t('roadmapEditor.newSection', { number: roadmap.length + 1 }), order: roadmap.length, lessons: [] }]);
     const handleAddLesson = (sectionIndex: number) => {
         const newRoadmap = [...roadmap];
         const section = newRoadmap[sectionIndex];
-        section.lessons.push({ id: `new-lesson-${Date.now()}`, title: `Новый урок ${section.lessons.length + 1}`, status: 'DRAFT', order: section.lessons.length, content: null, storyChapter: null });
+        section.lessons.push({ id: `new-lesson-${Date.now()}`, title: t('roadmapEditor.newLesson'), type: 'THEORY', status: 'DRAFT', order: section.lessons.length, content: null, storyChapter: null });
         setRoadmap(newRoadmap);
     };
     const handleRemoveSection = (sectionIndex: number) => setRoadmap(roadmap.filter((_, i) => i !== sectionIndex));
@@ -192,24 +193,24 @@ const RoadmapEditorPage = () => {
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-6">
             <div className="flex justify-between items-center mb-6">
-                <Link to="/teacher/goals" className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> Назад</Link>
+                <Link to="/teacher/goals" className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> {t('roadmapEditor.back')}</Link>
                 <h1 className="text-2xl font-bold text-gray-900 text-center">{currentGoal.subject}</h1>
-                <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"><FiSave />Сохранить</button>
+                <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white rounded-lg shadow-md p-6">
-                      <h2 className="text-xl font-semibold mb-4">Персонаж истории</h2>
+                      <h2 className="text-xl font-semibold mb-4">{t('roadmapEditor.storyCharacter')}</h2>
                       <CharacterEditor goal={currentGoal} />
                     </div>
 
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <div className="mb-6 flex justify-between items-center flex-wrap gap-2">
-                            <h2 className="text-xl font-semibold">План Уроков</h2>
+                            <h2 className="text-xl font-semibold">{t('roadmapEditor.lessonPlan')}</h2>
                              <div className="flex gap-2">
-                                <button onClick={async () => { if (!goalId) return; await getLogs({ studentId: currentGoal.student.id, goalId }).unwrap(); setShowLogsModal(true); }} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><FiEye /> Посмотреть ответы</button>
-                                <button onClick={async () => { if (!goalId) return; getStoryHistory(goalId); setShowStoryModal(true);}} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><FiBookOpen /> Просмотреть историю</button>
+                                <button onClick={async () => { if (!goalId) return; await getLogs({ studentId: currentGoal.student.id, goalId }).unwrap(); setShowLogsModal(true); }} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><FiEye /> {t('roadmapEditor.viewAnswers')}</button>
+                                <button onClick={async () => { if (!goalId) return; getStoryHistory(goalId); setShowStoryModal(true);}} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><FiBookOpen /> {t('roadmapEditor.viewStory')}</button>
                             </div>
                         </div>
                         <DragDropContext onDragEnd={onDragEnd}>
@@ -225,15 +226,15 @@ const RoadmapEditorPage = () => {
                             </Droppable>
                         </DragDropContext>
                         <div className="mt-8">
-                            <button onClick={handleAddSection} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center"><FiPlus className="mr-2" /> Добавить раздел</button>
+                            <button onClick={handleAddSection} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
                         </div>
                     </div>
                 </div>
 
                 <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6 flex flex-col h-[calc(100vh-12rem)]">
-                    <h2 className="text-xl font-semibold mb-4 text-center">Диалог с ИИ</h2>
+                    <h2 className="text-xl font-semibold mb-4 text-center">{t('roadmapEditor.aiDialog')}</h2>
                     <div ref={chatContainerRef} className="flex-grow bg-gray-50 rounded-lg p-3 overflow-y-auto space-y-3 mb-4">
-                        {chatHistory.length === 0 && <div className="text-center text-gray-400 h-full flex items-center justify-center">Начните диалог, чтобы создать или изменить план.</div>}
+                        {chatHistory.length === 0 && <div className="text-center text-gray-400 h-full flex items-center justify-center">{t('roadmapEditor.startDialog')}</div>}
                         {chatHistory.map((msg, idx) => (
                           <div key={idx} className={`p-3 rounded-lg max-w-[90%] text-sm ${msg.role === 'user' ? 'bg-indigo-100 self-end ml-auto' : 'bg-gray-200 self-start mr-auto'}`}>
                               <p className="font-bold capitalize mb-1">{msg.role}</p>
@@ -243,7 +244,7 @@ const RoadmapEditorPage = () => {
                         {isGenerating && <div className="p-3 rounded-lg bg-gray-200 self-start mr-auto"><Spinner size="sm" /></div>}
                     </div>
                     <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
-                        <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Попросить ИИ изменить план..." className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('roadmapEditor.askAiToChangePlan')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
                         <button type="submit" disabled={isGenerating || !userMessage.trim()} className="p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
                     </form>                </div>
             </div>
@@ -251,18 +252,18 @@ const RoadmapEditorPage = () => {
             {showLogsModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowLogsModal(false)}>
                     <div className="bg-white p-6 rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold mb-4">Ответы ученика: {currentGoal?.student?.firstName || 'Студент'}</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('roadmapEditor.studentAnswers', { name: currentGoal?.student?.firstName || t('roadmapEditor.student') })}</h2>
                         <div className="overflow-y-auto flex-grow pr-4">
                             {isLoadingLogs ? <Spinner /> : performanceLogs?.length ? (
                                 <div className="space-y-4">
                                     {(performanceLogs as PerformanceLog[]).map(log => (
                                         <div key={log.id} className="p-3 bg-gray-50 rounded-md border">
-                                            <p className="font-semibold mt-1">Вопрос: <span className="italic text-gray-700 font-normal">"{log.question}"</span></p>
-                                            <p className="font-semibold mt-2">Ответ ученика: <span className="p-2 bg-blue-50 border border-blue-200 rounded-md">"{log.answer}"</span></p>
+                                            <p className="font-semibold mt-1">{t('roadmapEditor.question')}: <span className="italic text-gray-700 font-normal">"{log.question}"</span></p>
+                                            <p className="font-semibold mt-2">{t('roadmapEditor.studentAnswer')}: <span className="p-2 bg-blue-50 border border-blue-200 rounded-md">"{log.answer}"</span></p>
                                         </div>
                                     ))}
                                 </div>
-                            ) : (<p className="text-gray-500">Ответов от ученика по этому плану пока нет.</p>)}
+                            ) : (<p className="text-gray-500">{t('roadmapEditor.noStudentAnswers')}</p>)}
                         </div>
                     </div>
                 </div>
@@ -271,14 +272,14 @@ const RoadmapEditorPage = () => {
             {showStoryModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => setShowStoryModal(false)}>
                     <div className="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold mb-4">История приключения</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('roadmapEditor.adventureStory')}</h2>
                         <div className="overflow-y-auto flex-grow pr-4">
                             {isLoadingStory ? <Spinner /> : storyHistory?.length ? (
                                 <div className="space-y-12">
                                     {storyHistory.map((chapter, index) => (
                                         <div key={chapter.id} className="bg-gray-50 rounded-lg p-6 border">
                                             <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-indigo-200">
-                                                Глава {index + 1}: {chapter.lesson.title}
+                                                {t('roadmapEditor.chapter', { number: index + 1, title: chapter.lesson.title })}
                                             </h3>
                                             
                                             {chapter.teacherSnippetText && (
@@ -286,36 +287,36 @@ const RoadmapEditorPage = () => {
                                                     {chapter.teacherSnippetImageUrl && (
                                                         <img
                                                             src={chapter.teacherSnippetImageUrl}
-                                                            alt={`Illustration for chapter ${index + 1}`}
-                                                            className="w-full md:w-1/3 rounded-lg shadow-md object-cover"
+                                                            alt={t('roadmapEditor.chapterIllustration', { number: index + 1 })}
+                                                            className="w-full md:w-1/3 rounded-lg shadow-lg object-cover"
                                                         />
                                                     )}
                                                     <div className="flex-1">
-                                                        <p className="font-semibold text-indigo-700">Рассказчик:</p>
-                                                        <p className="mt-2 text-gray-600 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
+                                                        <p className="font-semibold text-gray-700">{t('roadmapEditor.narrator')}:</p>
+                                                        <p className="mt-2 text-gray-700 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
                                                     </div>
                                                 </div>
                                             )}
 
                                             {chapter.studentSnippetText && (
                                                 <div className="flex justify-end mt-4">
-                                                    <div className="w-full md:w-5/6 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-300">
-                                                        <p className="font-semibold text-blue-800">Ответ ученика:</p>
+                                                    <div className="w-full md:w-5/6 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-400">
+                                                        <p className="font-semibold text-blue-800">{t('roadmapEditor.studentAnswer')}:</p>
                                                          {chapter.studentSnippetImageUrl && (
                                                             <img
                                                                 src={chapter.studentSnippetImageUrl}
-                                                                alt="Student submitted image"
+                                                                alt={t('roadmapEditor.studentSubmittedImage')}
                                                                 className="mt-2 w-full md:w-1/2 rounded-lg shadow-md object-cover"
                                                             />
                                                         )}
-                                                        <p className="mt-2 text-gray-700 leading-relaxed whitespace-pre-wrap">{chapter.studentSnippetText}</p>
+                                                        <p className="mt-2 text-gray-800 leading-relaxed whitespace-pre-wrap">{chapter.studentSnippetText}</p>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     ))}
                                 </div>
-                            ) : (<p className="text-gray-500">История этого приключения еще не началась.</p>)}
+                            ) : (<p className="text-gray-500">{t('roadmapEditor.noStoryYet')}</p>)}
                         </div>
                     </div>
                 </div>
@@ -323,4 +324,5 @@ const RoadmapEditorPage = () => {
         </div>
     );
 };
+
 export default RoadmapEditorPage;

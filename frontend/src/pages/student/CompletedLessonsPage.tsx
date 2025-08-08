@@ -4,8 +4,10 @@ import { useGetCompletedLessonsQuery } from '../../features/student/studentApi';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import type { Lesson } from '../../types/models';
+import { useTranslation } from 'react-i18next';
 
 const CompletedLessonsPage = () => {
+    const { t } = useTranslation();
     const { goalId } = useParams<{ goalId: string }>();
     const { data: completedLessons, isLoading, isError } = useGetCompletedLessonsQuery(goalId!, {
         skip: !goalId,
@@ -15,7 +17,7 @@ const CompletedLessonsPage = () => {
     const groupedBySection = useMemo(() => {
         if (!completedLessons) return {};
         return completedLessons.reduce((acc: Record<string, Lesson[]>, lesson) => {
-            const sectionTitle = lesson.section?.title || 'Разное';
+            const sectionTitle = t('completedLessons.miscellaneous');
             if (!acc[sectionTitle]) {
                 acc[sectionTitle] = [];
             }
@@ -29,24 +31,20 @@ const CompletedLessonsPage = () => {
     }
 
     if (isError) {
-        return <div className="text-center p-8 text-red-500">Ошибка загрузки пройденных уроков.</div>;
+        return <div className="text-center p-8 text-red-500">{t('completedLessons.loadingError')}</div>;
     }
 
-    const sections = Object.keys(groupedBySection).sort((a, b) => {
-        const orderA = groupedBySection[a][0]?.section?.order || 0;
-        const orderB = groupedBySection[b][0]?.section?.order || 0;
-        return orderA - orderB;
-    });
+    const sections = Object.keys(groupedBySection);
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="mb-6">
                 <Link to="/student/stories" className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
-                    Назад к архиву
+                    {t('completedLessons.backToArchive')}
                 </Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">Пройденные уроки</h1>
+            <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">{t('completedLessons.title')}</h1>
 
             <div className="mt-6 space-y-6">
                 {isLoading && <div className="flex justify-center p-8"><Spinner /></div>}
@@ -69,14 +67,14 @@ const CompletedLessonsPage = () => {
                                                     return (
                                                         <div key={index} className="py-3 border-b last:border-b-0">
                                                             <div className={`p-3 border-l-4 rounded-r-md ${block.type === 'theory' ? 'border-blue-400 bg-blue-50' : 'border-purple-400 bg-purple-50'}`}>
-                                                                <h4 className="font-semibold capitalize text-gray-700">{block.type === 'theory' ? "Теория" : "Практическое задание"}</h4>
+                                                                <h4 className="font-semibold capitalize text-gray-700">{block.type === 'theory' ? t('completedLessons.theory') : t('completedLessons.practice')}</h4>
                                                                 <p className="mt-1 text-gray-600" dangerouslySetInnerHTML={{ __html: block.content }} />
                                                             </div>
                                                             {block.type === 'practice' && (
                                                                 <div className="mt-2 pl-4">
-                                                                    <p className="text-sm font-semibold text-gray-800">Ваш ответ:</p>
+                                                                    <p className="text-sm font-semibold text-gray-800">{t('completedLessons.yourAnswer')}:</p>
                                                                     <div className="mt-1 p-2 bg-gray-100 rounded text-sm text-gray-700 italic">
-                                                                        {log ? log.answer : 'Ответ не был записан'}
+                                                                        {log ? log.answer : t('completedLessons.noAnswer')}
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -91,7 +89,7 @@ const CompletedLessonsPage = () => {
                         </div>
                     ))
                 ) : (
-                    <p className="text-center text-gray-500 mt-4">Пройденных уроков по этому приключению пока нет.</p>
+                    <p className="text-center text-gray-500 mt-4">{t('completedLessons.noLessons')}</p>
                 )}
             </div>
         </div>

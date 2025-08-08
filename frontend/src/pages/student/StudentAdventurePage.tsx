@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useGetCurrentLessonQuery, useSubmitLessonMutation, useLessonPracticeChatMutation, useEndLessonForReviewMutation, useLazyGetStorySummaryQuery } from '../../features/student/studentApi';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
@@ -17,6 +18,7 @@ import {
 } from '../../features/student/adventureSlice';
 
 const YoutubeEmbed = ({ url }: { url:string }) => {
+    const { t } = useTranslation();
     const getYouTubeId = (url: string) => {
         if (!url) return null;
         try {
@@ -33,7 +35,7 @@ const YoutubeEmbed = ({ url }: { url:string }) => {
     };
 
     const videoId = getYouTubeId(url);
-    if (!videoId) return <div className="text-red-500 p-4 bg-red-50 rounded-md my-4">Неверная ссылка на YouTube.</div>;
+    if (!videoId) return <div className="text-red-500 p-4 bg-red-50 rounded-md my-4">{t('studentAdventure.invalidYouTubeLink')}</div>;
 
     return (
         <div className="relative my-4" style={{ paddingTop: '56.25%' }}>
@@ -43,7 +45,8 @@ const YoutubeEmbed = ({ url }: { url:string }) => {
 };
 
 const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean; onClose: () => void; summary: string; isLoading: boolean; }) => {
-  return (
+    const { t } = useTranslation();
+    return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
@@ -51,10 +54,10 @@ const SummaryModal = ({ isOpen, onClose, summary, isLoading }: { isOpen: boolean
         </Transition.Child>
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100" to="opacity-0 scale-95">
+            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-start">
-                  Краткое содержание
+                  {t('studentAdventure.summaryTitle')}
                   <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><FiX /></button>
                 </Dialog.Title>
                 <div className="mt-4 min-h-[10rem]">
@@ -112,13 +115,14 @@ type LessonPhase = 'content' | 'assessment' | 'story' | 'control_work';
 type ChatMessage = { role: 'user' | 'assistant', content: string };
 
 export default function StudentAdventurePage() {
+    const { t } = useTranslation();
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { data: lesson, isLoading, isError, refetch } = useGetCurrentLessonQuery();
     const [submitLesson, { isLoading: isSubmitting }] = useSubmitLessonMutation();
     const [practiceChat, { isLoading: isChatLoading }] = useLessonPracticeChatMutation();
-    const [endLesson, { isLoading: isEndingLesson }] = useEndLessonForReviewMutation();
-    const [triggerGetSummary, { isLoading: isSummaryLoading }] = useLazyGetStorySummaryQuery();
+    const [ , { isLoading: isEndingLesson }] = useEndLessonForReviewMutation();
+    const [ , { isLoading: isSummaryLoading }] = useLazyGetStorySummaryQuery();
 
     const [lessonPhase, setLessonPhase] = useState<LessonPhase>('content');
     const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
@@ -138,7 +142,7 @@ export default function StudentAdventurePage() {
     const [aiResponse, setAiResponse] = useState<AIAssessmentResponse | null>(null);
 
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
-    const [summaryText, setSummaryText] = useState('');
+    const [summaryText] = useState('');
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const blocks = lesson?.content?.blocks || [];
@@ -178,7 +182,7 @@ export default function StudentAdventurePage() {
 
     const handleNextBlock = () => {
         if (currentBlock.type === 'practice' && !practiceAnswers[currentBlockIndex]?.trim()) {
-            toast.error('Пожалуйста, введите ответ, чтобы продолжить.');
+            toast.error(t('studentAdventure.enterAnswerToContinue'));
             return;
         }
         if (currentBlockIndex >= blocks.length - 1) {
@@ -207,7 +211,7 @@ export default function StudentAdventurePage() {
             setAiResponse(result.data);
             setChatHistory([{ role: 'assistant', content: result.data.responseText }]);
         } catch (err) {
-            toast.error("Не удалось начать диалог с помощником. Попробуйте снова.");
+            toast.error(t('studentAdventure.startPracticeDialogError'));
             setLessonPhase('content');
             setCurrentBlockIndex(blocks.length - 1);
         }
@@ -224,7 +228,7 @@ export default function StudentAdventurePage() {
             setAiResponse(result.data);
             setChatHistory(prev => [...prev, { role: 'assistant', content: result.data.responseText }]);
         } catch (err) {
-            toast.error("Ошибка при отправке сообщения. Попробуйте еще раз.");
+            toast.error(t('studentAdventure.sendMessageError'));
             setChatHistory(chatHistory);
         }
     };
@@ -242,7 +246,7 @@ export default function StudentAdventurePage() {
 
         try {
             const result = await practiceChat({ lessonId: lesson.id, chatHistory: evaluationChat }).unwrap();
-            const { isCorrect, responseText, newQuestion } = result.data;
+            const { isSessionComplete, responseText, newQuestion } = result.data;
             
             let assistantResponse = responseText;
             if (newQuestion) {
@@ -250,13 +254,13 @@ export default function StudentAdventurePage() {
             }
             setChatHistory(prev => [...prev, { role: 'assistant', content: assistantResponse }]);
 
-            if (isCorrect) {
+            if (isSessionComplete) {
                  const newCorrectCount = correctAnswers + 1;
                 setCorrectAnswers(newCorrectCount);
 
                 const newProgress = requiredAnswers > 0 ? (newCorrectCount / requiredAnswers) * 100 : 0;
                 if (newProgress >= 100) {
-                    toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
+                    toast.success(t('studentAdventure.submitControlWorkSuccess'), { duration: 3000 });
                     setIsControlWorkComplete(true);
                     return;
                 }
@@ -273,7 +277,7 @@ export default function StudentAdventurePage() {
                     if (newQ) {
                         setChatHistory(prev => [...prev, { role: 'assistant', content: `${newQResponseText}\n\n<hr class='my-2'>\n\n${newQ.content}` }]);
                     } else {
-                        toast.success('Контрольная работа успешно сдана!', { duration: 3000 });
+                        toast.success(t('studentAdventure.submitControlWorkSuccess'), { duration: 3000 });
                         setIsControlWorkComplete(true);
                     }
                 }
@@ -281,13 +285,13 @@ export default function StudentAdventurePage() {
                 setRequiredAnswers(prev => prev + 3);
             }
         } catch (err) {
-            toast.error("Ошибка при проверке ответа. Попробуйте еще раз.");
+            toast.error(t('studentAdventure.checkAnswerError'));
             setChatHistory(chatHistory);
         }
     };
 
     const handleGiveUp = () => {
-        if (window.confirm("Вы уверены, что хотите сдаться? Прогресс не будет сохранен, и вы не получите продолжение истории.")) {
+        if (window.confirm(t('studentAdventure.giveUpConfirmation'))) {
             dispatch(resetAdventureState());
             navigate('/student');
         }
@@ -295,7 +299,7 @@ export default function StudentAdventurePage() {
     
     const handleSubmitLesson = async () => {
         if (!lesson || !storyResponse.trim()) {
-            toast.error("Напиши, что будет дальше в истории!");
+            toast.error(t('studentAdventure.writeStoryContinuation'));
             return;
         }
 
@@ -303,7 +307,7 @@ export default function StudentAdventurePage() {
         const isControlWorkSuccess = lesson.type === 'CONTROL_WORK' && progress >= 100;
         
         if (lesson.type === 'CONTROL_WORK' && !isControlWorkSuccess) {
-            toast.error("Контрольная работа не завершена успешно.");
+            toast.error(t('studentAdventure.controlWorkNotCompletedError'));
             return;
         }
 
@@ -320,24 +324,30 @@ export default function StudentAdventurePage() {
         
         try {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
-            toast.success("Отлично! Урок отправлен учителю на проверку.", { duration: 4000 });
+            toast.success(t('studentAdventure.lessonSubmitSuccess'), { duration: 4000 });
             dispatch(resetAdventureState());
             navigate('/student');
         } catch (err) {
-            toast.error("Не удалось завершить урок.");
+            toast.error(t('studentAdventure.lessonSubmitError'));
         }
     };
     
     if (isLoading) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
-    if (isError) return <div className="text-center text-red-500 p-10">Ошибка загрузки урока. Пожалуйста, <button onClick={() => refetch()} className="underline">обновите</button>.</div>;
+    if (isError) return (
+        <div className="text-center text-red-500 p-10">
+            <Trans i18nKey="studentAdventure.lessonLoadingError">
+                Ошибка загрузки урока. Пожалуйста, <button onClick={() => refetch()} className="underline">обновите</button>.
+            </Trans>
+        </div>
+    );
 
     const renderContent = () => {
         if (!lesson) {
              return (
                 <div className="text-center p-10 bg-white rounded-lg shadow">
-                    <h2 className="text-2xl font-bold text-green-600">🎉 Поздравляем! 🎉</h2>
-                    <p className="mt-4 text-lg text-gray-700">Ты прошел все доступные уроки. Так держать!</p>
-                    <button onClick={() => navigate('/student')} className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md">Вернуться в кабинет</button>
+                    <h2 className="text-2xl font-bold text-green-600">{t('studentAdventure.congratulations')}</h2>
+                    <p className="mt-4 text-lg text-gray-700">{t('studentAdventure.allLessonsCompleted')}</p>
+                    <button onClick={() => navigate('/student')} className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md">{t('studentAdventure.backToCabinet')}</button>
                 </div>
             );
         }
@@ -347,24 +357,24 @@ export default function StudentAdventurePage() {
             return (
                  <div className="bg-gray-50 rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-start mb-4">
-                        <h2 className="text-2xl font-bold text-gray-700">Продолжение истории...</h2>
+                        <h2 className="text-2xl font-bold text-gray-700">{t('studentAdventure.storyContinuation')}</h2>
                         <button onClick={() => {}} className="px-3 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center gap-2">
-                            <FiHelpCircle /> Краткое содержание
+                            <FiHelpCircle /> {t('studentAdventure.summary')}
                         </button>
                     </div>
                     {lesson.storyChapter ? (<>
                         <div className="flex flex-col md:flex-row gap-6 items-start">
-                            {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="Иллюстрация" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
+                            {lesson.storyChapter.teacherSnippetImageUrl && <img src={lesson.storyChapter.teacherSnippetImageUrl} alt="image" className="w-full md:w-1/3 rounded-lg object-cover shadow-lg"/>}
                             <p className="flex-1 text-gray-700 leading-relaxed italic whitespace-pre-wrap">{lesson.storyChapter.teacherSnippetText}</p>
                         </div>
                         <div className="mt-6">
-                            <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">Что ты будешь делать дальше?</label>
-                            <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={handleStoryResponseChange} placeholder="Напиши здесь свое действие..." disabled={isSubmitting} />
+                            <label htmlFor="storyResponse" className="block text-lg font-semibold text-gray-800 mb-2">{t('studentAdventure.whatWillYouDoNext')}</label>
+                            <textarea id="storyResponse" rows={4} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" value={storyResponse} onChange={handleStoryResponseChange} placeholder={t('studentAdventure.writeYourAction')} disabled={isSubmitting} />
                         </div>
                         <div className="flex justify-end mt-4">
-                            <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? 'Отправка...' : 'Отправить на проверку'}</button>
+                            <button onClick={handleSubmitLesson} disabled={isSubmitting || !storyResponse.trim()} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50">{isSubmitting ? t('studentAdventure.sending') : t('studentAdventure.sendForReview')}</button>
                         </div>
-                    </>) : <p>К этому уроку нет истории. Можно переходить к следующему.</p>}
+                    </>) : <p>{t('studentAdventure.noStoryForLesson')}</p>}
                 </div>
             );
         }
@@ -374,13 +384,13 @@ export default function StudentAdventurePage() {
             return (
                 <div className="text-center p-10 bg-white rounded-lg shadow-lg relative overflow-hidden">
                     <Confetti />
-                    <h2 className="text-3xl font-bold text-green-600 z-10 relative">🎉 Поздравляем! 🎉</h2>
-                    <p className="mt-4 text-lg text-gray-700 z-10 relative">Контрольная работа успешно пройдена!</p>
+                    <h2 className="text-3xl font-bold text-green-600 z-10 relative">{t('studentAdventure.congratulations')}</h2>
+                    <p className="mt-4 text-lg text-gray-700 z-10 relative">{t('studentAdventure.controlWorkPassed')}</p>
                     <button 
                         onClick={() => setLessonPhase('story')} 
                         className="mt-8 px-8 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600 transition-transform transform hover:scale-105 z-10 relative"
                     >
-                        Перейти к истории!
+                        {t('studentAdventure.goToStory')}
                     </button>
                 </div>
             );
@@ -396,7 +406,7 @@ export default function StudentAdventurePage() {
                         <div className="w-full bg-gray-200 rounded-full h-4">
                             <div className="bg-green-500 h-4 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                         </div>
-                        <p className="text-center text-sm text-gray-600 mt-2">Прогресс: {Math.round(progress)}% ({correctAnswers} из {requiredAnswers})</p>
+                        <p className="text-center text-sm text-gray-600 mt-2">{t('studentAdventure.progress')}: {Math.round(progress)}% ({correctAnswers} / {requiredAnswers})</p>
                     </div>
                     <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
                         {chatHistory.map((msg, index) => (
@@ -408,11 +418,11 @@ export default function StudentAdventurePage() {
                         {isChatLoading && <div className="flex justify-start"><div className="px-4 py-2 rounded-lg shadow bg-white"><Spinner size="sm"/></div></div>}
                     </div>
                     <form onSubmit={handleControlWorkSubmit} className="flex gap-2">
-                        <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder="Введите ваш ответ..." className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
+                        <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
                         <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
                     </form>
                     <div className="text-center pt-4 border-t">
-                        <button onClick={handleGiveUp} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2"> <FiThumbsDown/> Сдаться</button>
+                        <button onClick={handleGiveUp} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2"> <FiThumbsDown/> {t('studentAdventure.giveUp')}</button>
                     </div>
                 </div>
             );
@@ -424,23 +434,23 @@ export default function StudentAdventurePage() {
                 <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
                 {lessonPhase === 'content' && (
                     <div className="bg-white rounded-lg shadow-md p-6">
-                        <p className="text-sm text-gray-500 mb-4">Шаг {currentBlockIndex + 1} из {blocks.length}</p>
+                        <p className="text-sm text-gray-500 mb-4">{currentBlockIndex + 1} / {blocks.length}</p>
                         <div className={`p-4 border-l-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' : 'border-red-500 bg-red-50' }`}>
-                            <h3 className="font-semibold capitalize text-lg mb-2">{currentBlock.type === 'youtube' ? "📺 Видео" : currentBlock.type}</h3>
+                            <h3 className="font-semibold capitalize text-lg mb-2">{currentBlock.type === 'youtube' ? t('studentAdventure.video') : currentBlock.type}</h3>
                             {currentBlock.type === 'youtube' ? <YoutubeEmbed url={currentBlock.content} /> : <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />}
                             {currentBlock.type === 'practice' && (
                                 <div className="mt-4">
-                                    <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">Ваш ответ:</label>
-                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => handlePracticeAnswerChange(currentBlockIndex, e.target.value)} placeholder="Введите ваш ответ здесь..." />
+                                    <label htmlFor={`answer-${currentBlockIndex}`} className="block text-sm font-medium text-gray-700 mb-1">{t('studentAdventure.yourAnswerLabel')}:</label>
+                                    <textarea id={`answer-${currentBlockIndex}`} className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500" rows={3} value={practiceAnswers[currentBlockIndex] || ''} onChange={(e) => handlePracticeAnswerChange(currentBlockIndex, e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} />
                                 </div>
                             )}
                         </div>
                         <div className="flex justify-between items-center mt-4">
                             <button onClick={handlePreviousBlock} disabled={currentBlockIndex === 0} className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                                <FiChevronLeft /> Назад
+                                <FiChevronLeft /> {t('studentAdventure.previous')}
                             </button>
                             <button onClick={handleNextBlock} disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2">
-                                {currentBlockIndex >= blocks.length - 1 ? 'Завершить практику' : 'Далее'} <FiChevronRight />
+                                {currentBlockIndex >= blocks.length - 1 ? t('studentAdventure.finishLesson') : t('studentAdventure.next')} <FiChevronRight />
                             </button>
                         </div>
                     </div>
@@ -448,7 +458,7 @@ export default function StudentAdventurePage() {
     
                 {lessonPhase === 'assessment' && (
                     <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-                        <div className="flex items-center gap-3 text-xl font-semibold text-gray-800"><FiZap />Проверка знаний с AI-помощником</div>
+                        <div className="flex items-center gap-3 text-xl font-semibold text-gray-800"><FiZap />{t('studentAdventure.assessmentTitle')}</div>
                         <div ref={chatContainerRef} className="h-96 bg-gray-50 rounded-lg p-3 space-y-4 overflow-y-auto">
                             {chatHistory.map((msg, index) => (
                                 <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -461,17 +471,17 @@ export default function StudentAdventurePage() {
                         </div>
                         {aiResponse && aiResponse.isSessionComplete ? (
                             <div className="text-center p-4 bg-green-50 rounded-lg">
-                                <p className="text-green-700 font-semibold mb-4">Отлично! С этим разобрались. Можно двигаться дальше!</p>
-                                <button onClick={() => setLessonPhase('story')} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">Продолжить историю</button>
+                                <p className="text-green-700 font-semibold mb-4">{t('studentAdventure.assessmentSuccessMessage')}</p>
+                                <button onClick={() => setLessonPhase('story')} className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">{t('studentAdventure.continueStory')}</button>
                             </div>
                         ) : (
                             <form onSubmit={handleStudentChatSubmit} className="flex gap-2">
-                                <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={aiResponse?.newQuestion ? "Введите ответ на вопрос..." : "Напишите что-нибудь..."} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500" disabled={isChatLoading} />
+                                <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500" disabled={isChatLoading} />
                                 <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 disabled:opacity-50"><FiSend /></button>
                             </form>
                         )}
                         <div className="text-center pt-4 border-t">
-                            <button onClick={() => { if (lesson) toast.error('This feature is not implemented yet.'); }} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> Я устал, хочу закончить</button>
+                            <button onClick={() => { if (lesson) toast.error(t('common.notImplemented')); }} disabled={isEndingLesson} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2 disabled:opacity-50"> <FiCoffee/> {t('studentAdventure.giveUp')}</button>
                         </div>
                     </div>
                 )}

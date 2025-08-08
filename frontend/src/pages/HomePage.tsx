@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { BookOpenIcon, AcademicCapIcon, LightBulbIcon } from '@/components/icons';
+import { useTranslation } from 'react-i18next';
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   return (
@@ -22,13 +24,11 @@ export default function HomePage() {
         </div>
         <div className="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Math Quest: Learn Math Through Adventure
+             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              {t('home.title')}
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              An interactive learning platform that combines the excitement of 
-              storytelling with the power of mathematics. Solve problems, defeat 
-              monsters, and unlock new chapters in your personalized adventure!
+              {t('home.subtitle')}
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               {isAuthenticated ? (
@@ -36,7 +36,7 @@ export default function HomePage() {
                   to={user?.role === 'student' ? '/student' : '/teacher'}
                   className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                 >
-                  Go to {user?.role === 'student' ? 'Student' : 'Teacher'} Dashboard
+                  {t('home.goToDashboard', { role: user?.role })}
                 </Link>
               ) : (
                 <>
@@ -44,13 +44,13 @@ export default function HomePage() {
                     to="/register"
                     className="rounded-md bg-gray-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
                   >
-                    Get started
+                    {t('register.short')}
                   </Link>
                   <Link
                     to="/login"
                     className="text-sm font-semibold leading-6 text-gray-900"
                   >
-                    Log in <span aria-hidden="true">→</span>
+                    {t('login.short')} <span aria-hidden="true">→</span>
                   </Link>
                 </>
               )}
@@ -75,34 +75,29 @@ export default function HomePage() {
       <div className="bg-white py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-gray-600">Learn better</h2>
+            <h2 className="text-base font-semibold leading-7 text-gray-600">{t('home.features.superTitle')}</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Everything you need to master math
+              {t('home.features.title')}
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Our platform combines engaging storytelling with personalized math problems 
-              to make learning fun and effective for students of all levels.
+              {t('home.features.subtitle')}
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
             <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16">
-              {[
-                {
-                  name: 'Interactive Stories',
-                  description:
-                    'Immerse yourself in captivating stories where your math skills determine the outcome of the adventure.',
+              {[{
+                  name: t('home.features.list.0.name'),
+                  description: t('home.features.list.0.description'),
                   icon: BookOpenIcon,
                 },
                 {
-                  name: 'Personalized Learning',
-                  description:
-                    'Problems adapt to your skill level, ensuring you\'re always challenged but never overwhelmed.',
+                  name: t('home.features.list.1.name'),
+                  description: t('home.features.list.1.description'),
                   icon: AcademicCapIcon,
                 },
                 {
-                  name: 'Real-time Feedback',
-                  description:
-                    'Get instant feedback on your answers with detailed explanations to help you learn from mistakes.',
+                  name: t('home.features.list.2.name'),
+                  description: t('home.features.list.2.description'),
                   icon: LightBulbIcon,
                 },
               ].map((feature) => (
@@ -128,21 +123,20 @@ export default function HomePage() {
         <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Ready to start your adventure?
+              {t('home.cta.title')}
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-200">
-              Join thousands of students who are already improving their math skills through 
-              engaging stories and interactive problems.
+              {t('home.cta.subtitle')}
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
                 to="/register"
                 className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-600 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                Get started
+                {t('home.getStarted')}
               </Link>
               <Link to="/login" className="text-sm font-semibold leading-6 text-white">
-                Log in <span aria-hidden="true">→</span>
+                {t('login.short')} <span aria-hidden="true">→</span>
               </Link>
             </div>
           </div>

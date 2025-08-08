@@ -2,6 +2,7 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { ContentSection, Lesson } from '../../../types/models';
 import { FiMove, FiTrash2, FiPlus, FiEdit2, FiSettings, FiShield } from 'react-icons/fi';
 import { LessonStatusIndicator } from './LessonStatusIndicator';
+import { useTranslation } from 'react-i18next';
 
 interface RoadmapSectionProps {
     section: ContentSection;
@@ -38,6 +39,7 @@ export const RoadmapSection = ({
     startEditing,
     stopEditing,
 }: RoadmapSectionProps) => {
+    const { t } = useTranslation();
     const regularLessons = section.lessons.filter(l => l.type !== 'CONTROL_WORK');
     const controlWorkLessons = section.lessons.filter(l => l.type === 'CONTROL_WORK');
 
@@ -67,7 +69,7 @@ export const RoadmapSection = ({
                                 <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
                                     <button 
                                         className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                        title="Редактировать название"
+                                        title={t('roadmapSection.editTitle')}
                                     >
                                         <FiEdit2 />
                                     </button>
@@ -78,7 +80,7 @@ export const RoadmapSection = ({
                         <button 
                             onClick={() => onRemoveSection(sectionIndex)} 
                             className="text-red-500 hover:text-red-700 p-1 ml-2 flex-shrink-0" 
-                            title="Удалить раздел"
+                            title={t('roadmapSection.removeSection')}
                         >
                             <FiTrash2 />
                         </button>
@@ -111,15 +113,15 @@ export const RoadmapSection = ({
                                                             <input type="text" value={lesson.title} onChange={(e) => onTitleChange(e.target.value, sectionIndex, originalLessonIndex)} onBlur={stopEditing} onKeyDown={(e) => e.key === 'Enter' && stopEditing()} autoFocus className="border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"/>
                                                         ) : (
                                                             <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
-                                                                <button className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Редактировать название"><FiEdit2 size={14} /></button>
+                                                                <button className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle')}><FiEdit2 size={14} /></button>
                                                                 <span className="cursor-pointer truncate">{lesson.title}</span>
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <span className="relative ml-2" title={isNewLesson ? "Сначала сохраните план, чтобы редактировать урок" : undefined}>
-                                                        <button onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, originalLessonIndex)} disabled={isNewLesson} className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? "Настроить контент" : undefined}><FiSettings /></button>
+                                                    <span className="relative ml-2" title={isNewLesson ? t('roadmapSection.savePlanFirst') : undefined}>
+                                                        <button onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, originalLessonIndex)} disabled={isNewLesson} className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? t('roadmapSection.configureContent') : undefined}><FiSettings /></button>
                                                     </span>
-                                                    <button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Удалить урок"><FiTrash2 size={14} /></button>
+                                                    <button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.removeLesson')}><FiTrash2 size={14} /></button>
                                                 </li>
                                             )}
                                         </Draggable>
@@ -150,7 +152,7 @@ export const RoadmapSection = ({
                                             />
                                         ) : (
                                             <div className="flex items-center group min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
-                                                <button className="mr-2 text-amber-600 hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" title="Редактировать название">
+                                                <button className="mr-2 text-amber-600 hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle')}>
                                                     <FiEdit2 size={14} />
                                                 </button>
                                                 <span className="font-semibold truncate text-amber-800 cursor-pointer">{cw.title}</span>
@@ -158,9 +160,9 @@ export const RoadmapSection = ({
                                         )}
                                     </div>
                                     <span className="relative ml-4">
-                                         <button onClick={() => onEditLesson(cw, sectionIndex, originalLessonIndex)} className='text-gray-500 hover:text-amber-800' title="Настроить контрольную работу"><FiSettings /></button>
+                                         <button onClick={() => onEditLesson(cw, sectionIndex, originalLessonIndex)} className='text-gray-500 hover:text-amber-800' title={t('roadmapSection.configureControlWork')}><FiSettings /></button>
                                     </span>
-                                    <button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} className="ml-2 text-red-500 hover:text-red-700" title="Удалить контрольную работу"><FiTrash2 size={14} /></button>
+                                    <button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} className="ml-2 text-red-500 hover:text-red-700" title={t('roadmapSection.removeControlWork')}><FiTrash2 size={14} /></button>
                                 </div>
                             </div>
                         );
@@ -171,7 +173,7 @@ export const RoadmapSection = ({
                         className="flex items-center text-sm text-blue-600 hover:text-blue-800 mt-4 ml-2"
                     >
                         <FiPlus size={16} className="mr-1" />
-                        Добавить урок
+                        {t('roadmapSection.addLesson')}
                     </button>
                     
                 </div>

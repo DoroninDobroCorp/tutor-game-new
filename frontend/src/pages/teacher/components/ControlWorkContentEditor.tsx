@@ -4,6 +4,7 @@ import { type Lesson } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiSend, FiSave } from 'react-icons/fi';
+import { useTranslation } from 'react-i18next';
 
 interface LessonContentBlock {
     id: string;
@@ -22,6 +23,7 @@ interface ControlWorkContentEditorProps {
 }
 
 export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkContentEditorProps) => {
+    const { t } = useTranslation();
     const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [userMessage, setUserMessage] = useState('');
@@ -46,7 +48,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
 
     const handleGenerateContent = async (e: React.FormEvent) => {
         e.preventDefault();
-        const messageToSend = userMessage.trim() || 'Сгенерируй первоначальный набор заданий для контрольной';
+        const messageToSend = userMessage.trim() || t('controlWorkContentEditor.generateInitialTasks');
         const newHistory = [...chatHistory, { role: 'user' as const, content: messageToSend }];
         setChatHistory(newHistory);
         setUserMessage('');
@@ -57,9 +59,9 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
             const blocksWithIds = (responseData.blocks || []).map((b: any, i: number) => ({ ...b, id: `gen-block-${i}-${Date.now()}` }));
             setBlocks(blocksWithIds);
             setChatHistory(prev => [...prev, { role: 'assistant', content: responseData.chatResponse }]);
-            toast.success('Задания обновлены!');
+            toast.success(t('controlWorkContentEditor.tasksUpdated'));
         } catch (err: any) {
-            toast.error(err.data?.message || 'Не удалось сгенерировать контент.');
+            toast.error(err.data?.message || t('controlWorkContentEditor.generateError'));
             setChatHistory(chatHistory); // Revert history
         }
     };
@@ -68,10 +70,10 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
         const blocksToSave = blocks.map(({ id, ...rest }) => rest);
         try {
             await updateContent({ lessonId: lesson.id, content: { blocks: blocksToSave } }).unwrap();
-            toast.success('Контрольная работа сохранена!');
+            toast.success(t('controlWorkContentEditor.controlWorkSaved'));
             onCloseModal();
         } catch {
-            toast.error('Не удалось сохранить контент.');
+            toast.error(t('controlWorkContentEditor.saveError'));
         }
     };
 
@@ -85,19 +87,19 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
         <div className="rounded-xl p-3 max-h-[75vh] flex flex-col">
             <div className="flex-grow overflow-y-auto pr-2 space-y-4">
                 <p className="text-sm text-gray-600">
-                    Начните диалог с ИИ, чтобы сгенерировать задания для контрольной. Вы можете попросить его что-то изменить, добавить или убрать.
+                    {t('controlWorkContentEditor.startDialogDescription')}
                 </p>
                 {blocks.length > 0 && (
                     <div className="space-y-3">
                         {blocks.map((block, index) => (
                             <div key={block.id} className="p-4 rounded-md border bg-amber-50 border-amber-200">
-                                <label className="font-semibold text-gray-700">Задание {index + 1}</label>
+                                <label className="font-semibold text-gray-700">{t('controlWorkContentEditor.task', { number: index + 1 })}</label>
                                 <textarea 
                                     value={block.content} 
                                     onChange={(e) => handleBlockContentChange(index, e.target.value)}
                                     rows={4} 
                                     className="w-full p-2 border border-gray-300 rounded-md text-sm mt-2" 
-                                    placeholder="Текст задания..." 
+                                    placeholder={t('controlWorkContentEditor.taskTextPlaceholder')} 
                                 />
                             </div>
                         ))}
@@ -119,7 +121,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                         rows={1} 
                         value={userMessage} 
                         onChange={e => setUserMessage(e.target.value)} 
-                        placeholder={blocks.length > 0 ? "Попросить ИИ переделать..." : "Начать генерацию..."} 
+                        placeholder={blocks.length > 0 ? t('controlWorkContentEditor.askAiToRedo') : t('controlWorkContentEditor.startGeneration')} 
                         className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" 
                     />
                     <button type="submit" disabled={isGenerating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
@@ -134,7 +136,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                     onClick={onCloseModal} 
                     className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
-                    Закрыть
+                    {t('controlWorkContentEditor.close')}
                 </button>
                 <button 
                     type="button" 
@@ -143,7 +145,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                     className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isSaving ? <Spinner size="sm" /> : <FiSave />}
-                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                    {isSaving ? t('controlWorkContentEditor.saving') : t('controlWorkContentEditor.save')}
                 </button>
             </div>
         </div>

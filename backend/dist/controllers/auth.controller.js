@@ -6,12 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.refreshTokenHandler = exports.logoutHandler = exports.getMeHandler = exports.loginHandler = exports.registerHandler = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const auth_service_1 = require("../services/auth.service");
-const error_middleware_1 = require("../middlewares/error.middleware");
+const errors_1 = require("../utils/errors");
 const env_1 = require("../config/env");
 // Simple password validation
 const validatePassword = (password) => {
     if (password.length < 4) {
-        throw new error_middleware_1.AppError('Password must be at least 4 characters long', 400);
+        throw new errors_1.AppError('Password must be at least 4 characters long', 400);
     }
 };
 const registerHandler = async (req, res) => {
@@ -29,16 +29,16 @@ const registerHandler = async (req, res) => {
         }
         // Validate required fields
         if (!email || !password || !role) {
-            throw new error_middleware_1.AppError('Email, password, and role are required', 400);
+            throw new errors_1.AppError('Email, password, and role are required', 400);
         }
         console.log('Processing registration for:', { email, role, firstName, lastName });
         // Validate email format
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            throw new error_middleware_1.AppError('Invalid email format', 400);
+            throw new errors_1.AppError('Invalid email format', 400);
         }
         // Validate role
         if (!['TEACHER', 'STUDENT'].includes(role)) {
-            throw new error_middleware_1.AppError('Invalid role. Must be TEACHER or STUDENT', 400);
+            throw new errors_1.AppError('Invalid role. Must be TEACHER or STUDENT', 400);
         }
         // Validate password
         validatePassword(password);
@@ -73,7 +73,7 @@ const registerHandler = async (req, res) => {
     }
     catch (error) {
         console.error('Registration error:', error);
-        if (error instanceof error_middleware_1.AppError) {
+        if (error instanceof errors_1.AppError) {
             return res.status(error.statusCode).json({
                 success: false,
                 message: error.message,
@@ -91,7 +91,7 @@ const loginHandler = async (req, res) => {
     console.log(`Login attempt from IP: ${ip}`);
     const { email, password } = req.body;
     if (!email || !password) {
-        throw new error_middleware_1.AppError('Please provide email and password', 400);
+        throw new errors_1.AppError('Please provide email and password', 400);
     }
     try {
         console.log(`Attempting to log in user: ${email}`);
@@ -146,11 +146,11 @@ const loginHandler = async (req, res) => {
 exports.loginHandler = loginHandler;
 const getMeHandler = async (req, res) => {
     if (!req.user) {
-        throw new error_middleware_1.AppError('Not authenticated', 401);
+        throw new errors_1.AppError('Not authenticated', 401);
     }
     const user = await (0, auth_service_1.getCurrentUser)(req.user.userId);
     if (!user) {
-        throw new error_middleware_1.AppError('User not found', 404);
+        throw new errors_1.AppError('User not found', 404);
     }
     // Create standardized user object with lowercase role
     const userData = {
@@ -219,7 +219,7 @@ const refreshTokenHandler = async (req, res, next) => {
     // Try to get refresh token from cookies first
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) {
-        throw new error_middleware_1.AppError('Refresh token is required', 400);
+        throw new errors_1.AppError('Refresh token is required', 400);
     }
     try {
         // Get the old refresh token's expiration before it's blacklisted
@@ -230,7 +230,7 @@ const refreshTokenHandler = async (req, res, next) => {
         }
         catch (error) {
             console.error('Error decoding refresh token:', error);
-            throw new error_middleware_1.AppError('Invalid refresh token', 401);
+            throw new errors_1.AppError('Invalid refresh token', 401);
         }
         // Get new tokens
         const { accessToken, refreshToken: newRefreshToken } = await (0, auth_service_1.refreshTokens)(refreshToken);
@@ -272,7 +272,7 @@ const refreshTokenHandler = async (req, res, next) => {
             path: '/api/auth/refresh',
         });
         console.error('Refresh token error:', error);
-        throw new error_middleware_1.AppError('Invalid or expired refresh token', 401);
+        throw new errors_1.AppError('Invalid or expired refresh token', 401);
     }
 };
 exports.refreshTokenHandler = refreshTokenHandler;

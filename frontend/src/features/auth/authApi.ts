@@ -1,5 +1,6 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import { logout, setUser, User, UserRole } from './authSlice';
+import { logout, setUser } from './authSlice';
+import type { User, UserRole } from '../../types/models';
 
 // Types for our API
 type LoginCredentials = {

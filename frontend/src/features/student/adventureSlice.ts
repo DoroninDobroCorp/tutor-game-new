@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
 
-interface AdventureState {
+export interface AdventureState {
     currentLessonId: string | null;
     practiceAnswers: Record<number, string>;
     storyResponse: string;

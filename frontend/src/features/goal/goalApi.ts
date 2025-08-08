@@ -1,9 +1,7 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import { toast } from 'react-hot-toast';
 import type { 
     LearningGoal,
     RoadmapProposal,
-    ContentSection,
     StoryChapterHistory
 } from '../../types/models';
 

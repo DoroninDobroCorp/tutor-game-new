@@ -5,9 +5,11 @@ import { type Lesson } from '../../types/models';
 import { LessonContentEditor } from './components/LessonContentEditor';
 import LessonStoryEditor from './components/LessonStoryEditor';
 import { ControlWorkContentEditor } from './components/ControlWorkContentEditor';
+import { useTranslation } from 'react-i18next';
 
 // Lightbox component is now defined and managed within the modal
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
+    const { t } = useTranslation();
     return (
         <div 
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[9999]" 
@@ -21,7 +23,7 @@ const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
             </button>
             <img 
                 src={src} 
-                alt="Full view" 
+                alt={t('lessonEditor.fullView')} 
                 className="max-w-[90vw] max-h-[90vh] object-contain" 
                 onClick={(e) => e.stopPropagation()} 
             />
@@ -34,6 +36,7 @@ function classNames(...classes: (string | boolean)[]) {
 }
 
 export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen: boolean; onClose: () => void; lesson: Lesson | null; }) {
+    const { t } = useTranslation();
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [currentTab, setCurrentTab] = useState(0);
 
@@ -72,7 +75,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                         >
                             <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
-                                    Редактирование урока: {lesson.title}
+                                    {t('lessonEditor.title', { title: lesson.title })}
                                 </Dialog.Title>
 
                                 <Tab.Group selectedIndex={currentTab} onChange={setCurrentTab}>
@@ -88,7 +91,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                                 )
                                             }
                                         >
-                                            Контент урока
+                                            {t('lessonEditor.lessonContent')}
                                         </Tab>
                                         <Tab
                                             className={({ selected }) =>
@@ -101,7 +104,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                                 )
                                             }
                                         >
-                                            История
+                                            {t('lessonEditor.story')}
                                         </Tab>
                                     </Tab.List>
                                     <Tab.Panels className="mt-4">

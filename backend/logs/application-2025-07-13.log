@@ -1,5 +1,0 @@
-{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-13T09:00:35.236Z"}
-{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-13T09:25:23.167Z"}
-{"level":"info","message":"Login attempt for email: MayaDoronina@gmail.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-13T12:59:22.918Z"}
-{"level":"info","message":"Login attempt for email: testteacher@example.com from IP: ::1","service":"tutor-game-api","timestamp":"2025-07-13T13:52:22.400Z"}
-{"level":"info","message":"Cleaned up 1 expired blacklisted tokens","service":"tutor-game-api","timestamp":"2025-07-13T13:59:11.847Z"}

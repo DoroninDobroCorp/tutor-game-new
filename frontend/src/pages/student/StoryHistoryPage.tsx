@@ -2,8 +2,10 @@ import { useParams, Link } from 'react-router-dom';
 import { useGetStoryHistoryQuery } from '../../features/student/studentApi';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft } from 'react-icons/fi';
+import { useTranslation } from 'react-i18next';
 
 const StoryHistoryPage = () => {
+    const { t } = useTranslation();
     const { goalId } = useParams<{ goalId: string }>();
     const { data: storyChapters, isLoading, isError } = useGetStoryHistoryQuery(goalId!, {
         skip: !goalId,
@@ -14,7 +16,7 @@ const StoryHistoryPage = () => {
     }
 
     if (isError) {
-        return <div className="text-center p-8 text-red-500">Ошибка загрузки истории.</div>;
+        return <div className="text-center p-8 text-red-500">{t('storyHistory.loadingError')}</div>;
     }
 
     return (
@@ -22,17 +24,17 @@ const StoryHistoryPage = () => {
             <div className="mb-6">
                 <Link to="/student" className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
-                    Назад к панели управления
+                    {t('storyHistory.backToDashboard')}
                 </Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">История вашего приключения</h1>
+            <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">{t('storyHistory.title')}</h1>
 
             <div className="space-y-12">
                 {storyChapters && storyChapters.length > 0 ? (
                     storyChapters.map((chapter, index) => (
                         <div key={chapter.id} className="bg-white rounded-lg shadow-md p-6">
                             <h2 className="text-xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-gray-200">
-                                Глава {index + 1}: {chapter.lesson.title}
+                                {t('storyHistory.chapter', { number: index + 1, title: chapter.lesson.title })}
                             </h2>
                             
                             {chapter.teacherSnippetText && (
@@ -40,12 +42,12 @@ const StoryHistoryPage = () => {
                                     {chapter.teacherSnippetImageUrl && (
                                         <img
                                             src={chapter.teacherSnippetImageUrl}
-                                            alt={`Illustration for chapter ${index + 1}`}
+                                            alt={t('storyHistory.chapterIllustration', { number: index + 1 })}
                                             className="w-full md:w-1/3 rounded-lg shadow-lg object-cover"
                                         />
                                     )}
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-700">Рассказчик:</p>
+                                        <p className="font-semibold text-gray-700">{t('storyHistory.narrator')}:</p>
                                         <p className="mt-2 text-gray-700 italic leading-relaxed whitespace-pre-wrap">{chapter.teacherSnippetText}</p>
                                     </div>
                                 </div>
@@ -54,11 +56,11 @@ const StoryHistoryPage = () => {
                             {chapter.studentSnippetText && (
                                 <div className="flex justify-end mt-4">
                                     <div className="w-full md:w-5/6 bg-blue-50 p-4 rounded-lg shadow-inner border-l-4 border-blue-400">
-                                        <p className="font-semibold text-blue-800">Ваш ответ:</p>
+                                        <p className="font-semibold text-blue-800">{t('storyHistory.yourAnswer')}:</p>
                                          {chapter.studentSnippetImageUrl && (
                                             <img
                                                 src={chapter.studentSnippetImageUrl}
-                                                alt="Your submitted image"
+                                                alt={t('storyHistory.yourSubmittedImage')}
                                                 className="mt-2 w-full md:w-1/2 rounded-lg shadow-md object-cover"
                                             />
                                         )}
@@ -70,7 +72,7 @@ const StoryHistoryPage = () => {
                     ))
                 ) : (
                     <div className="text-center py-16 bg-white rounded-lg shadow">
-                        <p className="text-gray-500">История этого приключения еще не началась.</p>
+                        <p className="text-gray-500">{t('storyHistory.noStoryYet')}</p>
                     </div>
                 )}
             </div>
