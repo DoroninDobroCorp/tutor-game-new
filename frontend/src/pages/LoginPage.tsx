@@ -64,13 +64,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
             {t('login.title')}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600">
             {t('login.or')}{' '}
             <Link
               to="/register"
@@ -105,7 +105,7 @@ export default function LoginPage() {
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-8 space-y-6 card" onSubmit={handleSubmit(onSubmit)}>
           <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -116,9 +116,7 @@ export default function LoginPage() {
                 id="email-address"
                 type="email"
                 autoComplete="email"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                className={`input rounded-b-none ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                 placeholder={t('login.email')}
                 {...register('email')}
               />
@@ -134,9 +132,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                className={`input rounded-t-none ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                 placeholder={t('login.password')}
                 {...register('password')}
               />
@@ -176,9 +172,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
-                isLoading ? 'opacity-75 cursor-not-allowed' : ''
-              }`}
+              className={`btn-primary w-full ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
             >
               {isLoading ? t('login.signingIn') : t('login.signIn')}
             </button>

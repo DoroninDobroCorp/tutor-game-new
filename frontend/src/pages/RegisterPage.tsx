@@ -89,13 +89,13 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
             {t('register.title')}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600">
             {t('register.alreadyMember')}{' '}
             <Link
               to="/login"
@@ -130,7 +130,7 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-8 space-y-6 card" onSubmit={handleSubmit(onSubmit)}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
@@ -141,9 +141,7 @@ export default function RegisterPage() {
                   id="first-name"
                   type="text"
                   autoComplete="given-name"
-                  className={`appearance-none rounded relative block w-full px-3 py-2 border ${
-                    errors.firstName ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-tl-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                  className={`input ${errors.firstName ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                   placeholder={t('register.firstName')}
                   {...register('firstName')}
                 />
@@ -159,9 +157,7 @@ export default function RegisterPage() {
                   id="last-name"
                   type="text"
                   autoComplete="family-name"
-                  className={`appearance-none rounded relative block w-full px-3 py-2 border ${
-                    errors.lastName ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-tr-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                  className={`input ${errors.lastName ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                   placeholder={t('register.lastName')}
                   {...register('lastName')}
                 />
@@ -179,9 +175,7 @@ export default function RegisterPage() {
                 id="email-address"
                 type="email"
                 autoComplete="email"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                className={`input ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                 placeholder={t('register.email')}
                 {...register('email')}
               />
@@ -198,9 +192,7 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                className={`input ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                 placeholder={t('register.password')}
                 {...register('password')}
               />
@@ -217,9 +209,7 @@ export default function RegisterPage() {
                 id="confirm-password"
                 type="password"
                 autoComplete="new-password"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
-                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm`}
+                className={`input ${errors.confirmPassword ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
                 placeholder="Confirm password"
                 {...register('confirmPassword')}
               />
@@ -242,11 +232,11 @@ export default function RegisterPage() {
                 />
                 <label
                   htmlFor="student-role"
-                  className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-md border ${
+                  className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-xl border ${
                     watch('role') === 'student'
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } cursor-pointer`}
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                      : 'border-gray-300 text-gray-700 hover:bg-white/70'
+                  } cursor-pointer transition`}
                 >
                   {t('register.student')}
                 </label>
@@ -261,11 +251,11 @@ export default function RegisterPage() {
                 />
                 <label
                   htmlFor="teacher-role"
-                  className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-md border ${
+                  className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-xl border ${
                     watch('role') === 'teacher'
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } cursor-pointer`}
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                      : 'border-gray-300 text-gray-700 hover:bg-white/70'
+                  } cursor-pointer transition`}
                 >
                   {t('register.teacher')}
                 </label>
@@ -277,9 +267,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                isLoading ? 'opacity-75 cursor-not-allowed' : ''
-              }`}
+              className={`btn-primary w-full ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
             >
               {isLoading ? t('register.creatingAccount') : t('register.createAccount')}
             </button>

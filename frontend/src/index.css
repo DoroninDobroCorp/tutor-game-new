@@ -1,3 +1,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply text-gray-800 antialiased bg-gradient-to-br from-indigo-50 via-blue-50 to-red-50;
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .bg-dot-grid {
+    background-image: radial-gradient(rgba(2, 6, 23, 0.08) 1px, transparent 1px);
+    background-size: 18px 18px;
+    background-position: -9px -9px;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-indigo-100;
+  }
+
+  .card {
+    @apply glass rounded-2xl p-6;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-white font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-500 active:scale-[0.99] transition;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-white/80 text-gray-700 px-4 py-2.5 shadow hover:bg-white active:scale-[0.99] transition;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 px-3 py-1 text-xs font-semibold;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-gray-300 bg-white/80 px-3 py-2 text-gray-900 placeholder-gray-400 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-8px) translateX(4px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
