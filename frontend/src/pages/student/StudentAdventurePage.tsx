@@ -347,7 +347,7 @@ export default function StudentAdventurePage() {
                 <div className="text-center p-10 bg-white rounded-lg shadow">
                     <h2 className="text-2xl font-bold text-green-600">{t('studentAdventure.congratulations')}</h2>
                     <p className="mt-4 text-lg text-gray-700">{t('studentAdventure.allLessonsCompleted')}</p>
-                    <button onClick={() => navigate('/student')} className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md">{t('studentAdventure.backToCabinet')}</button>
+                    <button onClick={() => navigate('/student')} className="mt-6 btn-primary">{t('studentAdventure.backToCabinet')}</button>
                 </div>
             );
         }
@@ -418,8 +418,8 @@ export default function StudentAdventurePage() {
                         {isChatLoading && <div className="flex justify-start"><div className="px-4 py-2 rounded-lg shadow bg-white"><Spinner size="sm"/></div></div>}
                     </div>
                     <form onSubmit={handleControlWorkSubmit} className="flex gap-2">
-                        <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" disabled={isChatLoading} />
-                        <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                        <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} className="input flex-1" disabled={isChatLoading} />
+                        <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="btn-primary disabled:opacity-50"><FiSend /></button>
                     </form>
                     <div className="text-center pt-4 border-t">
                         <button onClick={handleGiveUp} className="text-sm text-gray-500 hover:text-red-600 flex items-center justify-center mx-auto gap-2"> <FiThumbsDown/> {t('studentAdventure.giveUp')}</button>
@@ -435,7 +435,7 @@ export default function StudentAdventurePage() {
                 {lessonPhase === 'content' && (
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <p className="text-sm text-gray-500 mb-4">{currentBlockIndex + 1} / {blocks.length}</p>
-                        <div className={`p-4 border-l-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'border-blue-500 bg-blue-50' : currentBlock.type === 'practice' ? 'border-purple-500 bg-purple-50' : 'border-red-500 bg-red-50' }`}>
+                        <div className={`p-4 rounded-r-lg ${ currentBlock.type === 'theory' ? 'block-theory' : currentBlock.type === 'practice' ? 'block-practice' : 'block-alert' }`}>
                             <h3 className="font-semibold capitalize text-lg mb-2">{currentBlock.type === 'youtube' ? t('studentAdventure.video') : currentBlock.type}</h3>
                             {currentBlock.type === 'youtube' ? <YoutubeEmbed url={currentBlock.content} /> : <p className="text-gray-800" dangerouslySetInnerHTML={{ __html: currentBlock.content }} />}
                             {currentBlock.type === 'practice' && (
@@ -449,7 +449,7 @@ export default function StudentAdventurePage() {
                             <button onClick={handlePreviousBlock} disabled={currentBlockIndex === 0} className="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                 <FiChevronLeft /> {t('studentAdventure.previous')}
                             </button>
-                            <button onClick={handleNextBlock} disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 flex items-center gap-2">
+                            <button onClick={handleNextBlock} disabled={isSubmitting} className="btn-primary flex items-center gap-2">
                                 {currentBlockIndex >= blocks.length - 1 ? t('studentAdventure.finishLesson') : t('studentAdventure.next')} <FiChevronRight />
                             </button>
                         </div>
@@ -477,7 +477,7 @@ export default function StudentAdventurePage() {
                         ) : (
                             <form onSubmit={handleStudentChatSubmit} className="flex gap-2">
                                 <input type="text" value={studentChatMessage} onChange={(e) => setStudentChatMessage(e.target.value)} placeholder={t('studentAdventure.yourAnswerPlaceholder')} className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500" disabled={isChatLoading} />
-                                <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 disabled:opacity-50"><FiSend /></button>
+                                <button type="submit" disabled={!studentChatMessage.trim() || isChatLoading} className="btn-primary disabled:opacity-50"><FiSend /></button>
                             </form>
                         )}
                         <div className="text-center pt-4 border-t">

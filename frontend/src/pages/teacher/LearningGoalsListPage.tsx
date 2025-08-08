@@ -37,7 +37,7 @@ export default function LearningGoalsListPage() {
         <h1 className="text-2xl font-bold text-gray-900">{t('learningGoalsList.title')}</h1>
         <Link
           to="/teacher/create-goal"
-          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          className="btn-primary"
         >
           + {t('learningGoalsList.createNewPlan')}
         </Link>
@@ -55,9 +55,9 @@ export default function LearningGoalsListPage() {
                     </div>
                   </Link>
                   <div className="ml-4 flex-shrink-0 flex items-center space-x-4">
-                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {t('learningGoalsList.sectionsCount', { count: goal.sections?.length || 0 })}
-                    </p>
+                     <span className="chip">
+                       {t('learningGoalsList.sectionsCount', { count: goal.sections?.length || 0 })}
+                     </span>
                     <button
                       onClick={() => handleDelete(goal.id, goal.subject)}
                       disabled={isDeleting}

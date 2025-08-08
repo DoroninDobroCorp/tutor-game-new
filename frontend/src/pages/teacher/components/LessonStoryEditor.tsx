@@ -145,7 +145,7 @@ const LessonStoryEditor = ({ lesson, setLightboxImage }: LessonStoryEditorProps)
                     <div className="mt-2">
                         <input type="text" value={refinementPrompt} onChange={e => setRefinementPrompt(e.target.value)} className="w-full p-2 border rounded-md text-sm" placeholder={t('lessonStoryEditor.refinementPromptPlaceholder')} disabled={isLoading} />
                     </div>
-                     <button onClick={handleGenerateStory} disabled={isGeneratingStory} className="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                    <button onClick={handleGenerateStory} disabled={isGeneratingStory} className="mt-2 w-full btn-primary text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                         {isGeneratingStory ? <Spinner size="sm" /> : <FiRefreshCw size={16} />} <span>{t('lessonStoryEditor.generateStoryText')}</span>
                     </button>
                 </div>

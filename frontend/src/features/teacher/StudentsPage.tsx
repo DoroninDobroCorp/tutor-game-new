@@ -35,7 +35,7 @@ export default function StudentsPage() {
         <h1 className="text-2xl font-bold text-gray-900">My Students</h1>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+          className="btn-primary"
         >
           {showAddForm ? 'Cancel' : 'Add Student'}
         </button>
@@ -62,12 +62,12 @@ export default function StudentsPage() {
                   })}
                   className={`flex-1 min-w-0 block w-full px-3 py-2 rounded-md border ${
                     errors.email ? 'border-red-300' : 'border-gray-300'
-                  } focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  } focus:ring-gray-500 focus:border-gray-500 sm:text-sm`}
                   placeholder="student@example.com"
                 />
                 <button
                   type="submit"
-                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  className="ml-3 btn-primary"
                 >
                   Connect
                 </button>
@@ -104,7 +104,7 @@ export default function StudentsPage() {
             <div className="mt-6">
               <button
                 onClick={() => setShowAddForm(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                className="btn-primary"
               >
                 <svg
                   className="-ml-1 mr-2 h-5 w-5"
@@ -129,8 +129,8 @@ export default function StudentsPage() {
               <li key={student.id} className="px-6 py-4 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span className="text-indigo-600 font-medium">
+                <div className="flex-shrink-0 h-10 w-10 rounded-full brand-soft flex items-center justify-center">
+                      <span className="font-medium">
                         {student.firstName?.[0]?.toUpperCase() || 'S'}
                       </span>
                     </div>

@@ -87,6 +87,8 @@ const ThemeSwitcher = () => {
     { id: 'warm', label: 'Warm' },
     { id: 'mono', label: 'Mono' },
     { id: 'ocean', label: 'Ocean' },
+    { id: 'playful', label: 'Playful' },
+    { id: 'vibrant', label: 'Vibrant' },
   ];
 
   const applyTheme = (themeId: string) => {
@@ -113,7 +115,7 @@ const ThemeSwitcher = () => {
     <div className="relative">
       <select
         aria-label="Theme"
-        className="btn-secondary text-sm px-3 py-1 pr-8 appearance-none"
+        className="select text-sm pr-8"
         defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('mq_theme') || 'default') : 'default'}
         onChange={(e) => applyTheme(e.target.value)}
       >
@@ -239,9 +241,12 @@ export default function Layout() {
                   leaveTo="-translate-x-full"
                 >
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                    <div className="flex grow flex-col gap-y-5 overflow-y-auto glass px-6 pb-4">
+                    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
-                        <h1 className="text-2xl font-heading font-extrabold bg-clip-text text-transparent" style={{ background: 'linear-gradient(90deg, var(--brand-600), var(--brand-500))' }}>{t('app.name')}</h1>
+                        <Link to="/" className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/70 transition">
+                          <span className="inline-block h-6 w-6 rounded-lg brand-bg" />
+                          <span className="text-lg font-heading font-extrabold brand-text">{t('app.name')}</span>
+                        </Link>
                       </div>
                       <nav className="flex flex-1 flex-col">
                         <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -295,13 +300,14 @@ export default function Layout() {
             'hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:flex-col transition-all duration-300 ease-in-out',
             isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
           )}>
-            <div className="flex grow flex-col gap-y-5 overflow-y-auto glass px-4 pb-4">
+            <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/90 backdrop-blur px-4 pb-4">
               <div className="flex h-16 shrink-0 items-center justify-between px-2">
                 <Link to="/" className={classNames(
-                  'text-xl font-heading font-extrabold bg-clip-text text-transparent whitespace-nowrap transition-opacity duration-200',
+                  'flex items-center gap-2 whitespace-nowrap transition-opacity duration-200',
                   isSidebarCollapsed && 'opacity-0 w-0'
-                )} style={{ background: 'linear-gradient(90deg, var(--brand-600), var(--brand-500))' }}>
-                  {t('app.name')}
+                )}>
+                  <span className="inline-block h-6 w-6 rounded-lg brand-bg" />
+                  <span className="text-xl font-heading font-extrabold brand-text">{t('app.name')}</span>
                 </Link>
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -348,12 +354,7 @@ export default function Layout() {
                       <div className={classNames('text-xs font-semibold leading-6 text-soft truncate', isSidebarCollapsed && 'hidden')}>
                         {user?.email}
                       </div>
-                      {!isSidebarCollapsed && (
-                        <div className="flex items-center gap-2">
-                          <ThemeSwitcher />
-                          <LanguageSwitcher />
-                        </div>
-                      )}
+                      {/* Controls moved to header */}
                     </div>
                     <button
                       onClick={handleLogout}
@@ -389,10 +390,11 @@ export default function Layout() {
           )}
 
           <div className="flex flex-1 justify-end gap-x-3 self-stretch lg:gap-x-4">
-            <div className="flex items-center gap-x-4 lg:gap-x-6">
+            <div className="flex items-center gap-x-3 lg:gap-x-4">
               {isAuthenticated ? (
                 <>
                   <ThemeSwitcher />
+                  <LanguageSwitcher />
                   <Link to={chatPath} className="relative icon-link">
                     <span className="sr-only">{t('layout.viewMessages')}</span>
                     <ChatBubbleLeftEllipsisIcon className="h-6 w-6" aria-hidden="true" />

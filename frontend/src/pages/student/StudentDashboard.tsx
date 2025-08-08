@@ -33,33 +33,33 @@ export default function StudentDashboard() {
   
   return (
     <div className="w-full p-4 md:p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+      <h1 className="text-2xl font-bold mb-6" style={{color: 'var(--text-color)'}}>
         {t('studentDashboard.welcome', { name: user?.firstName || t('studentDashboard.student') })}
       </h1>
       
       <div className="space-y-8">
-        <section className="bg-white p-6 rounded-lg shadow">
+        <section className="card">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">{t('studentDashboard.quickAccess')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link 
               to="/student/adventure" 
-              className="p-6 border rounded-lg hover:bg-gray-50 transition-colors bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 hover:shadow-md"
+              className="p-6 rounded-xl hover:bg-white/70 transition-colors brand-gradient text-white"
             >
-              <h3 className="font-medium text-xl text-blue-700">🏰 {t('studentDashboard.continueAdventure')}</h3>
-              <p className="text-sm text-blue-600 mt-2">{t('studentDashboard.returnToLastLesson')}</p>
+              <h3 className="font-medium text-xl">🏰 {t('studentDashboard.continueAdventure')}</h3>
+              <p className="text-sm mt-2 opacity-90">{t('studentDashboard.returnToLastLesson')}</p>
             </Link>
             
             <Link 
               to="/student/chat" 
-              className="p-6 border rounded-lg hover:bg-gray-50 transition-colors bg-gradient-to-br from-green-50 to-teal-50 border-green-100 hover:shadow-md"
+              className="p-6 rounded-xl hover:bg-white/70 transition-colors glass"
             >
-              <h3 className="font-medium text-xl text-green-700">💬 {t('studentDashboard.chatWithTeacher')}</h3>
-              <p className="text-sm text-green-600 mt-2">{t('studentDashboard.askQuestion')}</p>
+              <h3 className="font-medium text-xl">💬 {t('studentDashboard.chatWithTeacher')}</h3>
+              <p className="text-sm text-soft mt-2">{t('studentDashboard.askQuestion')}</p>
             </Link>
           </div>
         </section>
 
-        <section className="bg-white p-6 rounded-lg shadow">
+        <section className="card">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">{t('studentDashboard.myLearningGoals')}</h2>
           {learningGoals.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -79,13 +79,13 @@ export default function StudentDashboard() {
                   <div className="mt-4 flex flex-col sm:flex-row gap-2">
                     <Link 
                       to={`/student/story/${goal.id}`}
-                      className="flex-1 text-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="flex-1 text-center btn-secondary text-sm"
                     >
                       {t('studentDashboard.readStory')}
                     </Link>
                     <Link 
                       to={`/student/goal/${goal.id}/completed`}
-                      className="flex-1 text-center px-4 py-2 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 transition-colors"
+                      className="flex-1 text-center btn-primary text-sm"
                     >
                       {t('studentDashboard.pastLessons')}
                     </Link>

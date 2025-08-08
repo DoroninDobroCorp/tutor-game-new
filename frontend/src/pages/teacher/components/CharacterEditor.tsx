@@ -154,7 +154,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                      <button 
                         onClick={handleSaveDescription} 
                         disabled={isLoading || !prompt.trim()} 
-                        className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        className="btn-primary disabled:opacity-50"
                     >
                         {isSavingPrompt ? <Spinner size="sm" className="mr-2" /> : <FiSave className="mr-2" />}
                         {t('characterEditor.saveDescription')}
@@ -163,7 +163,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                 <button 
                     onClick={handleGenerate} 
                     disabled={isLoading || !prompt.trim()} 
-                    className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+                    className="btn-secondary disabled:opacity-50"
                 >
                     {isGenerating ? <Spinner size="sm" className="mr-2" /> : <FiUserPlus className="mr-2" />}
                     {isGenerating ? t('characterEditor.creating') : (goal.characterImageUrl ? t('characterEditor.newCharacterAndPhoto') : t('characterEditor.create'))}
@@ -172,7 +172,7 @@ export const CharacterEditor = ({ goal }: CharacterEditorProps) => {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isLoading}
-                    className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                    className="btn-primary disabled:opacity-50"
                 >
                     {isUploading ? <Spinner size="sm" className="mr-2" /> : <FiUpload className="mr-2" />}
                     {t('characterEditor.uploadPhoto')}

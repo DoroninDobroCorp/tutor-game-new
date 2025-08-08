@@ -123,7 +123,7 @@ export default function CreateGoalPage() {
                 <button 
                     type="submit" 
                     disabled={isCreating || !students?.length}
-                    className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isCreating ? t('createGoal.creating') : t('createGoal.createAndGoToPlan')}
                 </button>

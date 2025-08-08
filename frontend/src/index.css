@@ -99,6 +99,62 @@
     --bg-grad-to: #f5f3ff;  /* violet-50 */
   }
 
+  /* Vibrant (яркая) */
+  :root[data-theme='vibrant'] {
+    --brand-600: #f97316; /* orange-500 */
+    --brand-500: #ec4899; /* pink-500 */
+    --brand-400: #fb923c; /* orange-400 */
+
+    --text-color: #0f172a; /* slate-900 */
+    --secondary-bg: rgba(255, 255, 255, 0.9);
+    --input-bg: rgba(255, 255, 255, 0.95);
+
+    --chip-bg: #ffe4e6;  /* rose-100 */
+    --chip-text: #9f1239; /* rose-800 */
+    --muted: #475569; /* slate-600 */
+    --badge-bg: #ec4899;  /* pink-500 */
+    --ring-soft: rgba(249, 115, 22, 0.18); /* orange-500/18 */
+
+    --glass-bg: rgba(255, 255, 255, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.42);
+    --shadow-color: rgba(236, 72, 153, 0.16);
+
+    --bg-grad-from: #fff7ed; /* orange-50 */
+    --bg-grad-via: #fff1f2; /* rose-50 */
+    --bg-grad-to: #f0f9ff;  /* sky-50 */
+
+    --swirl-from: rgba(249, 115, 22, 0.35); /* orange-500/35 */
+    --swirl-to: rgba(236, 72, 153, 0.35);   /* pink-500/35 */
+  }
+
+  /* Playful (Coolors) https://coolors.co/palette/ef476f-ffd166-06d6a0-118ab2-073b4c */
+  :root[data-theme='playful'] {
+    --brand-600: #ef476f; /* pink-red */
+    --brand-500: #118ab2; /* blue */
+    --brand-400: #06d6a0; /* teal-green */
+
+    --text-color: #073b4c; /* deep teal */
+    --secondary-bg: rgba(255, 255, 255, 0.9);
+    --input-bg: rgba(255, 255, 255, 0.92);
+
+    --chip-bg: #ffe8a3;  /* soft yellow from #ffd166 */
+    --chip-text: #7a4a00; /* warm brown */
+    --muted: #4b5563; /* gray-600 */
+    --badge-bg: #ef476f; /* pink-red */
+    --ring-soft: rgba(17, 138, 178, 0.18); /* blue */
+
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.42);
+    --shadow-color: rgba(17, 138, 178, 0.16);
+
+    --bg-grad-from: #fff0f2; /* very light pink */
+    --bg-grad-via: #fff7e0; /* very light yellow */
+    --bg-grad-to: #e8fdf4;  /* very light mint */
+
+    --swirl-from: rgba(255, 209, 102, 0.35); /* #FFD166 */
+    --swirl-to: rgba(6, 214, 160, 0.35);   /* #06D6A0 */
+  }
+
   html, body, #root {
     height: 100%;
   }
@@ -212,6 +268,42 @@
   .brand-bg { background: var(--brand-600); color: #fff; }
   .brand-text { color: var(--brand-600); }
   .brand-gradient { background: linear-gradient(90deg, var(--brand-600), var(--brand-500)); }
+
+  .brand-soft { background: var(--ring-soft); color: var(--brand-600); }
+
+  /* Inputs/Selects */
+  .select {
+    appearance: none;
+    background: var(--secondary-bg);
+    color: var(--text-color);
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 0.75rem;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+  }
+  .select:focus {
+    outline: none;
+    border-color: var(--brand-400);
+    box-shadow: 0 0 0 6px var(--ring-soft);
+  }
+
+  /* Status dots */
+  .status-dot { background: var(--brand-400); }
+  .status-dot-muted { background: var(--muted); }
+
+  /* Lesson blocks */
+  .block-theory {
+    border-left: 4px solid var(--brand-600);
+    background: linear-gradient(0deg, var(--ring-soft), var(--ring-soft)), #ffffff;
+  }
+  .block-practice {
+    border-left: 4px solid var(--brand-400);
+    background: linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02)), var(--chip-bg);
+  }
+  .block-alert {
+    border-left: 4px solid var(--badge-bg);
+    background: linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02)), #fff7f7;
+  }
 }
 
 @keyframes float {

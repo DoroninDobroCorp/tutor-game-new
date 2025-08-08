@@ -158,7 +158,7 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                 </div>
                 <form ref={formRef} onSubmit={handleGenerateContent} className="flex gap-2">
                     <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={blocks.length > 0 ? t('lessonContentEditor.askAiToRedoContent') : t('lessonContentEditor.askAiToMakeContent')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                    <button type="submit" disabled={isGenerating || !userMessage.trim()} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"><FiSend /></button>
+                   <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary text-sm disabled:opacity-50"><FiSend /></button>
                 </form>
             </div>
             

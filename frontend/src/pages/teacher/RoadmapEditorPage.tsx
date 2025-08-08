@@ -226,7 +226,7 @@ const RoadmapEditorPage = () => {
                             </Droppable>
                         </DragDropContext>
                         <div className="mt-8">
-                            <button onClick={handleAddSection} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
+                            <button onClick={handleAddSection} className="btn-secondary flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
                         </div>
                     </div>
                 </div>
@@ -245,7 +245,7 @@ const RoadmapEditorPage = () => {
                     </div>
                     <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
                         <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('roadmapEditor.askAiToChangePlan')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                        <button type="submit" disabled={isGenerating || !userMessage.trim()} className="p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"><FiSend /></button>
+                        <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary p-3 disabled:opacity-50"><FiSend /></button>
                     </form>                </div>
             </div>
             

@@ -124,7 +124,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                         placeholder={blocks.length > 0 ? t('controlWorkContentEditor.askAiToRedo') : t('controlWorkContentEditor.startGeneration')} 
                         className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" 
                     />
-                    <button type="submit" disabled={isGenerating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                   <button type="submit" disabled={isGenerating} className="btn-primary text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                         <FiSend />
                     </button>
                 </form>
