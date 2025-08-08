@@ -70,11 +70,11 @@ export default function LoginPage() {
           <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
             {t('login.title')}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-soft">
             {t('login.or')}{' '}
             <Link
               to="/register"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium brand-text hover:opacity-90"
             >
               {t('login.createAccount')}
             </Link>

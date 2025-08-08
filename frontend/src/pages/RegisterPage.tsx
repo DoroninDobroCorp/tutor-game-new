@@ -95,11 +95,11 @@ export default function RegisterPage() {
           <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
             {t('register.title')}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-soft">
             {t('register.alreadyMember')}{' '}
             <Link
               to="/login"
-              className="font-medium text-gray-600 hover:text-gray-500"
+              className="font-medium brand-text hover:opacity-90"
             >
               {t('register.signIn')}
             </Link>
@@ -274,13 +274,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="text-sm text-center">
-            <p className="text-gray-600">
+            <p className="text-soft">
               {t('register.tosNote.prefix')}{' '}
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <a href="#" className="font-medium brand-text hover:opacity-90">
                 {t('register.tosNote.terms')}
               </a>{' '}
               {t('register.tosNote.and')}{' '}
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <a href="#" className="font-medium brand-text hover:opacity-90">
                 {t('register.tosNote.privacy')}
               </a>
               .

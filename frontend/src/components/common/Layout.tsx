@@ -81,6 +81,50 @@ const LanguageSwitcher = () => {
   );
 };
 
+const ThemeSwitcher = () => {
+  const themes = [
+    { id: 'default', label: 'Default' },
+    { id: 'warm', label: 'Warm' },
+    { id: 'mono', label: 'Mono' },
+    { id: 'ocean', label: 'Ocean' },
+  ];
+
+  const applyTheme = (themeId: string) => {
+    const root = document.documentElement;
+    if (themeId === 'default') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', themeId);
+    }
+    try {
+      localStorage.setItem('mq_theme', themeId);
+    } catch (_) {}
+  };
+
+  // init from storage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mq_theme');
+      if (saved) applyTheme(saved);
+    } catch (_) {}
+  }, []);
+
+  return (
+    <div className="relative">
+      <select
+        aria-label="Theme"
+        className="btn-secondary text-sm px-3 py-1 pr-8 appearance-none"
+        defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('mq_theme') || 'default') : 'default'}
+        onChange={(e) => applyTheme(e.target.value)}
+      >
+        {themes.map((t) => (
+          <option key={t.id} value={t.id}>{t.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
 export default function Layout() {
   const { t, i18n } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -150,11 +194,13 @@ export default function Layout() {
       <div className="pointer-events-none absolute inset-0 bg-dot-grid" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-gradient-to-tr from-indigo-300/40 to-red-300/40 blur-3xl animate-float"
+        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full blur-3xl animate-float"
+        style={{ background: 'linear-gradient(45deg, var(--swirl-from), var(--swirl-to))' }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-gradient-to-tr from-blue-300/40 to-indigo-300/40 blur-3xl animate-float"
+        className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full blur-3xl animate-float"
+        style={{ background: 'linear-gradient(45deg, var(--swirl-to), var(--swirl-from))' }}
       />
       {/* Modal is now managed by Layout to persist its state */}
       {editingLesson && user?.role === 'teacher' && (
@@ -195,7 +241,7 @@ export default function Layout() {
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
                     <div className="flex grow flex-col gap-y-5 overflow-y-auto glass px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
-                        <h1 className="text-2xl font-heading font-extrabold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">{t('app.name')}</h1>
+                        <h1 className="text-2xl font-heading font-extrabold bg-clip-text text-transparent" style={{ background: 'linear-gradient(90deg, var(--brand-600), var(--brand-500))' }}>{t('app.name')}</h1>
                       </div>
                       <nav className="flex flex-1 flex-col">
                         <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -205,27 +251,16 @@ export default function Layout() {
                         <li key={item.name}>
                           <Link
                             to={item.href}
-                            className={classNames(
-                              item.current
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                : 'text-gray-700 hover:bg-white/70 hover:text-gray-900',
-                              'group flex items-center justify-between rounded-xl p-2 text-sm font-semibold leading-6'
-                            )}
+                            className={classNames(item.current ? 'nav-item-active' : 'nav-item')}
                             onClick={() => setSidebarOpen(false)}
                           >
                             <div className="flex items-center gap-x-3">
-                              <item.icon
-                                className={classNames(
-                                  item.current ? 'text-white' : 'text-gray-500 group-hover:text-gray-700',
-                                  'h-6 w-6 shrink-0'
-                                )}
-                                aria-hidden="true"
-                              />
+                              <item.icon className={classNames('h-6 w-6 shrink-0 nav-icon', item.current && 'text-white')} aria-hidden="true" />
                               {item.name}
                             </div>
 
-                              {item.showBadge && totalUnreadCount > 0 && (
-                              <span className="inline-block rounded-full bg-red-500 px-2 py-1 text-xs font-bold leading-none text-white shadow">
+                            {item.showBadge && totalUnreadCount > 0 && (
+                              <span className="badge px-2 py-1">
                                 {totalUnreadCount}
                               </span>
                             )}
@@ -263,9 +298,9 @@ export default function Layout() {
             <div className="flex grow flex-col gap-y-5 overflow-y-auto glass px-4 pb-4">
               <div className="flex h-16 shrink-0 items-center justify-between px-2">
                 <Link to="/" className={classNames(
-                  'text-xl font-heading font-extrabold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent whitespace-nowrap transition-opacity duration-200',
+                  'text-xl font-heading font-extrabold bg-clip-text text-transparent whitespace-nowrap transition-opacity duration-200',
                   isSidebarCollapsed && 'opacity-0 w-0'
-                )}>
+                )} style={{ background: 'linear-gradient(90deg, var(--brand-600), var(--brand-500))' }}>
                   {t('app.name')}
                 </Link>
                 <button
@@ -285,52 +320,46 @@ export default function Layout() {
                           <Link
                             to={item.href}
                             title={isSidebarCollapsed ? item.name : undefined}
-                            className={classNames(
-                              item.current
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                : 'text-gray-700 hover:bg-white/70 hover:text-gray-900',
-                              'group flex items-center justify-between rounded-xl p-2 text-sm font-semibold leading-6'
-                            )}
+                            className={classNames(item.current ? 'nav-item-active' : 'nav-item')}
                           >
                             <div className={classNames(
                                 'flex items-center gap-x-3',
                                 isSidebarCollapsed && 'justify-center w-full'
                             )}>
-                              <item.icon
-                                className={classNames(
-                                  item.current ? 'text-white' : 'text-gray-500 group-hover:text-gray-700',
-                                  'h-6 w-6 shrink-0'
-                                )}
-                                aria-hidden="true"
-                              />
+                              <item.icon className={classNames('h-6 w-6 shrink-0 nav-icon', item.current && 'text-white')} aria-hidden="true" />
                                <span className={classNames(isSidebarCollapsed && 'hidden')}>{item.name}</span>
                             </div>
 
                              {item.showBadge && totalUnreadCount > 0 && !isSidebarCollapsed && (
-                                <span className="inline-block rounded-full bg-red-500 px-2 py-1 text-xs font-bold leading-none text-white shadow">
+                                <span className="badge px-2 py-1">
                                     {totalUnreadCount}
                                 </span>
                             )}
                           </Link>
                           {item.showBadge && totalUnreadCount > 0 && isSidebarCollapsed && (
-                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full" style={{ background: 'var(--badge-bg)', boxShadow: '0 0 0 2px #fff' }} />
                           )}
                         </li>
                       ))}
                     </ul>
                   </li>
                   <li className="mt-auto">
-                    <div className="flex items-center justify-between px-2">
-                      <div className={classNames('text-xs font-semibold leading-6 text-gray-600 truncate', isSidebarCollapsed && 'hidden')}>
+                    <div className="flex items-center justify-between px-2 gap-2">
+                      <div className={classNames('text-xs font-semibold leading-6 text-soft truncate', isSidebarCollapsed && 'hidden')}>
                         {user?.email}
                       </div>
-                      {!isSidebarCollapsed && <LanguageSwitcher />}
+                      {!isSidebarCollapsed && (
+                        <div className="flex items-center gap-2">
+                          <ThemeSwitcher />
+                          <LanguageSwitcher />
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={handleLogout}
                       title={isSidebarCollapsed ? t('logout.signOut') : undefined}
                       className={classNames(
-                          'mt-2 flex w-full items-center gap-x-2 rounded-xl p-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/70',
+                          'mt-2 flex w-full items-center gap-x-2 rounded-xl p-2 text-sm font-medium text-soft hover:text-inherit hover:bg-white/70',
                           isSidebarCollapsed && 'justify-center'
                       )}
                     >
@@ -359,15 +388,16 @@ export default function Layout() {
             </button>
           )}
 
-          <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
+          <div className="flex flex-1 justify-end gap-x-3 self-stretch lg:gap-x-4">
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {isAuthenticated ? (
                 <>
-                  <Link to={chatPath} className="relative text-gray-500 hover:text-gray-700">
+                  <ThemeSwitcher />
+                  <Link to={chatPath} className="relative icon-link">
                     <span className="sr-only">{t('layout.viewMessages')}</span>
                     <ChatBubbleLeftEllipsisIcon className="h-6 w-6" aria-hidden="true" />
                     {totalUnreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow">
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center badge px-1.5 py-0.5">
                         {totalUnreadCount}
                       </span>
                     )}
@@ -375,7 +405,7 @@ export default function Layout() {
 
                   <button
                     type="button"
-                    className="-m-2.5 p-2.5 text-gray-500 hover:text-gray-700"
+                    className="-m-2.5 p-2.5 icon-link"
                     onClick={handleLogout}
                   >
                     <span className="sr-only">{t('logout.signOut')}</span>
@@ -383,7 +413,8 @@ export default function Layout() {
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-x-4">
+                <div className="flex items-center gap-x-3">
+                  <ThemeSwitcher />
                   <LanguageSwitcher />
                   <Link to="/login" className="btn-secondary text-sm">
                     {t('login.short')}
