@@ -8,22 +8,10 @@
     "frontend:dev": "cd frontend && npm run dev",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "build": "cd backend && npm run build && cd ../frontend && npm run build",
-    "start": "cd backend && npm start",
-    "seed": "dotenv -e backend/.env -- npx prisma generate && dotenv -e backend/.env -- npx ts-node backend/scripts/createTestUsers.ts",
-    "db:lowercase-emails": "dotenv -e backend/.env -- npx ts-node backend/scripts/lowercase-emails.ts",
-    "push": "f() { if [ -z \"$1\" ]; then echo 'Error: Commit message is required. Usage: npm run push -- \"your message\"'; exit 1; fi; git add . && git commit -m \"$1\" && git push; }; f"
-  },
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
-  "dependencies": {
-    "@prisma/client": "^6.10.1",
-    "dotenv-cli": "^7.4.2"
+    "backend:prisma:migrate": "cd backend && npm run prisma:migrate"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0",
-    "prisma": "^6.9.0"
+    "concurrently": "^8.2.2"
   },
   "prisma": {
     "schema": "backend/prisma/schema.prisma"
