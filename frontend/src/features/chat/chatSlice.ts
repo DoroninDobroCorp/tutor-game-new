@@ -1,12 +1,12 @@
-import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
-import { RootState } from '../../app/store';
+import { createSlice, PayloadAction, createSelector } from "@reduxjs/toolkit";
+import { RootState } from "../../app/store";
 
 export type Message = {
   id: string;
   senderId: string;
   recipientId: string;
   senderName: string;
-  senderRole: 'student' | 'teacher';
+  senderRole: "student" | "teacher";
   content: string;
   timestamp: string;
   read: boolean;
@@ -25,27 +25,41 @@ const initialState: ChatState = {
 };
 
 const chatSlice = createSlice({
-  name: 'chat',
+  name: "chat",
   initialState,
   reducers: {
     setUnreadCounts: (state, action: PayloadAction<Record<string, number>>) => {
       state.unreadCounts = action.payload;
     },
-    setMessagesForUser: (state, action: PayloadAction<{ partnerId: string, messages: Message[] }>) => {
-      state.messagesByPartnerId[action.payload.partnerId] = action.payload.messages;
+    setMessagesForUser: (
+      state,
+      action: PayloadAction<{ partnerId: string; messages: Message[] }>,
+    ) => {
+      state.messagesByPartnerId[action.payload.partnerId] =
+        action.payload.messages;
     },
-    addMessage: (state, action: PayloadAction<{ message: Message, currentUserId: string }>) => {
+    addMessage: (
+      state,
+      action: PayloadAction<{ message: Message; currentUserId: string }>,
+    ) => {
       const { message, currentUserId } = action.payload;
-      const partnerId = message.senderId === currentUserId ? message.recipientId : message.senderId;
+      const partnerId =
+        message.senderId === currentUserId
+          ? message.recipientId
+          : message.senderId;
 
       const conversation = state.messagesByPartnerId[partnerId] || [];
-      if (!conversation.some(m => m.id === message.id)) {
+      if (!conversation.some((m) => m.id === message.id)) {
         state.messagesByPartnerId[partnerId] = [...conversation, message];
       }
 
       // Увеличиваем счетчик, только если сообщение не от нас И чат с этим пользователем не активен
-      if (message.senderId !== currentUserId && state.activeChatPartnerId !== partnerId) {
-        state.unreadCounts[partnerId] = (state.unreadCounts[partnerId] || 0) + 1;
+      if (
+        message.senderId !== currentUserId &&
+        state.activeChatPartnerId !== partnerId
+      ) {
+        state.unreadCounts[partnerId] =
+          (state.unreadCounts[partnerId] || 0) + 1;
       }
     },
     setActiveChat: (state, action: PayloadAction<string | null>) => {
@@ -60,23 +74,24 @@ const chatSlice = createSlice({
   },
 });
 
-export const { 
+export const {
   setUnreadCounts,
   setMessagesForUser,
   addMessage,
   setActiveChat,
-  resetChatState
+  resetChatState,
 } = chatSlice.actions;
 
 const selectMessages = (state: RootState) => state.chat.messagesByPartnerId;
-const selectActivePartnerId = (state: RootState) => state.chat.activeChatPartnerId;
+const selectActivePartnerId = (state: RootState) =>
+  state.chat.activeChatPartnerId;
 
 export const selectActiveChatMessages = createSelector(
   [selectMessages, selectActivePartnerId],
   (messages, activePartnerId) => {
     if (!activePartnerId) return [];
     return messages[activePartnerId] || [];
-  }
+  },
 );
 
 export const selectTotalUnreadCount = (state: RootState) =>

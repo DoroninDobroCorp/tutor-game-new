@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useLoginMutation } from '@/features/auth/authApi';
-import { toast } from 'react-hot-toast';
-import { useAppSelector } from '@/app/hooks';
-import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useLoginMutation } from "@/features/auth/authApi";
+import { toast } from "react-hot-toast";
+import { useAppSelector } from "@/app/hooks";
+import {
+  selectIsAuthenticated,
+  selectCurrentUser,
+} from "@/features/auth/authSlice";
+import { useTranslation } from "react-i18next";
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -20,7 +23,7 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const [login, { isLoading }] = useLoginMutation();
   const navigate = useNavigate();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectCurrentUser);
@@ -35,25 +38,26 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      toast.success(t('auth.loginSuccess'));
-      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      toast.success(t("auth.loginSuccess"));
+      const targetPath =
+        user.role.toLowerCase() === "teacher" ? "/teacher" : "/student";
       navigate(targetPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      setError('');
+      setError("");
       // Call the API and let the useEffect handle navigation
       await login(data).unwrap();
     } catch (error: unknown) {
-      let errorMessage = t('auth.loginFailedDefault');
+      let errorMessage = t("auth.loginFailedDefault");
 
-      if (error && typeof error === 'object') {
-        if ('status' in error && 'data' in error) {
+      if (error && typeof error === "object") {
+        if ("status" in error && "data" in error) {
           const data = error.data as { message?: string };
           errorMessage = data?.message || errorMessage;
-        } else if ('message' in error) {
+        } else if ("message" in error) {
           errorMessage = String(error.message);
         }
       }
@@ -68,19 +72,19 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
-            {t('login.title')}
+            {t("login.title")}
           </h2>
           <p className="mt-2 text-sm text-soft">
-            {t('login.or')}{' '}
+            {t("login.or")}{" "}
             <Link
               to="/register"
               className="font-medium brand-text hover:opacity-90"
             >
-              {t('login.createAccount')}
+              {t("login.createAccount")}
             </Link>
           </p>
         </div>
-        
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
@@ -104,40 +108,44 @@ export default function LoginPage() {
             </div>
           </div>
         )}
-        
+
         <form className="mt-8 space-y-6 card" onSubmit={handleSubmit(onSubmit)}>
           <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">
-                {t('login.email')}
+                {t("login.email")}
               </label>
               <input
                 id="email-address"
                 type="email"
                 autoComplete="email"
-                className={`input rounded-b-none ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                placeholder={t('login.email')}
-                {...register('email')}
+                className={`input rounded-b-none ${errors.email ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                placeholder={t("login.email")}
+                {...register("email")}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
-                {t('login.password')}
+                {t("login.password")}
               </label>
               <input
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                className={`input rounded-t-none ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                placeholder={t('login.password')}
-                {...register('password')}
+                className={`input rounded-t-none ${errors.password ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                placeholder={t("login.password")}
+                {...register("password")}
               />
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
               )}
             </div>
           </div>
@@ -154,7 +162,7 @@ export default function LoginPage() {
                 htmlFor="remember-me"
                 className="ml-2 block text-sm text-gray-900"
               >
-                {t('login.rememberMe')}
+                {t("login.rememberMe")}
               </label>
             </div>
 
@@ -163,7 +171,7 @@ export default function LoginPage() {
                 href="#"
                 className="font-medium text-gray-600 hover:text-gray-500"
               >
-                {t('login.forgotPassword')}
+                {t("login.forgotPassword")}
               </a>
             </div>
           </div>
@@ -172,9 +180,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`btn-primary w-full ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className={`btn-primary w-full ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
             >
-              {isLoading ? t('login.signingIn') : t('login.signIn')}
+              {isLoading ? t("login.signingIn") : t("login.signIn")}
             </button>
           </div>
         </form>

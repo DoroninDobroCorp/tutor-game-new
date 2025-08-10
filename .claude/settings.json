@@ -1,9 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Edit(src/**)",
-      "Edit(config/**)",
-      "Read(~/.zshrc)"
-    ]
+    "allow": ["Edit(src/**)", "Edit(config/**)", "Read(~/.zshrc)"]
   }
 }

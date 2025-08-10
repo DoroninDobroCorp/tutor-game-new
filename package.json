@@ -11,7 +11,10 @@
     "start": "cd backend && npm start",
     "seed": "dotenv -e backend/.env -- npx prisma generate && dotenv -e backend/.env -- npx ts-node backend/scripts/createTestUsers.ts",
     "db:lowercase-emails": "dotenv -e backend/.env -- npx ts-node backend/scripts/lowercase-emails.ts",
-    "push": "f() { if [ -z \"$1\" ]; then echo 'Error: Commit message is required. Usage: npm run push -- \"your message\"'; exit 1; fi; git add . && git commit -m \"$1\" && git push; }; f"
+    "push": "f() { if [ -z \"$1\" ]; then echo 'Error: Commit message is required. Usage: npm run push -- \"your message\"'; exit 1; fi; git add . && git commit -m \"$1\" && git push; }; f",
+    "lint": "eslint .",
+    "format": "prettier -w .",
+    "test": "echo \"(placeholder)\" && exit 0"
   },
   "workspaces": [
     "backend",
@@ -23,6 +26,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.0",
+    "eslint": "^9.33.0",
+    "prettier": "^3.6.2",
     "prisma": "^6.9.0"
   },
   "prisma": {

@@ -1,7 +1,14 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { PrismaClient, User, Role, Prisma, Student, Teacher } from '@prisma/client';
-import { AppError } from '../utils/errors';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import {
+  PrismaClient,
+  User,
+  Role,
+  Prisma,
+  Student,
+  Teacher,
+} from "@prisma/client";
+import { AppError } from "../utils/errors";
 
 // Define a user type without the password
 interface SafeUser {
@@ -13,11 +20,11 @@ interface SafeUser {
   lastActive: Date | null;
   createdAt: Date;
 }
-import { logger } from '../utils/logger';
+import { logger } from "../utils/logger";
 
 type PrismaType = typeof Prisma;
-import { config } from '../config/env';
-import { Request } from 'express';
+import { config } from "../config/env";
+import { Request } from "express";
 
 const prisma = new PrismaClient() as PrismaClient & {
   tokenBlacklist: {
@@ -28,7 +35,7 @@ const prisma = new PrismaClient() as PrismaClient & {
 };
 
 // Type assertion to avoid TypeScript errors
-(prisma as any).tokenBlacklist = prisma['tokenBlacklist'];
+(prisma as any).tokenBlacklist = prisma["tokenBlacklist"];
 
 // Token payload interface
 interface TokenPayload {
@@ -36,7 +43,7 @@ interface TokenPayload {
   role: Role;
   iat: number;
   exp: number;
-  type: 'access' | 'refresh';
+  type: "access" | "refresh";
   jti?: string; // JWT ID for blacklisting
 }
 
@@ -63,7 +70,7 @@ setInterval(async () => {
       logger.info(`Cleaned up ${result.count} expired blacklisted tokens`);
     }
   } catch (error) {
-    logger.error('Error cleaning up expired blacklisted tokens:', error);
+    logger.error("Error cleaning up expired blacklisted tokens:", error);
   }
 }, 3600000); // Run every hour
 
@@ -75,18 +82,20 @@ export const register = async (
   lastName: string,
 ): Promise<AuthResponse> => {
   const lowercasedEmail = email.toLowerCase();
-  logger.info(`Registration attempt for email: ${lowercasedEmail}, role: ${role}`);
-  
+  logger.info(
+    `Registration attempt for email: ${lowercasedEmail}, role: ${role}`,
+  );
+
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(lowercasedEmail)) {
     logger.warn(`Invalid email format: ${lowercasedEmail}`);
-    throw new AppError('Invalid email format', 400);
+    throw new AppError("Invalid email format", 400);
   }
 
   // Validate password strength (simplified)
   if (password.length < 4) {
-    throw new AppError('Password must be at least 4 characters long', 400);
+    throw new AppError("Password must be at least 4 characters long", 400);
   }
 
   try {
@@ -97,13 +106,15 @@ export const register = async (
     });
 
     if (existingUser) {
-      logger.warn(`Registration failed - user already exists: ${lowercasedEmail}`);
-      throw new AppError('User with this email already exists', 400);
+      logger.warn(
+        `Registration failed - user already exists: ${lowercasedEmail}`,
+      );
+      throw new AppError("User with this email already exists", 400);
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    
+
     // Start transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create user
@@ -114,14 +125,14 @@ export const register = async (
           role,
           firstName,
           lastName: lastName || null,
-          lastActive: new Date()
+          lastActive: new Date(),
         },
       });
 
       // Create corresponding profile based on role
-      if (role === 'TEACHER') {
+      if (role === "TEACHER") {
         await tx.teacher.create({
-          data: { 
+          data: {
             userId: user.id,
             // Add any required fields for teacher
           },
@@ -143,27 +154,38 @@ export const register = async (
     logger.info(`User registered successfully: ${result.id}`);
     return await generateTokens(result);
   } catch (error) {
-    logger.error('Registration error:', error);
-    throw new AppError('Failed to register user', 500);
+    logger.error("Registration error:", error);
+    throw new AppError("Failed to register user", 500);
   }
 };
 
-export const login = async (email: string, password: string, ipAddress: string): Promise<{ user: SafeUser; accessToken: string; refreshToken: string }> => {
+export const login = async (
+  email: string,
+  password: string,
+  ipAddress: string,
+): Promise<{ user: SafeUser; accessToken: string; refreshToken: string }> => {
   const lowercasedEmail = email.toLowerCase();
   const MAX_ATTEMPTS = 5;
   const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-  
-  logger.info(`Login attempt for email: ${lowercasedEmail} from IP: ${ipAddress}`);
-  
+
+  logger.info(
+    `Login attempt for email: ${lowercasedEmail} from IP: ${ipAddress}`,
+  );
+
   // Check rate limiting
   const now = Date.now();
   const attempt = loginAttempts.get(ipAddress) || { count: 0, lastAttempt: 0 };
-  
+
   if (attempt.count >= MAX_ATTEMPTS) {
     const timeSinceLastAttempt = now - attempt.lastAttempt;
     if (timeSinceLastAttempt < LOCKOUT_DURATION) {
-      const timeLeft = Math.ceil((LOCKOUT_DURATION - timeSinceLastAttempt) / 60000);
-      throw new AppError(`Too many login attempts. Please try again in ${timeLeft} minutes.`, 429);
+      const timeLeft = Math.ceil(
+        (LOCKOUT_DURATION - timeSinceLastAttempt) / 60000,
+      );
+      throw new AppError(
+        `Too many login attempts. Please try again in ${timeLeft} minutes.`,
+        429,
+      );
     } else {
       // Reset attempt count if lockout period has passed
       loginAttempts.delete(ipAddress);
@@ -171,19 +193,19 @@ export const login = async (email: string, password: string, ipAddress: string):
   }
 
   // Find user with password
-  const user = await prisma.user.findUnique({ 
+  const user = await prisma.user.findUnique({
     where: { email: lowercasedEmail },
     include: { teacher: true, student: true },
   });
-  
+
   if (!user) {
     // Track failed attempt
     loginAttempts.set(ipAddress, {
       count: (loginAttempts.get(ipAddress)?.count || 0) + 1,
-      lastAttempt: now
+      lastAttempt: now,
     });
-    
-    throw new AppError('Invalid email or password', 401);
+
+    throw new AppError("Invalid email or password", 401);
   }
 
   // Check password
@@ -192,12 +214,12 @@ export const login = async (email: string, password: string, ipAddress: string):
     // Track failed attempt
     loginAttempts.set(ipAddress, {
       count: (loginAttempts.get(ipAddress)?.count || 0) + 1,
-      lastAttempt: now
+      lastAttempt: now,
     });
-    
-    throw new AppError('Invalid email or password', 401);
+
+    throw new AppError("Invalid email or password", 401);
   }
-  
+
   // Reset login attempts on successful login
   loginAttempts.delete(ipAddress);
 
@@ -205,21 +227,24 @@ export const login = async (email: string, password: string, ipAddress: string):
   return await generateTokens(user);
 };
 
-export const getCurrentUser = async (userId: string): Promise<SafeUser | null> => {
+export const getCurrentUser = async (
+  userId: string,
+): Promise<SafeUser | null> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
-  
+
   if (!user) return null;
-  
+
   const { password, ...safeUser } = user;
   return safeUser as SafeUser;
 };
 
 // Generate token helper function
-const generateToken = (user: User, type: 'access' | 'refresh'): string => {
-  const secret = type === 'access' ? config.jwtSecret : config.jwtRefreshSecret;
-  const expiresIn = type === 'access' ? config.jwtExpiresIn : config.refreshTokenExpiresIn;
+const generateToken = (user: User, type: "access" | "refresh"): string => {
+  const secret = type === "access" ? config.jwtSecret : config.jwtRefreshSecret;
+  const expiresIn =
+    type === "access" ? config.jwtExpiresIn : config.refreshTokenExpiresIn;
 
   const payload = {
     userId: user.id,
@@ -232,11 +257,11 @@ const generateToken = (user: User, type: 'access' | 'refresh'): string => {
 
 // Generate both access and refresh tokens
 const generateTokens = async (user: User): Promise<AuthResponse> => {
-  const accessToken = generateToken(user, 'access');
-  const refreshToken = generateToken(user, 'refresh');
+  const accessToken = generateToken(user, "access");
+  const refreshToken = generateToken(user, "refresh");
 
   const { password, ...safeUser } = user;
-  
+
   return {
     user: safeUser as SafeUser,
     accessToken,
@@ -245,7 +270,9 @@ const generateTokens = async (user: User): Promise<AuthResponse> => {
 };
 
 // Verify refresh token
-const verifyRefreshToken = async (token: string): Promise<TokenPayload | null> => {
+const verifyRefreshToken = async (
+  token: string,
+): Promise<TokenPayload | null> => {
   try {
     if (await isTokenBlacklisted(token)) return null;
     return jwt.verify(token, config.jwtRefreshSecret) as TokenPayload;
@@ -255,7 +282,10 @@ const verifyRefreshToken = async (token: string): Promise<TokenPayload | null> =
 };
 
 // Blacklist a token
-export const blacklistToken = async (token: string, expiresAt: Date): Promise<void> => {
+export const blacklistToken = async (
+  token: string,
+  expiresAt: Date,
+): Promise<void> => {
   await prisma.tokenBlacklist.create({
     data: { token, expiresAt },
   });
@@ -269,7 +299,9 @@ const isTokenBlacklisted = async (token: string): Promise<boolean> => {
   return !!blacklistedToken;
 };
 
-export const verifyAccessToken = async (token: string): Promise<TokenPayload | null> => {
+export const verifyAccessToken = async (
+  token: string,
+): Promise<TokenPayload | null> => {
   try {
     if (await isTokenBlacklisted(token)) return null;
     return jwt.verify(token, config.jwtSecret) as TokenPayload;
@@ -280,20 +312,20 @@ export const verifyAccessToken = async (token: string): Promise<TokenPayload | n
 
 export const refreshTokens = async (token: string): Promise<AuthResponse> => {
   const decoded = await verifyRefreshToken(token);
-  if (!decoded || decoded.type !== 'refresh') {
-    throw new AppError('Invalid or expired refresh token', 401);
+  if (!decoded || decoded.type !== "refresh") {
+    throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  const user = await prisma.user.findUnique({ 
+  const user = await prisma.user.findUnique({
     where: { id: decoded.userId },
-    include: { teacher: true, student: true }
+    include: { teacher: true, student: true },
   });
-  
+
   if (!user) {
-    throw new AppError('User not found', 404);
+    throw new AppError("User not found", 404);
   }
-  
+
   await blacklistToken(token, new Date(decoded.exp! * 1000));
-  
+
   return generateTokens(user);
 };

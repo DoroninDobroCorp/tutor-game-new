@@ -1,10 +1,10 @@
-import { PrismaClient, Role, LessonType, LessonStatus } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { PrismaClient, Role, LessonType, LessonStatus } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Start seeding...');
+  console.log("Start seeding...");
 
   try {
     // Delete existing data
@@ -15,51 +15,55 @@ async function main() {
     await prisma.lesson.deleteMany({});
     await prisma.contentSection.deleteMany({});
     await prisma.learningGoal.deleteMany({});
-    
+
     // Delete teachers and students (this will cascade to users due to onDelete: Cascade)
     await prisma.teacher.deleteMany({});
     await prisma.student.deleteMany({});
     await prisma.user.deleteMany({});
 
     // --- Create Teacher ---
-    console.log('Creating test teacher...');
-    const hashedTeacherPassword = await bcrypt.hash('testteacher123', 10);
+    console.log("Creating test teacher...");
+    const hashedTeacherPassword = await bcrypt.hash("testteacher123", 10);
     const teacherUser = await prisma.user.create({
       data: {
-        email: 'testteacher@example.com',
+        email: "testteacher@example.com",
         password: hashedTeacherPassword,
-        firstName: 'Test',
-        lastName: 'Teacher',
+        firstName: "Test",
+        lastName: "Teacher",
         role: Role.TEACHER,
         teacher: {
-          create: {}
+          create: {},
         },
       },
       include: {
-        teacher: true
-      }
+        teacher: true,
+      },
     });
-    console.log(`✅ Teacher created: ${teacherUser.email} (ID: ${teacherUser.id})`);
+    console.log(
+      `✅ Teacher created: ${teacherUser.email} (ID: ${teacherUser.id})`,
+    );
 
     // --- Create Student ---
-    console.log('\nCreating test student...');
-    const hashedStudentPassword = await bcrypt.hash('teststudent123', 10);
+    console.log("\nCreating test student...");
+    const hashedStudentPassword = await bcrypt.hash("teststudent123", 10);
     const studentUser = await prisma.user.create({
       data: {
-        email: 'teststudent@example.com',
+        email: "teststudent@example.com",
         password: hashedStudentPassword,
-        firstName: 'Test',
-        lastName: 'Student',
+        firstName: "Test",
+        lastName: "Student",
         role: Role.STUDENT,
         student: {
-          create: {}
+          create: {},
         },
       },
       include: {
-        student: true
-      }
+        student: true,
+      },
     });
-    console.log(`✅ Student created: ${studentUser.email} (ID: ${studentUser.id})`);
+    console.log(
+      `✅ Student created: ${studentUser.email} (ID: ${studentUser.id})`,
+    );
 
     // --- Connect Student to Teacher ---
     await prisma.teacher.update({
@@ -67,84 +71,83 @@ async function main() {
       data: {
         students: {
           connect: {
-            userId: studentUser.id
-          }
-        }
-      }
+            userId: studentUser.id,
+          },
+        },
+      },
     });
-    console.log('✅ Student connected to teacher');
+    console.log("✅ Student connected to teacher");
 
     // --- Create a sample learning goal ---
     const learningGoal = await prisma.learningGoal.create({
       data: {
-        subject: 'Mathematics',
-        setting: 'Online',
+        subject: "Mathematics",
+        setting: "Online",
         studentAge: 12,
         teacherId: teacherUser.id,
         studentId: studentUser.id,
         sections: {
           create: [
             {
-              title: 'Introduction to Algebra',
+              title: "Introduction to Algebra",
               order: 1,
               lessons: {
                 create: [
-                  { 
-                    title: 'Basic Variables', 
-                    order: 1, 
-                    type: LessonType.THEORY, 
-                    status: LessonStatus.DRAFT 
+                  {
+                    title: "Basic Variables",
+                    order: 1,
+                    type: LessonType.THEORY,
+                    status: LessonStatus.DRAFT,
                   },
-                  { 
-                    title: 'Simple Equations', 
-                    order: 2, 
-                    type: LessonType.PRACTICE, 
-                    status: LessonStatus.DRAFT 
-                  }
-                ]
-              }
+                  {
+                    title: "Simple Equations",
+                    order: 2,
+                    type: LessonType.PRACTICE,
+                    status: LessonStatus.DRAFT,
+                  },
+                ],
+              },
             },
             {
-              title: 'Geometry Basics',
+              title: "Geometry Basics",
               order: 2,
               lessons: {
                 create: [
-                  { 
-                    title: 'Shapes and Angles', 
-                    order: 1, 
-                    type: LessonType.THEORY, 
-                    status: LessonStatus.DRAFT 
+                  {
+                    title: "Shapes and Angles",
+                    order: 1,
+                    type: LessonType.THEORY,
+                    status: LessonStatus.DRAFT,
                   },
-                  { 
-                    title: 'Area and Perimeter', 
-                    order: 2, 
-                    type: LessonType.PRACTICE, 
-                    status: LessonStatus.DRAFT 
-                  }
-                ]
-              }
-            }
-          ]
-        }
+                  {
+                    title: "Area and Perimeter",
+                    order: 2,
+                    type: LessonType.PRACTICE,
+                    status: LessonStatus.DRAFT,
+                  },
+                ],
+              },
+            },
+          ],
+        },
       },
       include: {
         sections: {
           include: {
-            lessons: true
-          }
-        }
-      }
+            lessons: true,
+          },
+        },
+      },
     });
 
-    console.log('✅ Created sample learning goal with sections and lessons');
+    console.log("✅ Created sample learning goal with sections and lessons");
 
-    console.log('\n✅ Test data created successfully!');
-    console.log('\nYou can now log in with these credentials:');
-    console.log('Teacher: testteacher@example.com / testteacher123');
-    console.log('Student: teststudent@example.com / teststudent123');
-
+    console.log("\n✅ Test data created successfully!");
+    console.log("\nYou can now log in with these credentials:");
+    console.log("Teacher: testteacher@example.com / testteacher123");
+    console.log("Student: teststudent@example.com / teststudent123");
   } catch (error) {
-    console.error('Error creating test data:', error);
+    console.error("Error creating test data:", error);
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -152,8 +155,7 @@ async function main() {
 }
 
 // Execute the main function
-main()
-  .catch((e) => {
-    console.error('Error during seeding:', e);
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.error("Error during seeding:", e);
+  process.exit(1);
+});

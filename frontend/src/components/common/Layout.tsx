@@ -1,7 +1,7 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Fragment, useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Dialog, Transition } from '@headlessui/react';
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Fragment, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Dialog, Transition } from "@headlessui/react";
 import {
   Bars3Icon,
   BookOpenIcon,
@@ -12,14 +12,17 @@ import {
   DocumentTextIcon,
   ChevronDoubleLeftIcon,
   RocketLaunchIcon,
-} from '@heroicons/react/24/outline';
-import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { useLogoutMutation } from '../../features/auth/authApi';
-import { useGetUnreadSummaryQuery } from '../../features/chat/chatApi';
-import { logout } from '../../features/auth/authSlice';
-import { selectTotalUnreadCount, setUnreadCounts } from '../../features/chat/chatSlice';
-import type { Lesson } from '../../types/models';
-import LessonEditorModal from '../../pages/teacher/LessonEditorModal';
+} from "@heroicons/react/24/outline";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useLogoutMutation } from "../../features/auth/authApi";
+import { useGetUnreadSummaryQuery } from "../../features/chat/chatApi";
+import { logout } from "../../features/auth/authSlice";
+import {
+  selectTotalUnreadCount,
+  setUnreadCounts,
+} from "../../features/chat/chatSlice";
+import type { Lesson } from "../../types/models";
+import LessonEditorModal from "../../pages/teacher/LessonEditorModal";
 
 interface NavigationItem {
   name: string;
@@ -31,12 +34,27 @@ interface NavigationItem {
 
 function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
   return [
-    { name: t('studentNavigation.dashboard'), href: '/student', icon: HomeIcon, current: false },
-    { name: t('studentNavigation.adventure'), href: '/student/adventure', icon: RocketLaunchIcon, current: false },
-    { name: t('studentNavigation.stories'), href: '/student/stories', icon: BookOpenIcon, current: false },
     {
-      name: t('studentNavigation.chat'),
-      href: '/student/chat',
+      name: t("studentNavigation.dashboard"),
+      href: "/student",
+      icon: HomeIcon,
+      current: false,
+    },
+    {
+      name: t("studentNavigation.adventure"),
+      href: "/student/adventure",
+      icon: RocketLaunchIcon,
+      current: false,
+    },
+    {
+      name: t("studentNavigation.stories"),
+      href: "/student/stories",
+      icon: BookOpenIcon,
+      current: false,
+    },
+    {
+      name: t("studentNavigation.chat"),
+      href: "/student/chat",
       icon: ChatBubbleLeftEllipsisIcon,
       current: false,
       showBadge: true,
@@ -46,12 +64,27 @@ function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
 
 function getTeacherNavigation(t: (key: string) => string): NavigationItem[] {
   return [
-    { name: t('teacherNavigation.dashboard'), href: '/teacher', icon: HomeIcon, current: false },
-    { name: t('teacherNavigation.goals'), href: '/teacher/goals', icon: DocumentTextIcon, current: false },
-    { name: t('teacherNavigation.students'), href: '/teacher/students', icon: UserGroupIcon, current: false },
     {
-      name: t('teacherNavigation.chat'),
-      href: '/teacher/chat',
+      name: t("teacherNavigation.dashboard"),
+      href: "/teacher",
+      icon: HomeIcon,
+      current: false,
+    },
+    {
+      name: t("teacherNavigation.goals"),
+      href: "/teacher/goals",
+      icon: DocumentTextIcon,
+      current: false,
+    },
+    {
+      name: t("teacherNavigation.students"),
+      href: "/teacher/students",
+      icon: UserGroupIcon,
+      current: false,
+    },
+    {
+      name: t("teacherNavigation.chat"),
+      href: "/teacher/chat",
       icon: ChatBubbleLeftEllipsisIcon,
       current: false,
       showBadge: true,
@@ -60,14 +93,14 @@ function getTeacherNavigation(t: (key: string) => string): NavigationItem[] {
 }
 
 function classNames(...classes: (string | boolean | undefined)[]): string {
-  return classes.filter(Boolean).join(' ');
+  return classes.filter(Boolean).join(" ");
 }
 
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === 'ru' ? 'en' : 'ru';
+    const newLang = i18n.language === "ru" ? "en" : "ru";
     i18n.changeLanguage(newLang);
   };
 
@@ -76,37 +109,37 @@ const LanguageSwitcher = () => {
       onClick={toggleLanguage}
       className="btn-secondary text-sm px-3 py-1"
     >
-      {i18n.language === 'ru' ? 'EN' : 'RU'}
+      {i18n.language === "ru" ? "EN" : "RU"}
     </button>
   );
 };
 
 const ThemeSwitcher = () => {
   const themes = [
-    { id: 'default', label: 'Default' },
-    { id: 'warm', label: 'Warm' },
-    { id: 'mono', label: 'Mono' },
-    { id: 'ocean', label: 'Ocean' },
-    { id: 'playful', label: 'Playful' },
-    { id: 'vibrant', label: 'Vibrant' },
+    { id: "default", label: "Default" },
+    { id: "warm", label: "Warm" },
+    { id: "mono", label: "Mono" },
+    { id: "ocean", label: "Ocean" },
+    { id: "playful", label: "Playful" },
+    { id: "vibrant", label: "Vibrant" },
   ];
 
   const applyTheme = (themeId: string) => {
     const root = document.documentElement;
-    if (themeId === 'default') {
-      root.removeAttribute('data-theme');
+    if (themeId === "default") {
+      root.removeAttribute("data-theme");
     } else {
-      root.setAttribute('data-theme', themeId);
+      root.setAttribute("data-theme", themeId);
     }
     try {
-      localStorage.setItem('mq_theme', themeId);
+      localStorage.setItem("mq_theme", themeId);
     } catch (_) {}
   };
 
   // init from storage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('mq_theme');
+      const saved = localStorage.getItem("mq_theme");
       if (saved) applyTheme(saved);
     } catch (_) {}
   }, []);
@@ -116,11 +149,17 @@ const ThemeSwitcher = () => {
       <select
         aria-label="Theme"
         className="select text-sm pr-8"
-        defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('mq_theme') || 'default') : 'default'}
+        defaultValue={
+          typeof window !== "undefined"
+            ? localStorage.getItem("mq_theme") || "default"
+            : "default"
+        }
         onChange={(e) => applyTheme(e.target.value)}
       >
         {themes.map((t) => (
-          <option key={t.id} value={t.id}>{t.label}</option>
+          <option key={t.id} value={t.id}>
+            {t.label}
+          </option>
         ))}
       </select>
     </div>
@@ -139,7 +178,7 @@ export default function Layout() {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
   const [logoutUser] = useLogoutMutation();
-  const chatPath = user?.role === 'teacher' ? '/teacher/chat' : '/student/chat';
+  const chatPath = user?.role === "teacher" ? "/teacher/chat" : "/student/chat";
 
   // Use polling to periodically check for unread messages
   const { data: unreadData } = useGetUnreadSummaryQuery(undefined, {
@@ -158,35 +197,40 @@ export default function Layout() {
   // Update browser tab title with unread count
   useEffect(() => {
     if (totalUnreadCount > 0) {
-      document.title = `(${totalUnreadCount}) ${i18n.t('app.name')}`;
+      document.title = `(${totalUnreadCount}) ${i18n.t("app.name")}`;
     } else {
-      document.title = i18n.t('app.name');
+      document.title = i18n.t("app.name");
     }
     return () => {
-      document.title = i18n.t('app.name');
+      document.title = i18n.t("app.name");
     };
   }, [totalUnreadCount]);
 
   const getNavItems = () => {
     if (!isAuthenticated) return [];
-    const navigationItems = user?.role === 'teacher' ? getTeacherNavigation(t) : getStudentNavigation(t);
-    return navigationItems.map(item => ({
+    const navigationItems =
+      user?.role === "teacher"
+        ? getTeacherNavigation(t)
+        : getStudentNavigation(t);
+    return navigationItems.map((item) => ({
       ...item,
-      current: location.pathname.startsWith(item.href) && (item.href !== '/' || location.pathname === '/'),
+      current:
+        location.pathname.startsWith(item.href) &&
+        (item.href !== "/" || location.pathname === "/"),
     }));
   };
-  
+
   const navigation = getNavItems();
 
   const handleLogout = async () => {
     try {
       await logoutUser().unwrap();
       dispatch(logout());
-      navigate('/login');
+      navigate("/login");
     } catch (err) {
-      console.error('Failed to logout:', err);
+      console.error("Failed to logout:", err);
       dispatch(logout());
-      navigate('/login');
+      navigate("/login");
     }
   };
 
@@ -197,19 +241,25 @@ export default function Layout() {
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full blur-3xl animate-float"
-        style={{ background: 'linear-gradient(45deg, var(--swirl-from), var(--swirl-to))' }}
+        style={{
+          background:
+            "linear-gradient(45deg, var(--swirl-from), var(--swirl-to))",
+        }}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full blur-3xl animate-float"
-        style={{ background: 'linear-gradient(45deg, var(--swirl-to), var(--swirl-from))' }}
+        style={{
+          background:
+            "linear-gradient(45deg, var(--swirl-to), var(--swirl-from))",
+        }}
       />
       {/* Modal is now managed by Layout to persist its state */}
-      {editingLesson && user?.role === 'teacher' && (
-        <LessonEditorModal 
+      {editingLesson && user?.role === "teacher" && (
+        <LessonEditorModal
           isOpen={!!editingLesson}
-          onClose={() => setEditingLesson(null)} 
-          lesson={editingLesson} 
+          onClose={() => setEditingLesson(null)}
+          lesson={editingLesson}
         />
       )}
 
@@ -217,7 +267,11 @@ export default function Layout() {
         <>
           {/* Mobile sidebar */}
           <Transition.Root show={sidebarOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSidebarOpen}>
+            <Dialog
+              as="div"
+              className="relative z-50 lg:hidden"
+              onClose={setSidebarOpen}
+            >
               <Transition.Child
                 as={Fragment}
                 enter="transition-opacity ease-linear duration-300"
@@ -243,35 +297,53 @@ export default function Layout() {
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
                     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
-                        <Link to="/" className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/70 transition">
+                        <Link
+                          to="/"
+                          className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/70 transition"
+                        >
                           <span className="inline-block h-6 w-6 rounded-lg brand-bg" />
-                          <span className="text-lg font-heading font-extrabold brand-text">{t('app.name')}</span>
+                          <span className="text-lg font-heading font-extrabold brand-text">
+                            {t("app.name")}
+                          </span>
                         </Link>
                       </div>
                       <nav className="flex flex-1 flex-col">
-                        <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                        <ul
+                          role="list"
+                          className="flex flex-1 flex-col gap-y-7"
+                        >
                           <li>
                             <ul role="list" className="-mx-2 space-y-1">
                               {navigation.map((item) => (
-                        <li key={item.name}>
-                          <Link
-                            to={item.href}
-                            className={classNames(item.current ? 'nav-item-active' : 'nav-item')}
-                            onClick={() => setSidebarOpen(false)}
-                          >
-                            <div className="flex items-center gap-x-3">
-                              <item.icon className={classNames('h-6 w-6 shrink-0 nav-icon', item.current && 'text-white')} aria-hidden="true" />
-                              {item.name}
-                            </div>
+                                <li key={item.name}>
+                                  <Link
+                                    to={item.href}
+                                    className={classNames(
+                                      item.current
+                                        ? "nav-item-active"
+                                        : "nav-item",
+                                    )}
+                                    onClick={() => setSidebarOpen(false)}
+                                  >
+                                    <div className="flex items-center gap-x-3">
+                                      <item.icon
+                                        className={classNames(
+                                          "h-6 w-6 shrink-0 nav-icon",
+                                          item.current && "text-white",
+                                        )}
+                                        aria-hidden="true"
+                                      />
+                                      {item.name}
+                                    </div>
 
-                            {item.showBadge && totalUnreadCount > 0 && (
-                              <span className="badge px-2 py-1">
-                                {totalUnreadCount}
-                              </span>
-                            )}
-                          </Link>
-                        </li>
-                      ))}
+                                    {item.showBadge && totalUnreadCount > 0 && (
+                                      <span className="badge px-2 py-1">
+                                        {totalUnreadCount}
+                                      </span>
+                                    )}
+                                  </Link>
+                                </li>
+                              ))}
                             </ul>
                           </li>
                           <li className="mt-auto">
@@ -283,7 +355,7 @@ export default function Layout() {
                               className="mt-2 flex items-center gap-x-2 text-sm font-medium text-gray-600 hover:text-gray-900"
                             >
                               <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                              {t('logout.signOut')}
+                              {t("logout.signOut")}
                             </button>
                           </li>
                         </ul>
@@ -296,25 +368,41 @@ export default function Layout() {
           </Transition.Root>
 
           {/* Desktop sidebar */}
-          <div className={classNames(
-            'hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:flex-col transition-all duration-300 ease-in-out',
-            isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
-          )}>
+          <div
+            className={classNames(
+              "hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:flex-col transition-all duration-300 ease-in-out",
+              isSidebarCollapsed ? "lg:w-20" : "lg:w-72",
+            )}
+          >
             <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/90 backdrop-blur px-4 pb-4">
               <div className="flex h-16 shrink-0 items-center justify-between px-2">
-                <Link to="/" className={classNames(
-                  'flex items-center gap-2 whitespace-nowrap transition-opacity duration-200',
-                  isSidebarCollapsed && 'opacity-0 w-0'
-                )}>
+                <Link
+                  to="/"
+                  className={classNames(
+                    "flex items-center gap-2 whitespace-nowrap transition-opacity duration-200",
+                    isSidebarCollapsed && "opacity-0 w-0",
+                  )}
+                >
                   <span className="inline-block h-6 w-6 rounded-lg brand-bg" />
-                  <span className="text-xl font-heading font-extrabold brand-text">{t('app.name')}</span>
+                  <span className="text-xl font-heading font-extrabold brand-text">
+                    {t("app.name")}
+                  </span>
                 </Link>
                 <button
-                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    className="text-gray-500 hover:text-gray-800 p-2"
-                    title={isSidebarCollapsed ? t('layout.expandPanel') : t('layout.collapsePanel')}
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  className="text-gray-500 hover:text-gray-800 p-2"
+                  title={
+                    isSidebarCollapsed
+                      ? t("layout.expandPanel")
+                      : t("layout.collapsePanel")
+                  }
                 >
-                    <ChevronDoubleLeftIcon className={classNames("h-6 w-6 transition-transform duration-300", isSidebarCollapsed && "rotate-180")}/>
+                  <ChevronDoubleLeftIcon
+                    className={classNames(
+                      "h-6 w-6 transition-transform duration-300",
+                      isSidebarCollapsed && "rotate-180",
+                    )}
+                  />
                 </button>
               </div>
               <nav className="flex flex-1 flex-col">
@@ -326,46 +414,83 @@ export default function Layout() {
                           <Link
                             to={item.href}
                             title={isSidebarCollapsed ? item.name : undefined}
-                            className={classNames(item.current ? 'nav-item-active' : 'nav-item')}
+                            className={classNames(
+                              item.current ? "nav-item-active" : "nav-item",
+                            )}
                           >
-                            <div className={classNames(
-                                'flex items-center gap-x-3',
-                                isSidebarCollapsed && 'justify-center w-full'
-                            )}>
-                              <item.icon className={classNames('h-6 w-6 shrink-0 nav-icon', item.current && 'text-white')} aria-hidden="true" />
-                               <span className={classNames(isSidebarCollapsed && 'hidden')}>{item.name}</span>
+                            <div
+                              className={classNames(
+                                "flex items-center gap-x-3",
+                                isSidebarCollapsed && "justify-center w-full",
+                              )}
+                            >
+                              <item.icon
+                                className={classNames(
+                                  "h-6 w-6 shrink-0 nav-icon",
+                                  item.current && "text-white",
+                                )}
+                                aria-hidden="true"
+                              />
+                              <span
+                                className={classNames(
+                                  isSidebarCollapsed && "hidden",
+                                )}
+                              >
+                                {item.name}
+                              </span>
                             </div>
 
-                             {item.showBadge && totalUnreadCount > 0 && !isSidebarCollapsed && (
+                            {item.showBadge &&
+                              totalUnreadCount > 0 &&
+                              !isSidebarCollapsed && (
                                 <span className="badge px-2 py-1">
-                                    {totalUnreadCount}
+                                  {totalUnreadCount}
                                 </span>
-                            )}
+                              )}
                           </Link>
-                          {item.showBadge && totalUnreadCount > 0 && isSidebarCollapsed && (
-                            <span className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full" style={{ background: 'var(--badge-bg)', boxShadow: '0 0 0 2px #fff' }} />
-                          )}
+                          {item.showBadge &&
+                            totalUnreadCount > 0 &&
+                            isSidebarCollapsed && (
+                              <span
+                                className="pointer-events-none absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full"
+                                style={{
+                                  background: "var(--badge-bg)",
+                                  boxShadow: "0 0 0 2px #fff",
+                                }}
+                              />
+                            )}
                         </li>
                       ))}
                     </ul>
                   </li>
                   <li className="mt-auto">
                     <div className="flex items-center justify-between px-2 gap-2">
-                      <div className={classNames('text-xs font-semibold leading-6 text-soft truncate', isSidebarCollapsed && 'hidden')}>
+                      <div
+                        className={classNames(
+                          "text-xs font-semibold leading-6 text-soft truncate",
+                          isSidebarCollapsed && "hidden",
+                        )}
+                      >
                         {user?.email}
                       </div>
                       {/* Controls moved to header */}
                     </div>
                     <button
                       onClick={handleLogout}
-                      title={isSidebarCollapsed ? t('logout.signOut') : undefined}
+                      title={
+                        isSidebarCollapsed ? t("logout.signOut") : undefined
+                      }
                       className={classNames(
-                          'mt-2 flex w-full items-center gap-x-2 rounded-xl p-2 text-sm font-medium text-soft hover:text-inherit hover:bg-white/70',
-                          isSidebarCollapsed && 'justify-center'
+                        "mt-2 flex w-full items-center gap-x-2 rounded-xl p-2 text-sm font-medium text-soft hover:text-inherit hover:bg-white/70",
+                        isSidebarCollapsed && "justify-center",
                       )}
                     >
                       <ArrowRightOnRectangleIcon className="h-5 w-5 shrink-0" />
-                      <span className={classNames(isSidebarCollapsed && 'hidden')}>{t('logout.signOut')}</span>
+                      <span
+                        className={classNames(isSidebarCollapsed && "hidden")}
+                      >
+                        {t("logout.signOut")}
+                      </span>
                     </button>
                   </li>
                 </ul>
@@ -376,7 +501,12 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <div className={classNames('transition-all duration-300 ease-in-out', isAuthenticated ? (isSidebarCollapsed ? "lg:pl-20" : "lg:pl-72") : "")}>
+      <div
+        className={classNames(
+          "transition-all duration-300 ease-in-out",
+          isAuthenticated ? (isSidebarCollapsed ? "lg:pl-20" : "lg:pl-72") : "",
+        )}
+      >
         <div className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 glass rounded-b-2xl px-4 sm:gap-x-6 sm:px-6 lg:px-8">
           {isAuthenticated && (
             <button
@@ -384,7 +514,7 @@ export default function Layout() {
               className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
               onClick={() => setSidebarOpen(true)}
             >
-              <span className="sr-only">{t('layout.openSidebar')}</span>
+              <span className="sr-only">{t("layout.openSidebar")}</span>
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
             </button>
           )}
@@ -396,8 +526,11 @@ export default function Layout() {
                   <ThemeSwitcher />
                   <LanguageSwitcher />
                   <Link to={chatPath} className="relative icon-link">
-                    <span className="sr-only">{t('layout.viewMessages')}</span>
-                    <ChatBubbleLeftEllipsisIcon className="h-6 w-6" aria-hidden="true" />
+                    <span className="sr-only">{t("layout.viewMessages")}</span>
+                    <ChatBubbleLeftEllipsisIcon
+                      className="h-6 w-6"
+                      aria-hidden="true"
+                    />
                     {totalUnreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center badge px-1.5 py-0.5">
                         {totalUnreadCount}
@@ -410,8 +543,11 @@ export default function Layout() {
                     className="-m-2.5 p-2.5 icon-link"
                     onClick={handleLogout}
                   >
-                    <span className="sr-only">{t('logout.signOut')}</span>
-                    <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
+                    <span className="sr-only">{t("logout.signOut")}</span>
+                    <ArrowRightOnRectangleIcon
+                      className="h-6 w-6"
+                      aria-hidden="true"
+                    />
                   </button>
                 </>
               ) : (
@@ -419,10 +555,10 @@ export default function Layout() {
                   <ThemeSwitcher />
                   <LanguageSwitcher />
                   <Link to="/login" className="btn-secondary text-sm">
-                    {t('login.short')}
+                    {t("login.short")}
                   </Link>
                   <Link to="/register" className="btn-primary text-sm">
-                    {t('register.short')}
+                    {t("register.short")}
                   </Link>
                 </div>
               )}
