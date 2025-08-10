@@ -1,6 +1,6 @@
-import { apiSlice } from '../../app/api/apiSlice';
-import { logout, setUser } from './authSlice';
-import type { User, UserRole } from '../../types/models';
+import { apiSlice } from "../../app/api/apiSlice";
+import { logout, setUser } from "./authSlice";
+import type { User, UserRole } from "../../types/models";
 
 // Types for our API
 type LoginCredentials = {
@@ -32,15 +32,15 @@ export const authApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<ApiResponse<AuthResponse>, LoginCredentials>({
       query: (credentials) => ({
-        url: '/auth/login',
-        method: 'POST',
+        url: "/auth/login",
+        method: "POST",
         data: credentials,
-        credentials: 'include',
+        credentials: "include",
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: ["User"],
       transformResponse: (response: ApiResponse<AuthResponse>) => {
         if (!response.data?.user || !response.data?.accessToken) {
-          throw new Error('Invalid server response');
+          throw new Error("Invalid server response");
         }
         return {
           success: true,
@@ -56,20 +56,20 @@ export const authApiSlice = apiSlice.injectEndpoints({
         const payload = {
           ...credentials,
           // Send role in UPPERCASE to match backend expectations
-          role: credentials.role.toUpperCase() as 'STUDENT' | 'TEACHER'
+          role: credentials.role.toUpperCase() as "STUDENT" | "TEACHER",
         };
-        
+
         return {
-          url: '/auth/register',
-          method: 'POST',
+          url: "/auth/register",
+          method: "POST",
           data: payload,
-          credentials: 'include',
+          credentials: "include",
         };
       },
-      invalidatesTags: ['User'],
+      invalidatesTags: ["User"],
       transformResponse: (response: ApiResponse<AuthResponse>) => {
         if (!response.data?.user || !response.data?.accessToken) {
-          throw new Error('Invalid server response');
+          throw new Error("Invalid server response");
         }
         return {
           success: true,
@@ -82,9 +82,9 @@ export const authApiSlice = apiSlice.injectEndpoints({
     }),
     logout: builder.mutation<{ success: boolean }, void>({
       query: () => ({
-        url: '/auth/logout',
-        method: 'POST',
-        credentials: 'include',
+        url: "/auth/logout",
+        method: "POST",
+        credentials: "include",
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
@@ -95,7 +95,7 @@ export const authApiSlice = apiSlice.injectEndpoints({
             dispatch(apiSlice.util.resetApiState());
           }, 1000);
         } catch (err) {
-          console.log('Logout error:', err);
+          console.log("Logout error:", err);
           // Even if the server request fails, we still want to clear the local state
           dispatch(logout());
         }
@@ -103,13 +103,13 @@ export const authApiSlice = apiSlice.injectEndpoints({
     }),
     refreshToken: builder.mutation<ApiResponse<AuthResponse>, void>({
       query: () => ({
-        url: '/auth/refresh',
-        method: 'POST',
-        credentials: 'include',
+        url: "/auth/refresh",
+        method: "POST",
+        credentials: "include",
       }),
       transformResponse: (response: ApiResponse<AuthResponse>) => {
         if (!response.data?.user || !response.data?.accessToken) {
-          throw new Error('Invalid refresh token response');
+          throw new Error("Invalid refresh token response");
         }
         return {
           success: true,
@@ -122,12 +122,12 @@ export const authApiSlice = apiSlice.injectEndpoints({
     }),
     getProfile: builder.query<ApiResponse<{ user: User }>, void>({
       query: () => ({
-        url: '/auth/me',
-        credentials: 'include', // Important for cookies
+        url: "/auth/me",
+        credentials: "include", // Important for cookies
       }),
       transformResponse: (response: ApiResponse<{ user: User }>) => {
         if (!response.data?.user) {
-          throw new Error('No user data received');
+          throw new Error("No user data received");
         }
         return response;
       },
@@ -138,23 +138,23 @@ export const authApiSlice = apiSlice.injectEndpoints({
             dispatch(setUser(data.data.user));
           }
         } catch (error) {
-          console.error('Failed to fetch profile:', error);
+          console.error("Failed to fetch profile:", error);
           dispatch(logout());
         }
       },
       // Invalidate this query when the user logs out
-      providesTags: ['User'],
+      providesTags: ["User"],
     }),
   }),
 });
 
 // Export hooks for usage in components
-export const { 
-  useLoginMutation, 
-  useRegisterMutation, 
+export const {
+  useLoginMutation,
+  useRegisterMutation,
   useLogoutMutation,
   useRefreshTokenMutation,
-  useGetProfileQuery 
+  useGetProfileQuery,
 } = authApiSlice;
 
 // Export the api slice for use in the store

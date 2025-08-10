@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { 
+import { Router } from "express";
+import {
   getStudentProfile,
   getCurrentLessonHandler,
   lessonPracticeChatHandler,
@@ -8,10 +8,10 @@ import {
   getStoryHistoryHandler,
   getStorySummaryHandler,
   getCompletedLessonsHandler,
-} from '../controllers/student.controller';
-import { authenticate, authorize } from '../middlewares/auth.middleware';
-import { asyncHandler } from '../utils/errors';
-import { upload } from '../utils/fileUpload';
+} from "../controllers/student.controller";
+import { authenticate, authorize } from "../middlewares/auth.middleware";
+import { asyncHandler } from "../utils/errors";
+import { upload } from "../utils/fileUpload";
 
 const router = Router();
 
@@ -19,20 +19,44 @@ const router = Router();
 router.use(authenticate);
 
 // Adventure routes
-router.get('/current-lesson', asyncHandler(getCurrentLessonHandler));
-router.post('/lessons/:lessonId/practice-chat', authorize('STUDENT'), asyncHandler(lessonPracticeChatHandler));
-router.post('/lessons/:lessonId/end-for-review', authorize('STUDENT'), asyncHandler(endLessonForReviewHandler));
-router.post('/lessons/:lessonId/submit', authorize('STUDENT'), upload.single('image'), asyncHandler(submitLessonHandler));
+router.get("/current-lesson", asyncHandler(getCurrentLessonHandler));
+router.post(
+  "/lessons/:lessonId/practice-chat",
+  authorize("STUDENT"),
+  asyncHandler(lessonPracticeChatHandler),
+);
+router.post(
+  "/lessons/:lessonId/end-for-review",
+  authorize("STUDENT"),
+  asyncHandler(endLessonForReviewHandler),
+);
+router.post(
+  "/lessons/:lessonId/submit",
+  authorize("STUDENT"),
+  upload.single("image"),
+  asyncHandler(submitLessonHandler),
+);
 
 // Completed lessons
-router.get('/goals/:goalId/completed-lessons', authorize('STUDENT'), asyncHandler(getCompletedLessonsHandler));
+router.get(
+  "/goals/:goalId/completed-lessons",
+  authorize("STUDENT"),
+  asyncHandler(getCompletedLessonsHandler),
+);
 
 // Story history
-router.get('/story/:goalId', authorize('STUDENT'), asyncHandler(getStoryHistoryHandler));
-router.get('/story/:goalId/summary', authorize('STUDENT'), asyncHandler(getStorySummaryHandler));
-
+router.get(
+  "/story/:goalId",
+  authorize("STUDENT"),
+  asyncHandler(getStoryHistoryHandler),
+);
+router.get(
+  "/story/:goalId/summary",
+  authorize("STUDENT"),
+  asyncHandler(getStorySummaryHandler),
+);
 
 // Keep profile route at the end to avoid route conflicts
-router.get('/profile', asyncHandler(getStudentProfile));
+router.get("/profile", asyncHandler(getStudentProfile));
 
 export default router;

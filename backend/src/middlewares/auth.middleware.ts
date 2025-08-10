@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../services/auth.service';
-import { AppError } from '../utils/errors';
+import { Request, Response, NextFunction } from "express";
+import { verifyAccessToken } from "../services/auth.service";
+import { AppError } from "../utils/errors";
 
 declare global {
   namespace Express {
@@ -13,19 +13,23 @@ declare global {
   }
 }
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Authentication invalid, no token provided', 401);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new AppError("Authentication invalid, no token provided", 401);
     }
 
-    const token = authHeader.split(' ')[1];
-    
+    const token = authHeader.split(" ")[1];
+
     // Используем новую функцию верификации access-токена
     const decoded = await verifyAccessToken(token);
     if (!decoded) {
-      throw new AppError('Authentication invalid or token expired', 401);
+      throw new AppError("Authentication invalid or token expired", 401);
     }
 
     req.user = {
@@ -42,7 +46,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 export const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      throw new AppError('Not authorized to access this route', 403);
+      throw new AppError("Not authorized to access this route", 403);
     }
     next();
   };

@@ -1,97 +1,120 @@
-import { apiSlice } from '../../app/api/apiSlice';
+import { apiSlice } from "../../app/api/apiSlice";
 import type {
-    StoryChapterHistory,
-    StudentProfile,
-    Lesson as LessonType,
-    AIAssessmentResponse,
-} from '../../types/models';
+  StoryChapterHistory,
+  StudentProfile,
+  Lesson as LessonType,
+  AIAssessmentResponse,
+} from "../../types/models";
 
 interface SubmitLessonApiPayload {
-    lessonId: string;
-    formData: FormData;
+  lessonId: string;
+  formData: FormData;
 }
-
 
 export const studentApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getStudentProfile: builder.query<StudentProfile, void>({
       query: () => ({
-        url: '/student/profile',
-        method: 'GET',
+        url: "/student/profile",
+        method: "GET",
       }),
       transformResponse: (response: { data: StudentProfile }) => response.data,
-      providesTags: [{ type: 'Student', id: 'PROFILE' }],
+      providesTags: [{ type: "Student", id: "PROFILE" }],
     }),
 
     getCurrentLesson: builder.query<LessonType | null, void>({
       query: () => ({
-        url: '/student/current-lesson',
-        method: 'GET',
+        url: "/student/current-lesson",
+        method: "GET",
       }),
-      transformResponse: (response: { data: LessonType | null }) => response.data,
-      providesTags: (result) => 
-        result ? [{ type: 'Student' as const, id: 'CURRENT_LESSON' }] : [],
+      transformResponse: (response: { data: LessonType | null }) =>
+        response.data,
+      providesTags: (result) =>
+        result ? [{ type: "Student" as const, id: "CURRENT_LESSON" }] : [],
     }),
 
     getCompletedLessons: builder.query<LessonType[], string>({
-        query: (goalId) => ({
-            url: `/student/goals/${goalId}/completed-lessons`,
-            method: 'GET',
-        }),
-        transformResponse: (response: { data: LessonType[] }) => response.data || [],
-      providesTags: (_result, _error, goalId) => [{ type: 'Student', id: `COMPLETED_LIST_${goalId}` }],
+      query: (goalId) => ({
+        url: `/student/goals/${goalId}/completed-lessons`,
+        method: "GET",
+      }),
+      transformResponse: (response: { data: LessonType[] }) =>
+        response.data || [],
+      providesTags: (_result, _error, goalId) => [
+        { type: "Student", id: `COMPLETED_LIST_${goalId}` },
+      ],
     }),
 
-    submitLesson: builder.mutation<{ success: boolean; message: string }, SubmitLessonApiPayload>({
+    submitLesson: builder.mutation<
+      { success: boolean; message: string },
+      SubmitLessonApiPayload
+    >({
       query: ({ lessonId, formData }) => ({
         url: `/student/lessons/${lessonId}/submit`,
-        method: 'POST',
+        method: "POST",
         data: formData,
         isFormData: true,
       }),
-      invalidatesTags: () => [{ type: 'Student' as const, id: 'CURRENT_LESSON' }, { type: 'Student', id: 'PROFILE' }],
+      invalidatesTags: () => [
+        { type: "Student" as const, id: "CURRENT_LESSON" },
+        { type: "Student", id: "PROFILE" },
+      ],
     }),
-    
+
     getStoryHistory: builder.query<StoryChapterHistory[], string>({
       query: (goalId) => ({
         url: `/student/story/${goalId}`,
-        method: 'GET',
+        method: "GET",
       }),
-      transformResponse: (response: { data: StoryChapterHistory[] }) => response.data || [],
+      transformResponse: (response: { data: StoryChapterHistory[] }) =>
+        response.data || [],
       providesTags: (result, _error, goalId) => {
-        return result ? [{ type: 'Student' as const, id: `STORY_${goalId}` }] : [];
+        return result
+          ? [{ type: "Student" as const, id: `STORY_${goalId}` }]
+          : [];
       },
     }),
 
     getStorySummary: builder.query<{ summary: string }, string>({
-        query: (goalId) => ({
-            url: `/student/story/${goalId}/summary`,
-            method: 'GET',
-        }),
-        transformResponse: (response: { data: { summary: string } }) => response.data || { summary: '' },
+      query: (goalId) => ({
+        url: `/student/story/${goalId}/summary`,
+        method: "GET",
+      }),
+      transformResponse: (response: { data: { summary: string } }) =>
+        response.data || { summary: "" },
     }),
 
-    lessonPracticeChat: builder.mutation<{ data: AIAssessmentResponse }, { lessonId: string; initialAnswers?: string[]; chatHistory?: any[] }>({
+    lessonPracticeChat: builder.mutation<
+      { data: AIAssessmentResponse },
+      { lessonId: string; initialAnswers?: string[]; chatHistory?: any[] }
+    >({
       query: ({ lessonId, ...body }) => ({
         url: `/student/lessons/${lessonId}/practice-chat`,
-        method: 'POST',
+        method: "POST",
         data: body,
       }),
     }),
 
-    endLessonForReview: builder.mutation<{ success: boolean; message: string }, { lessonId: string }>({
+    endLessonForReview: builder.mutation<
+      { success: boolean; message: string },
+      { lessonId: string }
+    >({
       query: ({ lessonId }) => ({
         url: `/student/lessons/${lessonId}/end-for-review`,
-        method: 'POST',
+        method: "POST",
       }),
-      invalidatesTags: ['Goal', { type: 'Student', id: 'CURRENT_LESSON' }, { type: 'Student', id: 'PROFILE' }],
+      invalidatesTags: [
+        "Goal",
+        { type: "Student", id: "CURRENT_LESSON" },
+        { type: "Student", id: "PROFILE" },
+      ],
     }),
   }),
 });
 
-export const { 
+export const {
   useGetStudentProfileQuery,
-  useGetCurrentLessonQuery, 
+  useGetCurrentLessonQuery,
   useGetCompletedLessonsQuery,
   useLazyGetCompletedLessonsQuery,
   useSubmitLessonMutation,

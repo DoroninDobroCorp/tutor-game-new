@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
-import { Role } from '@prisma/client';
-import { AppError } from '../utils/errors';
-import prisma from '../db';
+import { Request, Response } from "express";
+import { Role } from "@prisma/client";
+import { AppError } from "../utils/errors";
+import prisma from "../db";
 
 // Extend the Express Request type to include user
 declare global {
@@ -16,15 +16,15 @@ declare global {
 }
 
 export const connectStudentHandler = async (req: Request, res: Response) => {
-  if (!req.user || req.user.role !== 'TEACHER') {
-    throw new AppError('Not authorized', 403);
+  if (!req.user || req.user.role !== "TEACHER") {
+    throw new AppError("Not authorized", 403);
   }
 
   const { email } = req.body;
   const teacherId = req.user.userId;
 
   if (!email) {
-    throw new AppError('Student email is required', 400);
+    throw new AppError("Student email is required", 400);
   }
 
   try {
@@ -35,7 +35,7 @@ export const connectStudentHandler = async (req: Request, res: Response) => {
     });
 
     if (!studentUser || !studentUser.student) {
-      throw new AppError('Student with this email not found', 404);
+      throw new AppError("Student with this email not found", 404);
     }
 
     // Check if the connection already exists
@@ -44,14 +44,14 @@ export const connectStudentHandler = async (req: Request, res: Response) => {
         userId: teacherId,
         students: {
           some: {
-            userId: studentUser.student.userId
-          }
-        }
-      }
+            userId: studentUser.student.userId,
+          },
+        },
+      },
     });
 
     if (existingConnection) {
-      throw new AppError('This student is already connected to you', 400);
+      throw new AppError("This student is already connected to you", 400);
     }
 
     // Add student to teacher's students
@@ -68,55 +68,55 @@ export const connectStudentHandler = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Student connected successfully',
+      message: "Student connected successfully",
       data: {
         id: studentUser.id,
         firstName: studentUser.firstName,
-        lastName: studentUser.lastName
-      }
+        lastName: studentUser.lastName,
+      },
     });
   } catch (error) {
-    console.error('Error connecting student:', error);
+    console.error("Error connecting student:", error);
     if (error instanceof AppError) {
       throw error;
     }
-    throw new AppError('Failed to connect student', 500);
+    throw new AppError("Failed to connect student", 500);
   }
 };
 
 export const getMyStudents = async (req: Request, res: Response) => {
-    if (!req.user || req.user.role !== Role.TEACHER) {
-        throw new AppError('Not authorized', 403);
-    }
-    const teacherId = req.user.userId;
+  if (!req.user || req.user.role !== Role.TEACHER) {
+    throw new AppError("Not authorized", 403);
+  }
+  const teacherId = req.user.userId;
 
-    const teacherWithStudents = await prisma.teacher.findUnique({
-        where: { userId: teacherId },
+  const teacherWithStudents = await prisma.teacher.findUnique({
+    where: { userId: teacherId },
+    select: {
+      students: {
         select: {
-            students: {
-                select: {
-                    user: {
-                        select: {
-                            id: true,
-                            firstName: true,
-                            lastName: true,
-                            email: true,
-                        }
-                    }
-                }
-            }
-        }
-    });
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
 
-    if (!teacherWithStudents) {
-        throw new AppError('Teacher profile not found', 404);
-    }
+  if (!teacherWithStudents) {
+    throw new AppError("Teacher profile not found", 404);
+  }
 
-    // "Unwrap" the data for easier consumption
-    const students = teacherWithStudents.students.map(s => s.user);
+  // "Unwrap" the data for easier consumption
+  const students = teacherWithStudents.students.map((s) => s.user);
 
-    res.json({
-        success: true,
-        data: students,
-    });
+  res.json({
+    success: true,
+    data: students,
+  });
 };

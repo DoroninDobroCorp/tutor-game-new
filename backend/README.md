@@ -21,20 +21,24 @@ This is the backend service for the Math Quest educational platform, built with 
 ## Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/math-quest.git
    cd math-quest/backend
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    ```
+
    Update the `.env` file with your configuration.
 
 4. **Set up the database**
@@ -47,6 +51,7 @@ This is the backend service for the Math Quest educational platform, built with 
      - Update the `DATABASE_URL` in `.env`
 
 5. **Run database migrations**
+
    ```bash
    pnpm prisma migrate dev --name init
    ```
@@ -59,9 +64,11 @@ This is the backend service for the Math Quest educational platform, built with 
 ## Development
 
 1. **Start the development server**
+
    ```bash
    pnpm dev
    ```
+
    The server will be available at `http://localhost:3001`
 
 2. **API Documentation**
@@ -98,18 +105,18 @@ pnpm test:coverage
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| PORT | Port to run the server on | 3001 |
-| NODE_ENV | Node environment | development |
-| JWT_SECRET | Secret key for JWT | - |
-| JWT_EXPIRES_IN | JWT expiration time | 7d |
-| DATABASE_URL | PostgreSQL connection URL | - |
-| OPENAI_API_KEY | OpenAI API key | - |
-| LEONARDO_API_KEY | Leonardo.AI API key | - |
-| LEONARDO_MODEL_ID | Leonardo.AI model ID | - |
-| CORS_ORIGIN | Allowed CORS origins | http://localhost:3000 |
-| LOG_LEVEL | Logging level | debug |
+| Variable          | Description               | Default               |
+| ----------------- | ------------------------- | --------------------- |
+| PORT              | Port to run the server on | 3001                  |
+| NODE_ENV          | Node environment          | development           |
+| JWT_SECRET        | Secret key for JWT        | -                     |
+| JWT_EXPIRES_IN    | JWT expiration time       | 7d                    |
+| DATABASE_URL      | PostgreSQL connection URL | -                     |
+| OPENAI_API_KEY    | OpenAI API key            | -                     |
+| LEONARDO_API_KEY  | Leonardo.AI API key       | -                     |
+| LEONARDO_MODEL_ID | Leonardo.AI model ID      | -                     |
+| CORS_ORIGIN       | Allowed CORS origins      | http://localhost:3000 |
+| LOG_LEVEL         | Logging level             | debug                 |
 
 ## Deployment
 

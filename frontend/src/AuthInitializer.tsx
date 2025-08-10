@@ -1,12 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useLocation, Navigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from './app/hooks';
-import { useGetProfileQuery } from './features/auth/authApi';
-import { logout, setUser, selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
-import Spinner from './components/common/Spinner';
-import { WebSocketProvider } from './components/common/WebSocketManager';
+import { useEffect, useState } from "react";
+import { useLocation, Navigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "./app/hooks";
+import { useGetProfileQuery } from "./features/auth/authApi";
+import {
+  logout,
+  setUser,
+  selectIsAuthenticated,
+  selectCurrentUser,
+} from "./features/auth/authSlice";
+import Spinner from "./components/common/Spinner";
+import { WebSocketProvider } from "./components/common/WebSocketManager";
 
-export default function AuthInitializer({ children }: { children: JSX.Element }) {
+export default function AuthInitializer({
+  children,
+}: {
+  children: JSX.Element;
+}) {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectCurrentUser);
@@ -14,7 +23,11 @@ export default function AuthInitializer({ children }: { children: JSX.Element })
   const location = useLocation();
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const { data: profileData, isError, isFetching } = useGetProfileQuery(undefined, {
+  const {
+    data: profileData,
+    isError,
+    isFetching,
+  } = useGetProfileQuery(undefined, {
     skip: !token,
   });
 
@@ -42,12 +55,16 @@ export default function AuthInitializer({ children }: { children: JSX.Element })
     );
   }
 
-  const publicPages = ['/login', '/register'];
+  const publicPages = ["/login", "/register"];
   if (isAuthenticated && publicPages.includes(location.pathname)) {
-    const targetPath = user?.role === 'teacher' ? '/teacher' : '/student';
+    const targetPath = user?.role === "teacher" ? "/teacher" : "/student";
     return <Navigate to={targetPath} replace />;
   }
 
   // Wrap children with WebSocketProvider if authenticated
-  return isAuthenticated ? <WebSocketProvider>{children}</WebSocketProvider> : children;
+  return isAuthenticated ? (
+    <WebSocketProvider>{children}</WebSocketProvider>
+  ) : (
+    children
+  );
 }

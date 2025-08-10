@@ -1,16 +1,16 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = resolve(__filename, '..');
+const __dirname = resolve(__filename, "..");
 
 export default defineConfig({
-  base: '/',
+  base: "/",
   plugins: [react()],
-  appType: 'spa',
-  
+  appType: "spa",
+
   // Server configuration
   server: {
     port: 3003,
@@ -19,51 +19,51 @@ export default defineConfig({
     cors: true,
     open: true,
     hmr: {
-      host: 'localhost',
-      protocol: 'ws',
-      overlay: false
+      host: "localhost",
+      protocol: "ws",
+      overlay: false,
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:3002',
+      "/api": {
+        target: "http://localhost:3002",
         changeOrigin: true,
-        secure: false
+        secure: false,
       },
-      '/socket.io': {
-        target: 'ws://localhost:3002',
+      "/socket.io": {
+        target: "ws://localhost:3002",
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
       },
       // Proxy for uploaded files
-      '/uploads': {
-        target: 'http://localhost:3002',
+      "/uploads": {
+        target: "http://localhost:3002",
         changeOrigin: true,
-        secure: false
-      }
+        secure: false,
+      },
     },
     // This is the key part for SPA fallback
     fs: {
-      strict: false
-    }
+      strict: false,
+    },
   },
-  
+
   // Build configuration
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
+        main: resolve(__dirname, "index.html"),
       },
     },
     sourcemap: true,
-    minify: 'esbuild',
-    outDir: 'dist',
+    minify: "esbuild",
+    outDir: "dist",
     emptyOutDir: true,
   },
-  
+
   // Resolve configuration
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      "@": resolve(__dirname, "src"),
     },
   },
 });

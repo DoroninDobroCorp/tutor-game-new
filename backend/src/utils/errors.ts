@@ -8,7 +8,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     statusCode: number = 500,
-    isOperational: boolean = true
+    isOperational: boolean = true,
   ) {
     super(message);
     this.statusCode = statusCode;
@@ -26,17 +26,17 @@ export class AppError extends Error {
  */
 export const errorHandler = (err: any, req: any, res: any, next: any) => {
   const statusCode = err.statusCode || 500;
-  const message = err.message || 'An internal server error occurred';
+  const message = err.message || "An internal server error occurred";
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('ERROR STACK:', err.stack);
+  if (process.env.NODE_ENV !== "production") {
+    console.error("ERROR STACK:", err.stack);
   }
 
   res.status(statusCode).json({
     success: false,
-    error: err.name || 'Error',
+    error: err.name || "Error",
     message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
+    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
   });
 };
 

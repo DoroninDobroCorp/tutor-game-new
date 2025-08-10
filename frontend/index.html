@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -18,10 +18,10 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // This ensures the base URL is set correctly for all relative URLs
-      document.addEventListener('DOMContentLoaded', () => {
-        if (!document.baseURI.endsWith('/')) {
-          const base = document.createElement('base');
-          base.href = '/';
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!document.baseURI.endsWith("/")) {
+          const base = document.createElement("base");
+          base.href = "/";
           document.head.prepend(base);
         }
       });

@@ -1,33 +1,35 @@
-import { BaseQueryFn } from '@reduxjs/toolkit/query';
-import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { RootState } from '../store';
+import { BaseQueryFn } from "@reduxjs/toolkit/query";
+import axios, { AxiosRequestConfig, AxiosError } from "axios";
+import { RootState } from "../store";
 
 export const axiosBaseQuery =
-  ({ baseUrl }: { baseUrl: string } = { baseUrl: '' }): BaseQueryFn<
+  (
+    { baseUrl }: { baseUrl: string } = { baseUrl: "" },
+  ): BaseQueryFn<
     {
       url: string;
-      method?: AxiosRequestConfig['method'];
-      data?: AxiosRequestConfig['data'];
-      params?: AxiosRequestConfig['params'];
-      headers?: AxiosRequestConfig['headers'];
+      method?: AxiosRequestConfig["method"];
+      data?: AxiosRequestConfig["data"];
+      params?: AxiosRequestConfig["params"];
+      headers?: AxiosRequestConfig["headers"];
       isFormData?: boolean;
     },
     unknown,
     { status?: number; data?: any }
   > =>
-  async ({ url, method = 'GET', data, params, isFormData }, { getState }) => {
+  async ({ url, method = "GET", data, params, isFormData }, { getState }) => {
     // Get token from state at call time, not module initialization
     const token = (getState() as RootState).auth.token;
 
-    const headers: AxiosRequestConfig['headers'] = {};
+    const headers: AxiosRequestConfig["headers"] = {};
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     // Don't set Content-Type for FormData, axios will handle it with the correct boundary
     if (!isFormData) {
-      headers['Content-Type'] = 'application/json';
+      headers["Content-Type"] = "application/json";
     }
 
     try {

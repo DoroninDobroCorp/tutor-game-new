@@ -1,27 +1,29 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useRegisterMutation } from '@/features/auth/authApi';
-import { toast } from 'react-hot-toast';
-import { useAppSelector } from '@/app/hooks';
-import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
-import { useTranslation } from 'react-i18next';
-
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useRegisterMutation } from "@/features/auth/authApi";
+import { toast } from "react-hot-toast";
+import { useAppSelector } from "@/app/hooks";
+import {
+  selectIsAuthenticated,
+  selectCurrentUser,
+} from "@/features/auth/authSlice";
+import { useTranslation } from "react-i18next";
 
 const registerSchema = z
   .object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
-    role: z.enum(['student', 'teacher']),
+    role: z.enum(["student", "teacher"]),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
-    path: ['confirmPassword'],
+    path: ["confirmPassword"],
   });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -30,7 +32,7 @@ export default function RegisterPage() {
   const { t } = useTranslation();
   const [registerUser, { isLoading }] = useRegisterMutation();
   const navigate = useNavigate();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectCurrentUser);
@@ -43,21 +45,22 @@ export default function RegisterPage() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: 'student',
+      role: "student",
     },
   });
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      toast.success(t('auth.registerSuccess'));
-      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      toast.success(t("auth.registerSuccess"));
+      const targetPath =
+        user.role.toLowerCase() === "teacher" ? "/teacher" : "/student";
       navigate(targetPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (formData: RegisterFormData) => {
     try {
-      setError('');
+      setError("");
 
       const registrationData = {
         email: formData.email,
@@ -68,40 +71,38 @@ export default function RegisterPage() {
       };
 
       await registerUser(registrationData).unwrap();
-
     } catch (error: unknown) {
-      console.error('Registration error:', error);
-      let errorMessage = t('auth.registerFailedDefault');
-      
-      if (error && typeof error === 'object') {
-        if ('status' in error && 'data' in error) {
+      console.error("Registration error:", error);
+      let errorMessage = t("auth.registerFailedDefault");
+
+      if (error && typeof error === "object") {
+        if ("status" in error && "data" in error) {
           const data = error.data as { message?: string };
           errorMessage = data?.message || errorMessage;
-        } else if ('message' in error) {
+        } else if ("message" in error) {
           errorMessage = String(error.message);
         }
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-heading font-extrabold text-gray-900">
-            {t('register.title')}
+            {t("register.title")}
           </h2>
           <p className="mt-2 text-sm text-soft">
-            {t('register.alreadyMember')}{' '}
+            {t("register.alreadyMember")}{" "}
             <Link
               to="/login"
               className="font-medium brand-text hover:opacity-90"
             >
-              {t('register.signIn')}
+              {t("register.signIn")}
             </Link>
           </p>
         </div>
@@ -141,12 +142,14 @@ export default function RegisterPage() {
                   id="first-name"
                   type="text"
                   autoComplete="given-name"
-                  className={`input ${errors.firstName ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                  placeholder={t('register.firstName')}
-                  {...register('firstName')}
+                  className={`input ${errors.firstName ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                  placeholder={t("register.firstName")}
+                  {...register("firstName")}
                 />
                 {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.firstName.message}
+                  </p>
                 )}
               </div>
               <div>
@@ -157,12 +160,14 @@ export default function RegisterPage() {
                   id="last-name"
                   type="text"
                   autoComplete="family-name"
-                  className={`input ${errors.lastName ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                  placeholder={t('register.lastName')}
-                  {...register('lastName')}
+                  className={`input ${errors.lastName ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                  placeholder={t("register.lastName")}
+                  {...register("lastName")}
                 />
                 {errors.lastName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.lastName.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -175,12 +180,14 @@ export default function RegisterPage() {
                 id="email-address"
                 type="email"
                 autoComplete="email"
-                className={`input ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                placeholder={t('register.email')}
-                {...register('email')}
+                className={`input ${errors.email ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                placeholder={t("register.email")}
+                {...register("email")}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -192,12 +199,14 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                className={`input ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
-                placeholder={t('register.password')}
-                {...register('password')}
+                className={`input ${errors.password ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
+                placeholder={t("register.password")}
+                {...register("password")}
               />
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -209,18 +218,20 @@ export default function RegisterPage() {
                 id="confirm-password"
                 type="password"
                 autoComplete="new-password"
-                className={`input ${errors.confirmPassword ? 'border-red-300 focus:border-red-400 focus:ring-rose-100' : ''}`}
+                className={`input ${errors.confirmPassword ? "border-red-300 focus:border-red-400 focus:ring-rose-100" : ""}`}
                 placeholder="Confirm password"
-                {...register('confirmPassword')}
+                {...register("confirmPassword")}
               />
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword.message}
+                </p>
               )}
             </div>
           </div>
 
           <div>
-            <p className="text-sm text-gray-600 mb-2">{t('register.iAmA')}</p>
+            <p className="text-sm text-gray-600 mb-2">{t("register.iAmA")}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <input
@@ -228,17 +239,17 @@ export default function RegisterPage() {
                   type="radio"
                   value="student"
                   className="hidden peer"
-                  {...register('role')}
+                  {...register("role")}
                 />
                 <label
                   htmlFor="student-role"
                   className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-xl border ${
-                    watch('role') === 'student'
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                      : 'border-gray-300 text-gray-700 hover:bg-white/70'
+                    watch("role") === "student"
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                      : "border-gray-300 text-gray-700 hover:bg-white/70"
                   } cursor-pointer transition`}
                 >
-                  {t('register.student')}
+                  {t("register.student")}
                 </label>
               </div>
               <div>
@@ -247,17 +258,17 @@ export default function RegisterPage() {
                   type="radio"
                   value="teacher"
                   className="hidden peer"
-                  {...register('role')}
+                  {...register("role")}
                 />
                 <label
                   htmlFor="teacher-role"
                   className={`block w-full px-4 py-2 text-sm font-medium text-center rounded-xl border ${
-                    watch('role') === 'teacher'
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                      : 'border-gray-300 text-gray-700 hover:bg-white/70'
+                    watch("role") === "teacher"
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                      : "border-gray-300 text-gray-700 hover:bg-white/70"
                   } cursor-pointer transition`}
                 >
-                  {t('register.teacher')}
+                  {t("register.teacher")}
                 </label>
               </div>
             </div>
@@ -267,21 +278,23 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`btn-primary w-full ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className={`btn-primary w-full ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
             >
-              {isLoading ? t('register.creatingAccount') : t('register.createAccount')}
+              {isLoading
+                ? t("register.creatingAccount")
+                : t("register.createAccount")}
             </button>
           </div>
 
           <div className="text-sm text-center">
             <p className="text-soft">
-              {t('register.tosNote.prefix')}{' '}
+              {t("register.tosNote.prefix")}{" "}
               <a href="#" className="font-medium brand-text hover:opacity-90">
-                {t('register.tosNote.terms')}
-              </a>{' '}
-              {t('register.tosNote.and')}{' '}
+                {t("register.tosNote.terms")}
+              </a>{" "}
+              {t("register.tosNote.and")}{" "}
               <a href="#" className="font-medium brand-text hover:opacity-90">
-                {t('register.tosNote.privacy')}
+                {t("register.tosNote.privacy")}
               </a>
               .
             </p>

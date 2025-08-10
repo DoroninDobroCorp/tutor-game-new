@@ -1,9 +1,9 @@
-import { Server as HttpServer } from 'http';
-import { Server, Socket } from 'socket.io';
-import { verifyAccessToken } from './auth.service';
-import { Role } from '@prisma/client';
-import { config } from '../config/env';
-import prisma from '../db';
+import { Server as HttpServer } from "http";
+import { Server, Socket } from "socket.io";
+import { verifyAccessToken } from "./auth.service";
+import { Role } from "@prisma/client";
+import { config } from "../config/env";
+import prisma from "../db";
 
 interface AuthenticatedSocket extends Socket {
   user?: {
@@ -20,10 +20,10 @@ export class WebSocketService {
     this.io = new Server(server, {
       cors: {
         origin: config.corsOrigin,
-        methods: ['GET', 'POST'],
+        methods: ["GET", "POST"],
         credentials: true,
       },
-      path: '/socket.io/',
+      path: "/socket.io/",
     });
 
     this.initializeMiddleware();
@@ -34,13 +34,13 @@ export class WebSocketService {
     this.io.use(async (socket: AuthenticatedSocket, next) => {
       try {
         const token = socket.handshake.auth.token;
-        if (!token) return next(new Error('Authentication error'));
+        if (!token) return next(new Error("Authentication error"));
         const decoded = await verifyAccessToken(token);
-        if (!decoded) return next(new Error('Invalid token'));
+        if (!decoded) return next(new Error("Invalid token"));
         socket.user = { userId: decoded.userId, role: decoded.role };
         next();
       } catch (error) {
-        next(new Error('Authentication error'));
+        next(new Error("Authentication error"));
       }
     });
   }
@@ -55,36 +55,40 @@ export class WebSocketService {
     const socketId = this.connectedUsers.get(userId);
     if (socketId) {
       this.io.to(socketId).emit(event, data);
-      console.log(`[WebSocket] Emitted event '${event}' to user ${userId} on socket ${socketId}`);
+      console.log(
+        `[WebSocket] Emitted event '${event}' to user ${userId} on socket ${socketId}`,
+      );
     } else {
-      console.log(`[WebSocket] User ${userId} not connected. Cannot emit event '${event}'.`);
+      console.log(
+        `[WebSocket] User ${userId} not connected. Cannot emit event '${event}'.`,
+      );
     }
   }
 
   private initializeConnection() {
-    this.io.on('connection', (socket: AuthenticatedSocket) => {
+    this.io.on("connection", (socket: AuthenticatedSocket) => {
       if (!socket.user) return;
 
       const { userId, role } = socket.user;
       this.connectedUsers.set(userId, socket.id);
-      this.io.emit('user_status_change', { userId, status: 'online' });
+      this.io.emit("user_status_change", { userId, status: "online" });
 
-      socket.on('getUsers', async () => {
+      socket.on("getUsers", async () => {
         if (!socket.user) return;
-        
+
         try {
-          const userSelection = { 
-            id: true, 
-            email: true, 
-            firstName: true, 
-            lastName: true, 
-            role: true, 
-            lastActive: true 
+          const userSelection = {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            lastActive: true,
           };
-          
+
           let usersFromDb: any[] = [];
-          
-          if (socket.user.role === 'TEACHER') {
+
+          if (socket.user.role === "TEACHER") {
             const students = await prisma.student.findMany({
               where: { teachers: { some: { userId: socket.user.userId } } },
               select: { user: { select: userSelection } },
@@ -97,24 +101,26 @@ export class WebSocketService {
             });
             usersFromDb = teachers.map((t) => t.user);
           }
-          
+
           const usersWithStatus = usersFromDb.map((user) => ({
             id: user.id,
-            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+            name:
+              `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+              user.email,
             role: user.role.toLowerCase(),
             isOnline: this.connectedUsers.has(user.id),
             lastSeen: user.lastActive,
           }));
-          
-          socket.emit('users', usersWithStatus);
+
+          socket.emit("users", usersWithStatus);
         } catch (error) {
-          console.error('Error in getUsers:', error);
+          console.error("Error in getUsers:", error);
         }
       });
 
-      socket.on('getMessages', async (data: { userId: string }) => {
+      socket.on("getMessages", async (data: { userId: string }) => {
         if (!socket.user || !data.userId) return;
-        
+
         try {
           const messages = await prisma.message.findMany({
             where: {
@@ -123,94 +129,105 @@ export class WebSocketService {
                 { senderId: data.userId, recipientId: socket.user.userId },
               ],
             },
-            orderBy: { createdAt: 'asc' },
-            include: { 
-              sender: { 
-                select: { 
-                  id: true, 
-                  firstName: true, 
-                  lastName: true, 
-                  role: true 
-                } 
-              } 
+            orderBy: { createdAt: "asc" },
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  role: true,
+                },
+              },
             },
           });
-          
+
           await prisma.message.updateMany({
-            where: { 
-              senderId: data.userId, 
-              recipientId: socket.user.userId, 
-              read: false 
+            where: {
+              senderId: data.userId,
+              recipientId: socket.user.userId,
+              read: false,
             },
-            data: { 
-              read: true, 
-              readAt: new Date() 
+            data: {
+              read: true,
+              readAt: new Date(),
             },
           });
-          
+
           const formattedMessages = messages.map((msg) => ({
             id: msg.id,
             senderId: msg.senderId,
             recipientId: msg.recipientId,
-            senderName: `${msg.sender.firstName || ''} ${msg.sender.lastName || ''}`.trim(),
+            senderName:
+              `${msg.sender.firstName || ""} ${msg.sender.lastName || ""}`.trim(),
             senderRole: msg.sender.role.toLowerCase(),
             content: msg.content,
             timestamp: msg.createdAt,
             read: msg.read,
           }));
-          
-          socket.emit('messages', formattedMessages);
+
+          socket.emit("messages", formattedMessages);
         } catch (error) {
-          console.error('Error in getMessages:', error);
+          console.error("Error in getMessages:", error);
         }
       });
 
-      socket.on('sendMessage', async (data: { recipientId: string; content: string }) => {
-        const senderId = socket.user?.userId;
-        const { recipientId, content } = data;
-        
-        if (!senderId || !recipientId || !content) {
-          return;
-        }
+      socket.on(
+        "sendMessage",
+        async (data: { recipientId: string; content: string }) => {
+          const senderId = socket.user?.userId;
+          const { recipientId, content } = data;
 
-        try {
-          const newMessage = await prisma.message.create({
-            data: { content, senderId, recipientId },
-            include: {
-              sender: { select: { id: true, firstName: true, lastName: true, role: true } },
-            },
-          });
-          
-          const formattedMessage = {
-            id: newMessage.id,
-            recipientId: newMessage.recipientId,
-            senderId: newMessage.senderId,
-            senderName: `${newMessage.sender.firstName || ''} ${newMessage.sender.lastName || ''}`.trim(),
-            senderRole: newMessage.sender.role.toLowerCase(),
-            content: newMessage.content,
-            timestamp: newMessage.createdAt.toISOString(),
-            read: newMessage.read,
-          };
-
-          const recipientSocketId = this.connectedUsers.get(recipientId);
-          if (recipientSocketId) {
-            this.io.to(recipientSocketId).emit('message', formattedMessage);
+          if (!senderId || !recipientId || !content) {
+            return;
           }
-          
-          socket.emit('message', formattedMessage);
-          
-        } catch (error) {
-          console.error('Error sending message:', error);
-        }
-      });
 
-      socket.on('disconnect', () => {
+          try {
+            const newMessage = await prisma.message.create({
+              data: { content, senderId, recipientId },
+              include: {
+                sender: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    role: true,
+                  },
+                },
+              },
+            });
+
+            const formattedMessage = {
+              id: newMessage.id,
+              recipientId: newMessage.recipientId,
+              senderId: newMessage.senderId,
+              senderName:
+                `${newMessage.sender.firstName || ""} ${newMessage.sender.lastName || ""}`.trim(),
+              senderRole: newMessage.sender.role.toLowerCase(),
+              content: newMessage.content,
+              timestamp: newMessage.createdAt.toISOString(),
+              read: newMessage.read,
+            };
+
+            const recipientSocketId = this.connectedUsers.get(recipientId);
+            if (recipientSocketId) {
+              this.io.to(recipientSocketId).emit("message", formattedMessage);
+            }
+
+            socket.emit("message", formattedMessage);
+          } catch (error) {
+            console.error("Error sending message:", error);
+          }
+        },
+      );
+
+      socket.on("disconnect", () => {
         if (socket.user) {
           this.connectedUsers.delete(socket.user.userId);
-          this.io.emit('user_status_change', { 
-            userId: socket.user.userId, 
-            status: 'offline',
-            lastSeen: new Date()
+          this.io.emit("user_status_change", {
+            userId: socket.user.userId,
+            status: "offline",
+            lastSeen: new Date(),
           });
         }
       });

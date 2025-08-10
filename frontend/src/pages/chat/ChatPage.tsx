@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../app/hooks';
-import Chat from '../../features/chat/Chat';
-import { useTranslation } from 'react-i18next';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAppSelector } from "../../app/hooks";
+import Chat from "../../features/chat/Chat";
+import { useTranslation } from "react-i18next";
 
 export default function ChatPage() {
   const { t } = useTranslation();
@@ -12,7 +12,7 @@ export default function ChatPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [user, navigate]);
 
@@ -23,7 +23,9 @@ export default function ChatPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        {user.role === 'teacher' ? t('chat.studentMessages') : t('chat.chatWithTeachers')}
+        {user.role === "teacher"
+          ? t("chat.studentMessages")
+          : t("chat.chatWithTeachers")}
       </h1>
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <Chat />

@@ -13,6 +13,10 @@
     "strict": true,
     "noEmit": false
   },
-  "include": ["vite.config.ts", "plugins/spa-fallback.ts", "vite-spa-fallback.ts"],
+  "include": [
+    "vite.config.ts",
+    "plugins/spa-fallback.ts",
+    "vite-spa-fallback.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

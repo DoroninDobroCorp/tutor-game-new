@@ -1,9 +1,9 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { setupListeners } from '@reduxjs/toolkit/query';
-import { apiSlice } from './api/apiSlice';
-import authReducer from '../features/auth/authSlice';
-import chatReducer from '../features/chat/chatSlice';
-import adventureReducer from '../features/student/adventureSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
+import { apiSlice } from "./api/apiSlice";
+import authReducer from "../features/auth/authSlice";
+import chatReducer from "../features/chat/chatSlice";
+import adventureReducer from "../features/student/adventureSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,7 +14,7 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(apiSlice.middleware),
-  devTools: process.env.NODE_ENV !== 'production',
+  devTools: process.env.NODE_ENV !== "production",
 });
 
 setupListeners(store.dispatch);
