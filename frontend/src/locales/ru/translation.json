@@ -357,7 +357,11 @@
     "signIn": "Войти",
     "signingIn": "Вход...",
     "notMember": "Не зарегистрированы?",
-    "register": "Создать аккаунт"
+    "register": "Создать аккаунт",
+    "or": "или",
+    "createAccount": "Создать аккаунт",
+    "rememberMe": "Запомнить меня",
+    "forgotPassword": "Забыли пароль?"
   },
   "notFound": {
     "title": "Страница не найдена",

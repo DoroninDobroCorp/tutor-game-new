@@ -360,7 +360,11 @@
     "signIn": "Sign in",
     "signingIn": "Signing in...",
     "notMember": "Not a member?",
-    "register": "Start a 14 day free trial"
+    "register": "Start a 14 day free trial",
+    "or": "or",
+    "createAccount": "Create account",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot your password?"
   },
   "notFound": {
     "title": "Page not found",
