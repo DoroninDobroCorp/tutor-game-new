@@ -1,24 +1,8 @@
 import { apiSlice } from '../../app/api/apiSlice';
 import { Lesson, StoryChapter } from '../../types/models';
 
-export interface GenerationResult {
-    generationId: string;
-    imageId: string | null;
-    url: string | null;
-    status: 'PENDING' | 'COMPLETE' | 'FAILED';
-}
-
 export const lessonApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
-        checkStoryImageStatus: builder.query<{ data: GenerationResult }, string>({
-            query: (generationId) => ({
-                url: `/story/generation/${generationId}`,
-                method: 'GET',
-            }),
-            providesTags: (result) => 
-                result?.data ? [{ type: 'Lesson', id: result.data.generationId }] : [],
-        }),
-
         generateLessonContent: builder.mutation<{ data: { chatResponse: string, blocks: any[] } }, { lessonId: string; chatHistory: any[] }>({
             query: ({ lessonId, chatHistory }) => ({
                 url: `/lessons/${lessonId}/generate-content`, data: { chatHistory },
@@ -79,7 +63,7 @@ export const lessonApi = apiSlice.injectEndpoints({
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
         }),
 
-        regenerateStoryImage: builder.mutation<{ data: { generationId: string; prompt: string } }, { lessonId: string; prompt: string; useCharacterReference: boolean; }>({
+        regenerateStoryImage: builder.mutation<{ data: { imageUrl: string; prompt: string } }, { lessonId: string; prompt: string; useCharacterReference: boolean; }>({
             query: ({ lessonId, prompt, useCharacterReference }) => ({
                 url: `/lessons/${lessonId}/story/regenerate-image`,
                 method: 'POST',
@@ -95,7 +79,6 @@ export const {
     useGenerateStorySnippetMutation,
     useApproveStorySnippetMutation,
     useApproveStorySnippetWithUploadMutation,
-    useLazyCheckStoryImageStatusQuery,
     useRegenerateStoryImageMutation,
     useGenerateControlWorkContentMutation,
 } = lessonApi;

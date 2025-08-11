@@ -1,32 +1,64 @@
 //---------------------------------------------------------------
 // gemini.service.ts
-// Сервис работы с Google Gemini: генерация задач, уроков, историй и т.д.
+// Сервис работы с Google Gemini (Vertex AI): генерация задач, уроков, историй и т.д.
 //---------------------------------------------------------------
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/generative-ai';
+import axios from 'axios';
+import { GoogleAuth } from 'google-auth-library';
 import { config } from '../config/env';
 import { AppError } from '../utils/errors';
 
-//--- инициализация клиента -------------------------------------
-if (!config.geminiApiKey) {
-    throw new Error('GEMINI_API_KEY is not set in the environment variables.');
-}
-const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-
 //--- Вспомогательные константы ---------------------------------
-const MODEL_NAME = "gemini-2.5-flash"; // не менять на полтора никогда!
+const MODEL_NAME = "gemini-2.5-flash"; // Модель Vertex AI Generative
 const TEMP_LOW = 0.2;
 const TEMP_MID = 0.45;
 const TEMP_HIGH = 0.85;
 
+// Safety настройки для Vertex AI
 const safetySettings = [
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-];
+    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+] as const;
 
-function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' | 'assistant'; content: string }[]): Content[] {
-    const history: Content[] = [];
+// Конфигурация Vertex AI
+const { gcpProjectId, gcpLocation } = config;
+if (!gcpProjectId || !gcpLocation) {
+  throw new Error('GCP_PROJECT_ID и LOCATION должны быть заданы для работы Gemini через Vertex AI.');
+}
+const GEMINI_ENDPOINT = `https://${gcpLocation}-aiplatform.googleapis.com/v1/projects/${gcpProjectId}/locations/${gcpLocation}/publishers/google/models/${MODEL_NAME}:generateContent`;
+
+const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+
+// Простые типы сообщений для чата
+type GeminiRole = 'user' | 'model';
+interface GeminiPart { text: string }
+interface GeminiContent { role: GeminiRole; parts: GeminiPart[] }
+
+// Аккуратный парсер JSON из произвольного текстового ответа модели
+function parseJsonFromText(text: string) {
+  // Удаляем возможные markdown-кодовые блоки
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Пытаемся вытащить первый JSON-объект по скобкам
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      const candidate = cleaned.slice(start, end + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch {
+        // Игнор
+      }
+    }
+    throw new Error('Invalid JSON from Gemini');
+  }
+}
+
+function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' | 'assistant'; content: string }[]): GeminiContent[] {
+    const history: GeminiContent[] = [];
 
     // Системный промпт + первый запрос пользователя объединяются в первый элемент истории
     const firstUserMessage = chatHistory.shift();
@@ -36,7 +68,7 @@ function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' |
     // Остальная история конвертируется в формат user/model
     chatHistory.forEach(msg => {
         history.push({
-            role: msg.role === 'assistant' ? 'model' : 'user',
+            role: (msg.role === 'assistant' ? 'model' : 'user') as GeminiRole,
             parts: [{ text: msg.content }]
         });
     });
@@ -44,52 +76,67 @@ function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' |
 }
 
 async function callGemini(prompt: string, temperature: number, isJson: boolean) {
-    try {
-        const model = genAI.getGenerativeModel({
-            model: MODEL_NAME,
-            safetySettings,
-            generationConfig: {
-                temperature,
-                maxOutputTokens: 24576,
-                responseMimeType: isJson ? 'application/json' : 'text/plain',
-            },
-        });
+  try {
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
 
-        const result = await model.generateContent(prompt);
-        const raw = (await result.response).text();
-        if (!raw) throw new Error('No content received from Gemini');
-        return isJson ? JSON.parse(raw) : raw;
-    } catch (err) {
-        console.error('Error calling Gemini API:', err);
-        throw new Error('Failed to get response from Gemini');
-    }
+    const body = {
+      contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
+      safetySettings,
+      generationConfig: {
+        temperature,
+        maxOutputTokens: 24576,
+        responseMimeType: isJson ? 'application/json' : 'text/plain',
+      },
+    };
+
+    const { data } = await axios.post(GEMINI_ENDPOINT, body, {
+      headers: { Authorization: `Bearer ${token.token || token}`, 'Content-Type': 'application/json' },
+      timeout: 180000,
+    });
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .map((p: any) => p.text)
+      .filter(Boolean)
+      .join('');
+    if (!text) throw new Error('No content received from Gemini (Vertex)');
+    return isJson ? parseJsonFromText(text) : text;
+  } catch (err) {
+    console.error('Error calling Gemini Vertex API:', (err as any)?.response?.data || err);
+    throw new Error('Failed to get response from Gemini');
+  }
 }
 
-async function callGeminiWithChat(history: Content[], temperature: number, isJson: boolean) {
-    try {
-        const model = genAI.getGenerativeModel({
-            model: MODEL_NAME,
-            safetySettings,
-            generationConfig: {
-                temperature,
-                maxOutputTokens: 24576,
-                responseMimeType: isJson ? 'application/json' : 'text/plain',
-            },
-        });
-        const chat = model.startChat({ history: history.slice(0, -1) });
-        const lastMessage = history.slice(-1)[0];
-        if (!lastMessage || !lastMessage.parts) throw new Error('Chat history is empty');
-        
-        const result = await chat.sendMessage(lastMessage.parts);
-        const raw = (await result.response).text();
+async function callGeminiWithChat(history: GeminiContent[], temperature: number, isJson: boolean) {
+  try {
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
 
-        if (!raw) throw new Error('No content received from Gemini');
-        return isJson ? JSON.parse(raw) : raw;
+    if (history.length === 0) throw new Error('Chat history is empty');
+    // Отправляем всю историю целиком
+    const body = {
+      contents: history,
+      safetySettings,
+      generationConfig: {
+        temperature,
+        maxOutputTokens: 24576,
+        responseMimeType: isJson ? 'application/json' : 'text/plain',
+      },
+    };
 
-    } catch (err) {
-        console.error('Error calling Gemini API with chat:', err);
-        throw new Error('Failed to get response from Gemini');
-    }
+    const { data } = await axios.post(GEMINI_ENDPOINT, body, {
+      headers: { Authorization: `Bearer ${token.token || token}`, 'Content-Type': 'application/json' },
+      timeout: 180000,
+    });
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .map((p: any) => p.text)
+      .filter(Boolean)
+      .join('');
+    if (!text) throw new Error('No content received from Gemini (Vertex)');
+    return isJson ? parseJsonFromText(text) : text;
+  } catch (err) {
+    console.error('Error calling Gemini Vertex API (chat):', (err as any)?.response?.data || err);
+    throw new Error('Failed to get response from Gemini');
+  }
 }
 
 //----------------------------------------------------------------
@@ -193,16 +240,18 @@ export const generateStorySnippet = async (
   let systemPrompt = `You are a talented writer of engaging, humorous, and slightly mysterious educational stories for children in ${language}.
 You are writing chapter ${currentLessonNumber} of ${totalLessons} for a ${studentAge}-year-old. 
 Main character: "${characterPrompt}".
+
 Respond ONLY with valid JSON:
 {
   "storyText": "...",
   "imagePrompt": "...",
   "useCharacterReference": true|false
 }
+
 Rules:
-- storyText = 2‑3 paragraphs, end with open question about next action (UNLESS it is a CONTROL_WORK lesson).
-- imagePrompt = 15‑25 English keywords, comma‑separated, describing the scene;
-- if useCharacterReference=true, include the main character in prompt; else do not.
+- storyText = 2-3 paragraphs, end with an open question about the next action (UNLESS it is a CONTROL_WORK lesson).
+- imagePrompt = a detailed, descriptive prompt in ENGLISH for generating the scene. Single paragraph describing the environment, characters, action, and mood.
+- useCharacterReference = true|false. If true, the main character is central to the scene. The "imagePrompt" MUST then include the character reference marker "[1]" where the character should appear. If false, do not include "[1]".
 - The story is a reward for completing the lesson on "${lessonTitle}". A direct mention of the lesson topic is not required, the story should primarily continue the adventure.`;
   
   if (lessonType === 'CONTROL_WORK') {
@@ -243,20 +292,31 @@ export const generateCharacter = async (
   setting: string,
   basePrompt: string,
   language: string,
-): Promise<{ name: string; description: string; imagePrompt: string }> => {
+): Promise<{ name: string; description: string; imagePrompt: string; subjectDescription: string; }> => {
   const prompt = `You are a creative writer for children's educational stories.
 The story is about "${subject}" in a "${setting}" setting for a ${age}-year-old.
 User idea: "${basePrompt}".
-Respond ONLY with JSON:
+Your task is to develop this idea into a character and create a detailed prompt for an image generation AI (like Imagen 3).
+
+Respond ONLY with this JSON format:
 {
-  "name": "...",
-  "description": "...",
-  "imagePrompt": "..."
+  "name": "string, a short and memorable name in ${language}",
+  "description": "string, a short and engaging character description in ${language}",
+  "imagePrompt": "string, a detailed, descriptive prompt in ENGLISH for generating the character. It should be a single paragraph describing appearance, style, and mood. For example: 'Cartoon adult character for a math adventure game; friendly, smart, slightly mysterious. Clean line art, bright colors, neutral background.'",
+  "subjectDescription": "string, a short, generic description in ENGLISH of the character type for the AI. For example: 'a friendly cartoon robot', 'an anime-style magical girl', 'a photorealistic brave knight'."
 }
-"imagePrompt" in ENGLISH, comma‑separated keywords.`;
+Do not use comma-separated keywords for "imagePrompt".`;
 
   try {
-    return await callGemini(prompt, 0.55, true);
+    const data = await callGemini(prompt, 0.55, true);
+     if (
+      typeof data.name !== 'string' ||
+      typeof data.description !== 'string' ||
+      typeof data.imagePrompt !== 'string' ||
+      typeof data.subjectDescription !== 'string'
+    )
+      throw new Error('Invalid JSON structure from Gemini for character generation');
+    return data;
   } catch (err) {
     console.error('Error generating character:', err);
     throw new Error('Failed to generate character');
@@ -265,7 +325,7 @@ Respond ONLY with JSON:
 
 
 //----------------------------------------------------------------
-// 5.  ДВУХ‑ШАГОВАЯ ОЦЕНКА ответов ученика
+// 5.  ДВУХ-ШАГОВАЯ ОЦЕНКА ответов ученика
 //----------------------------------------------------------------
 
 async function gradeAnswers(
@@ -276,7 +336,7 @@ Your rules:
 1. If the student's answer is conceptually correct but has a minor typo (e.g., 'paralelogram' instead of 'parallelogram'), mark "isCorrect" as true.
 2. Analyze each answer independently based on the provided task.
 
-FIRST, think step‑by‑step about each answer.
+FIRST, think step-by-step about each answer.
 THEN output ONLY JSON:
 {
   "analysis": [
@@ -443,7 +503,7 @@ export const generateRoadmap = async (
   language: string,
   chatHistory: { role: 'user' | 'assistant'; content: string }[] = [],
 ) => {
-  const systemPrompt = `You are a world‑class curriculum designer.
+  const systemPrompt = `You are a world-class curriculum designer.
 Goal: build a learning plan on "${subject}" for a ${age}-year-old. Respond ONLY with:
 {
   "chatResponse": "...",
@@ -475,7 +535,7 @@ export const generateStorySummary = async (
   language: string,
 ): Promise<{ summary: string }> => {
   const prompt = `You are an assistant great at summarising stories for children.
-Return ONLY JSON: { "summary": "..." } (2‑3 concise sentences in ${language}).
+Return ONLY JSON: { "summary": "..." } (2-3 concise sentences in ${language}).
 
 Here is the story history:
 ${storyHistory}`;

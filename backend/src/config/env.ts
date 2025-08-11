@@ -29,9 +29,12 @@ const envSchema = z.object({
   // External APIs
   OPENAI_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
-  LEONARDO_API_KEY: z.string().optional(),
-  LEONARDO_MODEL_ID: z.string().optional(),
   
+  // Google Cloud
+  GCP_PROJECT_ID: z.string().optional(),
+  LOCATION: z.string().optional(),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+
   // Feature flags
   ENABLE_LOGGING: z.string().default('true'),
 });
@@ -72,9 +75,11 @@ export const config = {
   // External APIs
   openaiApiKey: envVars.data.OPENAI_API_KEY,
   geminiApiKey: envVars.data.GEMINI_API_KEY,
-  leonardoApiKey: envVars.data.LEONARDO_API_KEY,
-  leonardoModelId: envVars.data.LEONARDO_MODEL_ID,
   
+  // Google Cloud
+  gcpProjectId: envVars.data.GCP_PROJECT_ID,
+  gcpLocation: envVars.data.LOCATION,
+
   // Feature flags
   features: {
     logging: envVars.data.ENABLE_LOGGING === 'true',

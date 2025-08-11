@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
 import { generateCharacter } from '../services/gemini.service';
-import { startImageGeneration, getGenerationResult, uploadImageToLeonardo } from '../services/leonardo.service';
+import { generateImage } from '../services/imagen.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -30,60 +30,50 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
     if (!goal) {
         throw new AppError('Learning Goal not found or access denied', 404);
     }
-    
-    // Generate character description and name using Gemini
-    const characterDetails = await generateCharacter(
-        goal.subject,
-        goal.studentAge,
-        goal.setting,
-        prompt, // Pass the user's prompt as the basePrompt
-        goal.language || 'Russian'
-    );
-    
-    // Use the generated image prompt directly from the AI response
-    const imagePrompt = characterDetails.imagePrompt;
+    // 1. Try to generate character details with Gemini; on failure, fall back to Imagen-only like run.js
+    let imagePrompt: string;
+    let subjectDescription: string | null = null;
+    let characterPromptForDb: string;
 
-    // Start the image generation process
-    const { generationId } = await startImageGeneration({
-        prompt: imagePrompt,
-        presetStyle: goal.illustrationStyle as 'ILLUSTRATION' | 'ANIME' | undefined,
-    });
-    
-    console.log('[LEONARDO.AI] Started image generation with ID:', generationId);
-    
-    // Poll for the result (with a reasonable timeout)
-    const maxAttempts = 30; // 30 attempts * 2 seconds = 1 minute max wait
-    let attempts = 0;
-    let imageResult;
-    
-    while (attempts < maxAttempts) {
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
-        
-        imageResult = await getGenerationResult(generationId);
-        
-        if (imageResult.status === 'COMPLETE' && imageResult.url) {
-            console.log('[LEONARDO.AI] Image generation completed successfully');
-            break;
-        } else if (imageResult.status === 'FAILED') {
-            throw new AppError("Failed to generate character image from Leonardo.", 500);
-        }
-        
-        console.log(`[LEONARDO.AI] Image generation in progress (attempt ${attempts}/${maxAttempts})`);
-    }
-    
-    if (!imageResult?.url) {
-        throw new AppError("Image generation timed out. Please try again.", 504);
+    try {
+        const characterDetails = await generateCharacter(
+            goal.subject,
+            goal.studentAge,
+            goal.setting,
+            prompt,
+            goal.language || 'Russian'
+        );
+        imagePrompt = characterDetails.imagePrompt;
+        subjectDescription = characterDetails.subjectDescription;
+        characterPromptForDb = `${characterDetails.name} - ${characterDetails.description}`;
+        console.log('[IMAGEN] Generating character with prompt (from Gemini):', imagePrompt);
+    } catch (e) {
+        // Fallback aligned with run.js params, but use the exact user-provided prompt from frontend
+        console.warn('[FALLBACK] Gemini failed, generating character with Imagen only. Reason:', (e as any)?.message);
+        imagePrompt = typeof prompt === 'string' && prompt.trim().length > 0
+          ? prompt.trim()
+          : 'Character image';
+        subjectDescription = null;
+        characterPromptForDb = imagePrompt;
     }
 
-    // Save the character data
+    // 2. Generate the character image with Imagen
+    const imageBuffer = await generateImage(imagePrompt);
+
+    // 3. Save the generated image to a file
+    const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+    await fs.promises.mkdir(uploadsDir, { recursive: true });
+    const filename = `character-${goal.id}-${Date.now()}.png`;
+    const filepath = path.join(uploadsDir, filename);
+    await fs.promises.writeFile(filepath, imageBuffer);
+    const publicImageUrl = `/uploads/${filename}`;
+    
+    // 4. Save character details to the database
     const updatedGoal = await prisma.learningGoal.update({
         where: { id: goalId },
         data: {
-            characterPrompt: `${characterDetails.name} - ${characterDetails.description}`,
-            characterImageId: imageResult.imageId,
-            characterGenId: imageResult.generationId,
-            characterImageUrl: imageResult.url,
+            characterPrompt: characterPromptForDb,
+            characterImageUrl: publicImageUrl,
         },
         include: {
             student: true,
@@ -100,7 +90,7 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
 
     res.json({ 
         success: true, 
-        data: updatedGoal
+        data: updatedGoal 
     });
 };
 
@@ -130,25 +120,19 @@ export const uploadCharacterImageHandler = async (req: Request, res: Response) =
             where: { id: goalId },
             data: {
                 characterImageUrl: displayImageUrl,
-                characterImageId: null, // We'll upload to Leonardo when needed
                 characterPrompt: req.body.prompt || 'Uploaded character image',
-                characterGenId: null, // Reset generation ID since this is an upload
+                characterSubjectDescription: null,
             }
         });
-
-        // Keep the file for future use
-        // fs.unlinkSync(file.path); // <--- Don't delete the file, we need it for future generations
 
         res.json({
             success: true,
             data: updatedGoal
         });
     } catch (error) {
-        // Clean up the uploaded file if there's an error
         if (file && fs.existsSync(file.path)) {
             fs.unlinkSync(file.path);
         }
-        // Re-throw the error to be handled by the global error handler
         throw error;
     }
 };

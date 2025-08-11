@@ -39,8 +39,7 @@ export interface LearningGoal {
     sections: ContentSection[];
     characterPrompt?: string;
     characterImageUrl?: string | null;
-    characterImageId?: string | null;
-    characterGenId?: string | null;
+    characterSubjectDescription?: string | null;
 }
 
 export interface ContentSection {

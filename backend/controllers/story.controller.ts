@@ -276,24 +276,18 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
         throw new AppError('Lesson not found or access denied', 404);
     }
     
-    const { characterImageUrl, characterSubjectDescription } = lesson.section.learningGoal;
+    const { characterImageUrl, characterPrompt } = lesson.section.learningGoal;
     let characterBuffer: Buffer | undefined;
-    let finalPrompt = prompt;
 
-    // If character reference is requested, load the character image into a buffer
     if (useCharacterReference && characterImageUrl) {
         const imagePath = path.join(__dirname, '..', '..', characterImageUrl);
         if (fs.existsSync(imagePath)) {
             try {
                 characterBuffer = fs.readFileSync(imagePath);
-                // Add the reference marker if not present, as required by Imagen's capability endpoint
-                if (!finalPrompt.includes('[1]')) {
-                    finalPrompt += ' [1]';
-                }
                 console.log(`[IMAGEN] Loaded character reference from: ${imagePath}`);
             } catch (readError) {
                 console.error("Failed to read character image for regeneration, proceeding without it.", readError);
-                characterBuffer = undefined; // Ensure buffer is undefined on read error
+                characterBuffer = undefined;
             }
         } else {
              console.warn(`[IMAGEN] Character reference image file not found at: ${imagePath}`);
@@ -303,15 +297,13 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
     }
 
     try {
-        console.log(`[IMAGEN] Generating scene with prompt: "${finalPrompt}"`);
-        // Pass characterSubjectDescription to the service if a buffer is being used
+        console.log(`[IMAGEN] Generating scene with prompt: "${prompt}"`);
         const imageBuffer = await generateImage(
-            finalPrompt,
+            prompt,
             characterBuffer,
-            characterBuffer ? (characterSubjectDescription || 'a character') : undefined
+            characterBuffer ? (characterPrompt || undefined) : undefined
         );
 
-        // Save the generated image to a file
         const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
         const filename = `scene-${lessonId}-${Date.now()}.png`;
         const filepath = path.join(uploadsDir, filename);
@@ -322,7 +314,7 @@ export const regenerateStoryImageHandler = async (req: Request, res: Response) =
             success: true, 
             data: { 
                 imageUrl: publicImageUrl,
-                prompt: prompt  // Return original prompt to update UI
+                prompt: prompt
             } 
         });
     } catch (error) {

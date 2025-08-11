@@ -99,10 +99,9 @@ model LearningGoal {
   sections ContentSection[]
 
   // --- CHARACTER FIELDS ---
-  characterPrompt   String?
-  characterImageId  String? // ID изображения из Leonardo AI
-  characterGenId    String? // ID самой генерации для проверки статуса
-  characterImageUrl String? // Прямой URL на готовое изображение
+  characterPrompt             String?
+  characterImageUrl           String? // Прямой URL на готовое изображение
+  characterSubjectDescription String? // English description for Imagen AI
   // ------------------------
 
   // --- STORY CHAPTERS ---
