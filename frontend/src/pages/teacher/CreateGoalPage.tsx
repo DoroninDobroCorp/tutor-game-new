@@ -12,7 +12,6 @@ interface CreateGoalFormData {
     setting: string;
     studentAge: number;
     language: string;
-    illustrationStyle: string;
 }
 
 export default function CreateGoalPage() {
@@ -107,19 +106,7 @@ export default function CreateGoalPage() {
                     </select>
                     {errors.language && <p className="mt-1 text-sm text-red-600">{t('createGoal.languageError')}</p>}
                 </div>
-                <div>
-                    <label htmlFor="illustrationStyle" className="block text-sm font-medium text-gray-700">{t('createGoal.illustrationStyle')}</label>
-                    <select
-                        id="illustrationStyle"
-                        {...register('illustrationStyle', { required: true })}
-                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                        defaultValue="ILLUSTRATION"
-                    >
-                        <option value="ILLUSTRATION">{t('createGoal.illustrationStandard')}</option>
-                        <option value="ANIME">{t('createGoal.anime')}</option>
-                    </select>
-                    {errors.illustrationStyle && <p className="mt-1 text-sm text-red-600">{t('createGoal.illustrationStyleError')}</p>}
-                </div>
+
                 <button 
                     type="submit" 
                     disabled={isCreating || !students?.length}

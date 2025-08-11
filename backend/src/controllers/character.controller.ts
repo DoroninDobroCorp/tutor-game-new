@@ -21,8 +21,7 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
             subject: true, 
             studentAge: true, 
             setting: true, 
-            language: true,
-            illustrationStyle: true
+            language: true
         }
     });
 
