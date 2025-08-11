@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
 import prisma from '../db';
-import { generateCharacter } from '../services/gemini.service';
 import { generateImage } from '../services/imagen.service';
 import fs from 'fs';
 import path from 'path';
@@ -30,34 +29,12 @@ export const generateCharacterHandler = async (req: Request, res: Response) => {
     if (!goal) {
         throw new AppError('Learning Goal not found or access denied', 404);
     }
-    // 1. Try to generate character details with Gemini; on failure, fall back to Imagen-only like run.js
-    let imagePrompt: string;
-    let subjectDescription: string | null = null;
-    let characterPromptForDb: string;
-
-    try {
-        const characterDetails = await generateCharacter(
-            goal.subject,
-            goal.studentAge,
-            goal.setting,
-            prompt,
-            goal.language || 'Russian'
-        );
-        imagePrompt = characterDetails.imagePrompt;
-        subjectDescription = characterDetails.subjectDescription;
-        characterPromptForDb = `${characterDetails.name} - ${characterDetails.description}`;
-        console.log('[IMAGEN] Generating character with prompt (from Gemini):', imagePrompt);
-    } catch (e) {
-        // Fallback aligned with run.js params, but use the exact user-provided prompt from frontend
-        console.warn('[FALLBACK] Gemini failed, generating character with Imagen only. Reason:', (e as any)?.message);
-        imagePrompt = typeof prompt === 'string' && prompt.trim().length > 0
-          ? prompt.trim()
-          : 'Character image';
-        subjectDescription = null;
-        characterPromptForDb = imagePrompt;
-    }
-
-    // 2. Generate the character image with Imagen
+    // 1. Генерация персонажа напрямую через Imagen по промпту пользователя (без Gemini)
+    const imagePrompt = typeof prompt === 'string' && prompt.trim().length > 0
+        ? prompt.trim()
+        : 'Character image';
+    const characterPromptForDb = imagePrompt;
+    console.log('[IMAGEN] Generating character (direct) with user prompt:', imagePrompt);
     const imageBuffer = await generateImage(imagePrompt);
 
     // 3. Save the generated image to a file
@@ -121,7 +98,6 @@ export const uploadCharacterImageHandler = async (req: Request, res: Response) =
             data: {
                 characterImageUrl: displayImageUrl,
                 characterPrompt: req.body.prompt || 'Uploaded character image',
-                characterSubjectDescription: null,
             }
         });
 

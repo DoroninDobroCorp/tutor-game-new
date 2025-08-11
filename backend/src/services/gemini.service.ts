@@ -26,6 +26,13 @@ const { gcpProjectId, gcpLocation } = config;
 if (!gcpProjectId || !gcpLocation) {
   throw new Error('GCP_PROJECT_ID и LOCATION должны быть заданы для работы Gemini через Vertex AI.');
 }
+
+// Глобальная инструкция для JSON-ответов: без текста, без markdown, только валидный JSON
+const STRICT_JSON_INSTRUCTION = [
+  'SYSTEM:',
+  'You are inside an automated system. Do not write explanations.',
+  'Respond ONLY with valid JSON. No markdown, no comments, no extra keys, no trailing text.',
+].join('\n');
 const GEMINI_ENDPOINT = `https://${gcpLocation}-aiplatform.googleapis.com/v1/projects/${gcpProjectId}/locations/${gcpLocation}/publishers/google/models/${MODEL_NAME}:generateContent`;
 
 const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
@@ -80,8 +87,9 @@ async function callGemini(prompt: string, temperature: number, isJson: boolean) 
     const client = await auth.getClient();
     const token = await client.getAccessToken();
 
+    const finalPrompt = isJson ? `${STRICT_JSON_INSTRUCTION}\n\n${prompt}` : prompt;
     const body = {
-      contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
+      contents: [ { role: 'user', parts: [ { text: finalPrompt } ] } ],
       safetySettings,
       generationConfig: {
         temperature,
@@ -112,9 +120,12 @@ async function callGeminiWithChat(history: GeminiContent[], temperature: number,
     const token = await client.getAccessToken();
 
     if (history.length === 0) throw new Error('Chat history is empty');
-    // Отправляем всю историю целиком
+    // Отправляем всю историю целиком, для JSON-режима добавляем строгую инструкцию первой
+    const contents = isJson
+      ? ([{ role: 'user', parts: [{ text: STRICT_JSON_INSTRUCTION }] }, ...history] as GeminiContent[])
+      : history;
     const body = {
-      contents: history,
+      contents,
       safetySettings,
       generationConfig: {
         temperature,
