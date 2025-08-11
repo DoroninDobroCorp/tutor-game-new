@@ -166,7 +166,7 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                 <button 
                     type="button" 
                     onClick={onCloseModal} 
-                    className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    className="btn-secondary text-sm"
                 >
                     {t('lessonContentEditor.close')}
                 </button>
@@ -174,7 +174,7 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                     type="button" 
                     onClick={handleSaveContent} 
                     disabled={isSaving || isGenerating || blocks.length === 0} 
-                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                    className="btn-primary text-sm disabled:opacity-50"
                 >
                     {isSaving ? t('lessonContentEditor.saving') : t('lessonContentEditor.saveContent')}
                 </button>

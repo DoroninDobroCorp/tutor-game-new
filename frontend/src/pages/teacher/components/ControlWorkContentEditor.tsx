@@ -134,7 +134,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                 <button 
                     type="button" 
                     onClick={onCloseModal} 
-                    className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    className="btn-secondary text-sm"
                 >
                     {t('controlWorkContentEditor.close')}
                 </button>
@@ -142,7 +142,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                     type="button" 
                     onClick={handleSaveContent} 
                     disabled={isSaving || isGenerating || blocks.length === 0} 
-                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="btn-primary text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isSaving ? <Spinner size="sm" /> : <FiSave />}
                     {isSaving ? t('controlWorkContentEditor.saving') : t('controlWorkContentEditor.save')}

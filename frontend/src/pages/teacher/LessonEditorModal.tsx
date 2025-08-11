@@ -1,4 +1,5 @@
 import { useState, Fragment } from 'react';
+import { useParams } from 'react-router-dom';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import { FiX } from 'react-icons/fi';
 import { type Lesson } from '../../types/models';
@@ -37,6 +38,7 @@ function classNames(...classes: (string | boolean)[]) {
 
 export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen: boolean; onClose: () => void; lesson: Lesson | null; }) {
     const { t } = useTranslation();
+    const { goalId } = useParams<{ goalId: string }>();
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [currentTab, setCurrentTab] = useState(0);
 
@@ -73,8 +75,17 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                            <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all relative">
+                                {/* Close button */}
+                                <button
+                                    aria-label={t('common.close')}
+                                    onClick={handleCloseModal}
+                                    className="absolute top-3 right-3 btn-secondary px-3 py-2"
+                                >
+                                    <FiX />
+                                </button>
+
+                                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4 pr-10">
                                     {t('lessonEditor.title', { title: lesson.title })}
                                 </Dialog.Title>
 
@@ -124,8 +135,8 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                         <Tab.Panel>
                                             <LessonStoryEditor 
                                                 lesson={lesson}
-                                                onCloseModal={handleCloseModal}
-                                                setLightboxImage={setLightboxImage}
+                                                goalId={goalId!}
+                                                onClose={handleCloseModal}
                                             />
                                         </Tab.Panel>
                                     </Tab.Panels>

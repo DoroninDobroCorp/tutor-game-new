@@ -8,7 +8,7 @@ import {
 import { Lesson } from '../../../types/models';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
-import { FiMaximize2, FiX, FiRefreshCcw, FiSend, FiPaperclip, FiUpload, FiCheckCircle } from 'react-icons/fi';
+import { FiMaximize2, FiX, FiRefreshCcw, FiSend, FiUpload, FiCheckCircle } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
 
 interface LessonStoryEditorProps {
@@ -168,7 +168,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                     <button
                         onClick={handleGenerateSnippet}
                         disabled={isLoading}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center"
+                        className="btn-primary disabled:opacity-50 flex items-center"
                     >
                         {isGeneratingSnippet ? <Spinner size="sm" /> : <FiSend className="mr-2" />}
                          {t('lessonStoryEditor.generateText')}
@@ -194,16 +194,16 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                             <button
                                 onClick={handleRegenerateImage}
                                 disabled={isLoading || !imagePrompt}
-                                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 flex items-center justify-center"
+                                className="btn-primary disabled:opacity-50 flex items-center justify-center"
                             >
                                 {isGeneratingImage ? <Spinner size="sm"/> : <FiRefreshCcw className="mr-2" />}
                                 {t('lessonStoryEditor.generateImage')}
                             </button>
-                             <button
-                                 onClick={() => fileInputRef.current?.click()}
-                                 disabled={isLoading}
-                                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:bg-gray-300 flex items-center justify-center"
-                             >
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isLoading}
+                                className="btn-secondary disabled:opacity-50 flex items-center justify-center"
+                            >
                                 <FiUpload className="mr-2" />
                                 {t('lessonStoryEditor.uploadImage')}
                             </button>
@@ -251,7 +251,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                 <button
                     onClick={handleApprove}
                     disabled={isLoading || !storyText}
-                    className="px-6 py-3 bg-green-600 text-white font-bold rounded-md hover:bg-green-700 disabled:bg-green-300 flex items-center"
+                    className="btn-primary font-bold flex items-center disabled:opacity-50"
                 >
                     {isLoading ? <Spinner size="sm"/> : <FiCheckCircle className="mr-2" />}
                      {t('lessonStoryEditor.approveAndSend')}

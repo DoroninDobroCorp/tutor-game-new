@@ -35,7 +35,8 @@
     "multer": "^2.0.1",
     "socket.io": "^4.8.1",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

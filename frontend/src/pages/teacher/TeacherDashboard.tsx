@@ -28,7 +28,10 @@ export default function TeacherDashboard() {
             to="/teacher/students" 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">👥 {t('teacherDashboard.manageStudents')}</h3>
+            <div className="flex items-center gap-3 mb-1">
+              <span aria-hidden className="w-10 h-10 rounded-xl flex items-center justify-center brand-soft text-xl">🧑‍🎓</span>
+              <h3 className="font-medium text-lg">{t('teacherDashboard.manageStudents')}</h3>
+            </div>
             <p className="text-sm text-gray-500">{t('teacherDashboard.manageStudentsDesc')}</p>
           </Link>
           
@@ -36,7 +39,10 @@ export default function TeacherDashboard() {
             to="/teacher/goals" 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">🎯 {t('teacherDashboard.learningPlans')}</h3>
+            <div className="flex items-center gap-3 mb-1">
+              <span aria-hidden className="w-10 h-10 rounded-xl flex items-center justify-center brand-soft text-xl">📚</span>
+              <h3 className="font-medium text-lg">{t('teacherDashboard.learningPlans')}</h3>
+            </div>
             <p className="text-sm text-gray-500">{t('teacherDashboard.learningPlansDesc')}</p>
           </Link>
           
@@ -44,7 +50,10 @@ export default function TeacherDashboard() {
             to="/teacher/chat"
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <h3 className="font-medium text-lg">💬 {t('teacherDashboard.chatWithStudents')}</h3>
+            <div className="flex items-center gap-3 mb-1">
+              <span aria-hidden className="w-10 h-10 rounded-xl flex items-center justify-center brand-soft text-xl">🗨️</span>
+              <h3 className="font-medium text-lg">{t('teacherDashboard.chatWithStudents')}</h3>
+            </div>
             <p className="text-sm text-gray-500">{t('teacherDashboard.chatWithStudentsDesc')}</p>
           </Link>
 

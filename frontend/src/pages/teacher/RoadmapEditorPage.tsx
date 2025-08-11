@@ -195,9 +195,16 @@ const RoadmapEditorPage = () => {
             <div className="flex justify-between items-center mb-6">
                 <Link to="/teacher/goals" className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> {t('roadmapEditor.back')}</Link>
                 <h1 className="text-2xl font-bold text-gray-900 text-center">{currentGoal.subject}</h1>
-                <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
+                <button onClick={handleSave} disabled={isSaving} className="btn-primary disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
             </div>
             
+            {/* Floating Save Button (bottom-right) */}
+            <div className="fixed bottom-6 right-6 z-40">
+                <button onClick={handleSave} disabled={isSaving} className="btn-primary rounded-full px-5 py-3 disabled:opacity-50 flex items-center gap-2 shadow-lg">
+                    <FiSave /> {t('roadmapEditor.save')}
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white rounded-lg shadow-md p-6">
