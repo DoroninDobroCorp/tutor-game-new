@@ -28,6 +28,43 @@ if (!gcpProjectId || !gcpLocation) {
 }
 
 // ---------------------------------------------------------------
+// Generate follow-up questions for diagnostics (Vertex AI)
+// ---------------------------------------------------------------
+export async function generateDiagnosticFollowups(input: Array<{
+  topicTitle: string;
+  firstQuestion?: string | null;
+  firstAnswer: string;
+  language?: string;
+  maxQuestions?: number;
+}>): Promise<Array<{ topicTitle: string; questions: string[] }>> {
+  const results: Array<{ topicTitle: string; questions: string[] }> = [];
+  for (const item of input) {
+    const max = Math.min(2, Math.max(0, item.maxQuestions || 2));
+    const prompt = `You are an educational assistant. Given a student's first answer for a topic, generate up to ${max} short follow-up questions in ${item.language || 'Russian'}. If the answer is excellent and further probing is unnecessary, return zero questions.
+Do NOT penalize typos or poor formatting; focus on conceptual understanding. If the answer is empty or very vague, start with the most basic clarifying question.
+Topic: ${item.topicTitle}
+First question: ${item.firstQuestion || '—'}
+Student first answer: ${item.firstAnswer}
+
+Rules:
+- 0 questions if answer is clearly excellent and complete.
+- Otherwise, 1 concise, incremental question (no explanations, only question). If more than 1 is truly necessary, keep it to 2 max.
+- The question MUST reference a specific fragment, claim, or omission from the student's answer (e.g., "Ты упомянул(а) X — уточни Y").
+- STRICTLY FORBIDDEN generic prompts like: "С чего бы ты начал изучение темы", "Назови основные понятия", "Какие шаги ты предпримешь", "Что такое ... в целом".
+- Return as plain list items separated by newlines, no numbering.`;
+
+    const text = await callGemini(prompt, TEMP_MID, false) as string;
+    const lines = (text || '')
+      .split(/\r?\n/)
+      .map(s => s.replace(/^[-*\d.\s]+/, '').trim())
+      .filter(Boolean)
+      .slice(0, max);
+    results.push({ topicTitle: item.topicTitle, questions: lines });
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------
 // Generate diagnostic topics list
 // ---------------------------------------------------------------
 export async function generateDiagnosticTopics(subject: string, age: number, language: string, teacherNote?: string): Promise<{ topics: Array<{ title: string; firstQuestion: string }> }> {

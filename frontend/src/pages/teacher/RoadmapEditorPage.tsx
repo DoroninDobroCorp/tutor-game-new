@@ -13,6 +13,7 @@ import {
 import { type ContentSection, type Lesson } from '../../types/models';
 
 import { CharacterEditor } from './components/CharacterEditor';
+import { DiagnosticImportPanel, type SuggestedSection } from './components/DiagnosticImportPanel';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiBookOpen } from 'react-icons/fi';
@@ -91,6 +92,26 @@ const RoadmapEditorPage = () => {
     if (isLoading || !currentGoal) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
     if (error) return <div className="text-center text-red-500 p-10">{t('roadmapEditor.loadingError')}</div>;
     
+    const handleImportFromDiagnostic = (sections: SuggestedSection[]) => {
+        // Map diagnostic suggestedRoadmap to internal roadmap shape
+        const newSections: ContentSection[] = sections.map((s, si) => ({
+            id: `diag-s-${Date.now()}-${si}`,
+            title: s.sectionTitle,
+            order: si,
+            lessons: s.lessons.map((l, li) => ({
+                id: `diag-l-${Date.now()}-${si}-${li}`,
+                title: l,
+                status: 'DRAFT' as const,
+                order: li,
+                type: 'PRACTICE' as const,
+                content: null,
+                storyChapter: null,
+            })),
+        }));
+        setRoadmap(newSections);
+        toast.success(t('roadmapEditor.planUpdated'));
+    };
+
     const handleGeneratePlan = async (e: React.FormEvent) => {
         e.preventDefault();
         const messageToSend = userMessage.trim() || t('roadmapEditor.generateInitialPlan');
@@ -289,22 +310,26 @@ const RoadmapEditorPage = () => {
                     </div>
                 </div>
 
-                <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6 flex flex-col h-[calc(100vh-12rem)]">
-                    <h2 className="text-xl font-semibold mb-4 text-center">{t('roadmapEditor.aiDialog')}</h2>
-                    <div ref={chatContainerRef} className="flex-grow bg-gray-50 rounded-lg p-3 overflow-y-auto space-y-3 mb-4">
-                        {chatHistory.length === 0 && <div className="text-center text-gray-400 h-full flex items-center justify-center">{t('roadmapEditor.startDialog')}</div>}
-                        {chatHistory.map((msg, idx) => (
-                          <div key={idx} className={`p-3 rounded-lg max-w-[90%] text-sm ${msg.role === 'user' ? 'bg-indigo-100 self-end ml-auto' : 'bg-gray-200 self-start mr-auto'}`}>
-                              <p className="font-bold capitalize mb-1">{msg.role}</p>
-                              <p>{msg.content}</p>
-                          </div>
-                        ))}
-                        {isGenerating && <div className="p-3 rounded-lg bg-gray-200 self-start mr-auto"><Spinner size="sm" /></div>}
+                <div className="lg:col-span-1 flex flex-col gap-6 h-[calc(100vh-12rem)]">
+                    <DiagnosticImportPanel goalId={goalId!} onImport={handleImportFromDiagnostic} />
+                    <div className="bg-white rounded-lg shadow-md p-6 flex flex-col flex-1">
+                        <h2 className="text-xl font-semibold mb-4 text-center">{t('roadmapEditor.aiDialog')}</h2>
+                        <div ref={chatContainerRef} className="flex-grow bg-gray-50 rounded-lg p-3 overflow-y-auto space-y-3 mb-4">
+                            {chatHistory.length === 0 && <div className="text-center text-gray-400 h-full flex items-center justify-center">{t('roadmapEditor.startDialog')}</div>}
+                            {chatHistory.map((msg, idx) => (
+                              <div key={idx} className={`p-3 rounded-lg max-w-[90%] text-sm ${msg.role === 'user' ? 'bg-indigo-100 self-end ml-auto' : 'bg-gray-200 self-start mr-auto'}`}>
+                                  <p className="font-bold capitalize mb-1">{msg.role}</p>
+                                  <p>{msg.content}</p>
+                              </div>
+                            ))}
+                            {isGenerating && <div className="p-3 rounded-lg bg-gray-200 self-start mr-auto"><Spinner size="sm" /></div>}
+                        </div>
+                        <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
+                            <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('roadmapEditor.askAiToChangePlan')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                            <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary p-3 disabled:opacity-50"><FiSend /></button>
+                        </form>
                     </div>
-                    <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
-                        <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('roadmapEditor.askAiToChangePlan')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                        <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary p-3 disabled:opacity-50"><FiSend /></button>
-                    </form>                </div>
+                </div>
             </div>
             
             {showLogsModal && (

@@ -4,6 +4,7 @@ import prisma from '../db';
 import { WebSocketService } from '../services/websocket.service';
 import { getAIAssessment, generateStorySummary } from '../services/gemini.service';
 import { createAndSendMessage } from '../services/chat.service';
+import { LessonType } from '@prisma/client';
 
 // Расширяем Request, чтобы он мог содержать файл
 interface Request extends ExpressRequest {
@@ -71,13 +72,15 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
           studentId: studentId,
         },
       },
-      storyChapter: {
-        teacherSnippetStatus: 'APPROVED',
-      },
       // Exclude completed lessons
       NOT: {
-        status: 'COMPLETED'
-      }
+        status: 'COMPLETED',
+      },
+      // Allow either: diagnostic lessons (no story approval required) OR lessons with approved story
+      OR: [
+        { type: LessonType.DIAGNOSTIC },
+        { storyChapter: { teacherSnippetStatus: 'APPROVED' } },
+      ],
     },
     orderBy: [
       { section: { order: 'asc' } },
@@ -87,9 +90,9 @@ export const getCurrentLessonHandler = async (req: Request, res: Response) => {
       storyChapter: true,
       section: {
         include: {
-          learningGoal: true
-        }
-      }
+          learningGoal: true,
+        },
+      },
     },
   });
 

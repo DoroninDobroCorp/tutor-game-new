@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateDiagnosticFollowups, classifyKnowledgeLevelLLM } from './gemini.service';
 
 export type KnowledgeLabel = 'EXCELLENT' | 'REFRESH' | 'UNKNOWN';
 
@@ -21,17 +22,13 @@ export async function generateFollowupsForTopics(input: Array<{
 }>): Promise<Array<{ topicTitle: string; questions: string[] }>> {
   const maxDefault = 2;
   if (!API_KEY) {
-    // Fallback: produce up to N short generic follow-ups if the first answer looks weak
-    return input.map(({ topicTitle, firstAnswer, maxQuestions }) => {
-      const max = Math.min(maxDefault, Math.max(0, maxQuestions || maxDefault));
-      const base: string[] = [];
-      const len = (firstAnswer || '').trim().length;
-      if (len > 200) return { topicTitle, questions: [] };
-      if (len > 40) base.push(`Раскрой подробнее ключевые шаги по теме «${topicTitle}».`);
-      else base.push(`С чего бы ты начал изучение темы «${topicTitle}»? Назови основные понятия.`);
-      if (base.length < max) base.push(`Приведи короткий пример по теме «${topicTitle}».`);
-      return { topicTitle, questions: base.slice(0, max) };
-    });
+    // Fallback: use Vertex AI through our unified service
+    try {
+      return await generateDiagnosticFollowups(input);
+    } catch {
+      // Last resort: no followups
+      return input.map(({ topicTitle }) => ({ topicTitle, questions: [] }));
+    }
   }
 
   try {
@@ -47,7 +44,9 @@ Student first answer: ${firstAnswer}
 
 Rules:
 - 0 questions if answer is clearly excellent and complete.
-- Otherwise, 1–2 concise, incremental questions (no explanations, only questions).
+- Otherwise, 1 concise, incremental question (no explanations, only question). If more than 1 is truly necessary, keep it to 2 max.
+- The question MUST reference a specific fragment, claim, or omission from the student's answer (e.g., "Ты упомянул(а) X — уточни Y").
+- STRICTLY FORBIDDEN generic prompts like: "С чего бы ты начал изучение темы", "Назови основные понятия", "Какие шаги ты предпримешь", "Что такое ... в целом".
 - Return as plain list items separated by newlines, no numbering.
 `;
       const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] });
@@ -57,17 +56,8 @@ Rules:
     });
     return await Promise.all(tasks);
   } catch {
-    // Network/model error → fallback simple
-    return input.map(({ topicTitle, firstAnswer, maxQuestions }) => {
-      const max = Math.min(maxDefault, Math.max(0, maxQuestions || maxDefault));
-      const base: string[] = [];
-      const len = (firstAnswer || '').trim().length;
-      if (len > 200) return { topicTitle, questions: [] };
-      if (len > 40) base.push(`Можешь уточнить ключевые моменты по теме «${topicTitle}»?`);
-      else base.push(`Какие основные понятия связаны с темой «${topicTitle}»?`);
-      if (base.length < max) base.push(`Приведи простой пример по теме «${topicTitle}».`);
-      return { topicTitle, questions: base.slice(0, max) };
-    });
+    // Hard fallback on errors as well: no follow-ups
+    return input.map(({ topicTitle }) => ({ topicTitle, questions: [] }));
   }
 }
 
@@ -75,7 +65,13 @@ export async function classifyKnowledgeLevel(params: { topicTitle: string; quest
   const { topicTitle, questionText, answer } = params;
 
   // Fallback to heuristic if no key
-  if (!API_KEY) return simpleHeuristic(answer);
+  if (!API_KEY) {
+    try {
+      return await classifyKnowledgeLevelLLM({ topicTitle, questionText, answer });
+    } catch {
+      return simpleHeuristic(answer);
+    }
+  }
 
   try {
     const genAI = new GoogleGenerativeAI(API_KEY);

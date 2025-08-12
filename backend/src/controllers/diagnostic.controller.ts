@@ -40,6 +40,9 @@ export const submitFirstAnswersHandler = async (req: Request, res: Response) => 
     await prisma.diagnosticTurn.createMany({ data: turnsToCreate });
   }
 
+  // Update progress (topics answered in phase 1)
+  await prisma.diagnosticSession.update({ where: { id: sessionId }, data: { currentIdx: Math.min(answers.length, topics.length) } });
+
   // Generate follow-ups for non-excellent
   const nonExcellent = turnsToCreate.filter(t => t.aiLabel !== 'EXCELLENT');
   let followups: Array<{ topicId: string; questions: string[] }> = [];
@@ -54,7 +57,35 @@ export const submitFirstAnswersHandler = async (req: Request, res: Response) => 
     const aiGenerated = await generateFollowupsForTopics(aiInput);
     // Map back to topicIds
     const titleToId = new Map(topics.map(t => [t.title, t.id] as const));
-    followups = aiGenerated.map(item => ({ topicId: titleToId.get(item.topicTitle) || '', questions: item.questions })).filter(f => f.topicId && f.questions.length > 0);
+    const banned = [
+      /С чего бы ты начал/i,
+      /Назови\s+основные\s+понятия/i,
+      /Какие\s+шаги\s+ты\s+предпримешь/i,
+      /Что\s+такое\s+.*в\s+целом/i,
+    ];
+    const preliminary = aiGenerated.map(item => ({
+      topicId: titleToId.get(item.topicTitle) || '',
+      questions: (item.questions || []).map(q => q.trim()).filter(Boolean),
+    })).filter(f => f.topicId);
+
+    // Apply light filter and then ensure at least one targeted question per topic (heuristic fallback)
+    followups = preliminary.map(f => {
+      const filtered = f.questions.filter(q => !banned.some(r => r.test(q)));
+      if (filtered.length > 0) return { topicId: f.topicId, questions: filtered.slice(0, 2) };
+
+      // Heuristic fallback: craft a specific follow-up referencing the student's answer
+      const topic = topicsById.get(f.topicId);
+      const sourceTurn = nonExcellent.find(t => t.topicId === f.topicId);
+      const ans = (sourceTurn?.studentAnswer || '').trim();
+      let probe = '';
+      if (ans.length >= 12) {
+        const snippet = ans.length > 80 ? ans.slice(0, 77) + '…' : ans;
+        probe = `Ты написал(а): "${snippet}" — уточни, что именно ты имеешь в виду здесь и приведи короткий пример.`;
+      } else {
+        probe = `Коротко уточни по теме "${topic?.title}": что это означает на простом примере?`;
+      }
+      return { topicId: f.topicId, questions: [probe] };
+    }).filter(f => f.questions.length > 0);
   }
 
   res.json({ success: true, data: { followups } });
@@ -96,26 +127,45 @@ export const submitFollowupAnswersHandler = async (req: Request, res: Response) 
     }
   }
 
-  // Mark session finished
-  await prisma.diagnosticSession.update({ where: { id: sessionId }, data: { status: 'FINISHED' } });
+  // Mark session finished and progress complete
+  await prisma.diagnosticSession.update({ where: { id: sessionId }, data: { status: 'FINISHED', currentIdx: topics.length } });
 
-  // Build summary and suggested roadmap (same logic as finish handler)
+  // Also mark the DIAGNOSTIC lesson as COMPLETED so student moves to story lessons
+  try {
+    const diagLesson = await prisma.lesson.findFirst({
+      where: { type: LessonType.DIAGNOSTIC, section: { learningGoalId: session.goalId } },
+      select: { id: true, status: true },
+    });
+    if (diagLesson && diagLesson.status !== 'COMPLETED') {
+      await prisma.lesson.update({ where: { id: diagLesson.id }, data: { status: 'COMPLETED' } });
+    }
+  } catch (e) {
+    // Soft-fail: do not block finishing if lesson update fails
+  }
+
+  // Build topic-level summary and suggested roadmap
   const turns = await prisma.diagnosticTurn.findMany({ where: { sessionId }, orderBy: { createdAt: 'asc' }, include: { topic: true } });
-  const summary = {
-    total: turns.length,
-    labels: {
-      EXCELLENT: turns.filter(t => t.aiLabel === 'EXCELLENT').length,
-      REFRESH: turns.filter(t => t.aiLabel === 'REFRESH').length,
-      UNKNOWN: turns.filter(t => t.aiLabel === 'UNKNOWN').length,
-    },
-  };
-  const excellent = turns.filter(t => t.aiLabel === 'EXCELLENT' && t.topic);
-  const refresh = turns.filter(t => t.aiLabel === 'REFRESH' && t.topic);
-  const unknown = turns.filter(t => t.aiLabel === 'UNKNOWN' && t.topic);
+  type Label = 'EXCELLENT' | 'REFRESH' | 'UNKNOWN';
+  const priority: Record<Label, number> = { UNKNOWN: 3, REFRESH: 2, EXCELLENT: 1 };
+  const topicLabel = new Map<string, Label>();
+  const topicById = new Map<string, string>();
+  for (const t of turns) {
+    if (!t.topicId) continue;
+    topicById.set(t.topicId, t.topic?.title || 'Тема');
+    const cur = topicLabel.get(t.topicId) as Label | undefined;
+    const next = (t.aiLabel as Label) || 'UNKNOWN';
+    if (!cur || priority[next] > priority[cur]) topicLabel.set(t.topicId, next);
+  }
+  const labelsCount = { EXCELLENT: 0, REFRESH: 0, UNKNOWN: 0 } as Record<Label, number>;
+  for (const l of topicLabel.values()) labelsCount[l]++;
+  const summary = { totalTopics: topicLabel.size, labels: labelsCount };
+  const excellentTopics = [...topicLabel.entries()].filter(([, l]) => l === 'EXCELLENT').map(([id]) => topicById.get(id) || 'Тема');
+  const refreshTopics = [...topicLabel.entries()].filter(([, l]) => l === 'REFRESH').map(([id]) => topicById.get(id) || 'Тема');
+  const unknownTopics = [...topicLabel.entries()].filter(([, l]) => l === 'UNKNOWN').map(([id]) => topicById.get(id) || 'Тема');
   const suggestedRoadmap = [
-    unknown.length ? { sectionTitle: 'Основы', lessons: unknown.map(t => t.topic?.title || 'Тема') } : null,
-    refresh.length ? { sectionTitle: 'Повторение', lessons: refresh.map(t => t.topic?.title || 'Тема') } : null,
-    excellent.length ? { sectionTitle: 'Продвинутое', lessons: excellent.map(t => `${t.topic?.title || 'Тема'} — продвинутые задания`) } : null,
+    unknownTopics.length ? { sectionTitle: 'Основы', lessons: unknownTopics } : null,
+    refreshTopics.length ? { sectionTitle: 'Повторение', lessons: refreshTopics } : null,
+    excellentTopics.length ? { sectionTitle: 'Продвинутое', lessons: excellentTopics.map(t => `${t} — продвинутые задания`) } : null,
   ].filter(Boolean);
 
   res.json({ success: true, data: { finished: true, summary, suggestedRoadmap } });
@@ -128,7 +178,7 @@ const getGoalTopics = async (goalId: string) => {
 
 export const startDiagnosticHandler = async (req: Request, res: Response) => {
   const studentId = req.user?.userId;
-  const { goalId } = req.body as { goalId?: string };
+  const { goalId, forceNew } = req.body as { goalId?: string; forceNew?: boolean };
   if (!studentId) throw new AppError('Not authenticated', 401);
   if (!goalId) throw new AppError('goalId is required', 400);
 
@@ -164,15 +214,18 @@ export const startDiagnosticHandler = async (req: Request, res: Response) => {
     }
   }
 
-  // Resume existing ACTIVE session if any
-  let session = await prisma.diagnosticSession.findFirst({
-    where: { goalId, studentId, status: 'ACTIVE' },
-  });
+  // Optionally finish existing and start anew
+  if (forceNew) {
+    const existing = await prisma.diagnosticSession.findFirst({ where: { goalId, studentId, status: 'ACTIVE' } });
+    if (existing) {
+      await prisma.diagnosticSession.update({ where: { id: existing.id }, data: { status: 'FINISHED' } });
+    }
+  }
 
+  // Resume existing ACTIVE session if any, otherwise create new
+  let session = await prisma.diagnosticSession.findFirst({ where: { goalId, studentId, status: 'ACTIVE' } });
   if (!session) {
-    session = await prisma.diagnosticSession.create({
-      data: { goalId, studentId, status: 'ACTIVE', currentIdx: 0 },
-    });
+    session = await prisma.diagnosticSession.create({ data: { goalId, studentId, status: 'ACTIVE', currentIdx: 0 } });
   }
 
   // Simple intro + disclaimer
@@ -268,6 +321,19 @@ export const finishDiagnosticHandler = async (req: Request, res: Response) => {
     await prisma.diagnosticSession.update({ where: { id: session.id }, data: { status: 'FINISHED' } });
   }
 
+  // Also mark the DIAGNOSTIC lesson as COMPLETED so student moves to story lessons
+  try {
+    const diagLesson = await prisma.lesson.findFirst({
+      where: { type: LessonType.DIAGNOSTIC, section: { learningGoalId: session.goalId } },
+      select: { id: true, status: true },
+    });
+    if (diagLesson && diagLesson.status !== 'COMPLETED') {
+      await prisma.lesson.update({ where: { id: diagLesson.id }, data: { status: 'COMPLETED' } });
+    }
+  } catch (e) {
+    // Soft-fail: ignore
+  }
+
   // Build summary and simple suggested roadmap based on turns
   const turns = await prisma.diagnosticTurn.findMany({
     where: { sessionId: session.id },
@@ -275,39 +341,28 @@ export const finishDiagnosticHandler = async (req: Request, res: Response) => {
     include: { topic: true },
   });
 
-  const summary = {
-    total: turns.length,
-    labels: {
-      EXCELLENT: turns.filter(t => t.aiLabel === 'EXCELLENT').length,
-      REFRESH: turns.filter(t => t.aiLabel === 'REFRESH').length,
-      UNKNOWN: turns.filter(t => t.aiLabel === 'UNKNOWN').length,
-    },
-  };
-
-  // Group topics by label and propose simple sections
-  const excellent = turns.filter(t => t.aiLabel === 'EXCELLENT' && t.topic);
-  const refresh = turns.filter(t => t.aiLabel === 'REFRESH' && t.topic);
-  const unknown = turns.filter(t => t.aiLabel === 'UNKNOWN' && t.topic);
-
+  // Topic-level aggregation
+  type Label = 'EXCELLENT' | 'REFRESH' | 'UNKNOWN';
+  const priority: Record<Label, number> = { UNKNOWN: 3, REFRESH: 2, EXCELLENT: 1 };
+  const topicLabel = new Map<string, Label>();
+  const topicById = new Map<string, string>();
+  for (const t of turns) {
+    if (!t.topicId) continue;
+    topicById.set(t.topicId, t.topic?.title || 'Тема');
+    const cur = topicLabel.get(t.topicId) as Label | undefined;
+    const next = (t.aiLabel as Label) || 'UNKNOWN';
+    if (!cur || priority[next] > priority[cur]) topicLabel.set(t.topicId, next);
+  }
+  const labelsCount = { EXCELLENT: 0, REFRESH: 0, UNKNOWN: 0 } as Record<Label, number>;
+  for (const l of topicLabel.values()) labelsCount[l]++;
+  const summary = { totalTopics: topicLabel.size, labels: labelsCount };
+  const excellentTopics = [...topicLabel.entries()].filter(([, l]) => l === 'EXCELLENT').map(([id]) => topicById.get(id) || 'Тема');
+  const refreshTopics = [...topicLabel.entries()].filter(([, l]) => l === 'REFRESH').map(([id]) => topicById.get(id) || 'Тема');
+  const unknownTopics = [...topicLabel.entries()].filter(([, l]) => l === 'UNKNOWN').map(([id]) => topicById.get(id) || 'Тема');
   const suggestedRoadmap = [
-    unknown.length
-      ? {
-          sectionTitle: 'Основы',
-          lessons: unknown.map(t => t.topic?.title || 'Тема'),
-        }
-      : null,
-    refresh.length
-      ? {
-          sectionTitle: 'Повторение',
-          lessons: refresh.map(t => t.topic?.title || 'Тема'),
-        }
-      : null,
-    excellent.length
-      ? {
-          sectionTitle: 'Продвинутое',
-          lessons: excellent.map(t => `${t.topic?.title || 'Тема'} — продвинутые задания`),
-        }
-      : null,
+    unknownTopics.length ? { sectionTitle: 'Основы', lessons: unknownTopics } : null,
+    refreshTopics.length ? { sectionTitle: 'Повторение', lessons: refreshTopics } : null,
+    excellentTopics.length ? { sectionTitle: 'Продвинутое', lessons: excellentTopics.map(t => `${t} — продвинутые задания`) } : null,
   ].filter(Boolean);
 
   res.json({ success: true, data: { finished: true, summary, suggestedRoadmap } });
@@ -336,29 +391,28 @@ export const getLatestDiagnosticSummaryForGoalTeacherHandler = async (req: Reque
     include: { topic: true },
   });
 
-  const summary = {
-    total: turns.length,
-    labels: {
-      EXCELLENT: turns.filter(t => t.aiLabel === 'EXCELLENT').length,
-      REFRESH: turns.filter(t => t.aiLabel === 'REFRESH').length,
-      UNKNOWN: turns.filter(t => t.aiLabel === 'UNKNOWN').length,
-    },
-  };
-
-  const excellent = turns.filter(t => t.aiLabel === 'EXCELLENT' && t.topic);
-  const refresh = turns.filter(t => t.aiLabel === 'REFRESH' && t.topic);
-  const unknown = turns.filter(t => t.aiLabel === 'UNKNOWN' && t.topic);
-
+  // Topic-level aggregation for teacher
+  type Label = 'EXCELLENT' | 'REFRESH' | 'UNKNOWN';
+  const priority: Record<Label, number> = { UNKNOWN: 3, REFRESH: 2, EXCELLENT: 1 };
+  const topicLabel = new Map<string, Label>();
+  const topicById = new Map<string, string>();
+  for (const t of turns) {
+    if (!t.topicId) continue;
+    topicById.set(t.topicId, t.topic?.title || 'Тема');
+    const cur = topicLabel.get(t.topicId) as Label | undefined;
+    const next = (t.aiLabel as Label) || 'UNKNOWN';
+    if (!cur || priority[next] > priority[cur]) topicLabel.set(t.topicId, next);
+  }
+  const labelsCount = { EXCELLENT: 0, REFRESH: 0, UNKNOWN: 0 } as Record<Label, number>;
+  for (const l of topicLabel.values()) labelsCount[l]++;
+  const summary = { totalTopics: topicLabel.size, labels: labelsCount };
+  const excellentTopics = [...topicLabel.entries()].filter(([, l]) => l === 'EXCELLENT').map(([id]) => topicById.get(id) || 'Тема');
+  const refreshTopics = [...topicLabel.entries()].filter(([, l]) => l === 'REFRESH').map(([id]) => topicById.get(id) || 'Тема');
+  const unknownTopics = [...topicLabel.entries()].filter(([, l]) => l === 'UNKNOWN').map(([id]) => topicById.get(id) || 'Тема');
   const suggestedRoadmap = [
-    unknown.length
-      ? { sectionTitle: 'Основы', lessons: unknown.map(t => t.topic?.title || 'Тема') }
-      : null,
-    refresh.length
-      ? { sectionTitle: 'Повторение', lessons: refresh.map(t => t.topic?.title || 'Тема') }
-      : null,
-    excellent.length
-      ? { sectionTitle: 'Продвинутое', lessons: excellent.map(t => `${t.topic?.title || 'Тема'} — продвинутые задания`) }
-      : null,
+    unknownTopics.length ? { sectionTitle: 'Основы', lessons: unknownTopics } : null,
+    refreshTopics.length ? { sectionTitle: 'Повторение', lessons: refreshTopics } : null,
+    excellentTopics.length ? { sectionTitle: 'Продвинутое', lessons: excellentTopics.map(t => `${t} — продвинутые задания`) } : null,
   ].filter(Boolean);
 
   res.json({ success: true, data: { exists: true, summary, suggestedRoadmap } });

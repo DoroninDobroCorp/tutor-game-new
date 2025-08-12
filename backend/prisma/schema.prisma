@@ -266,7 +266,6 @@ model DiagnosticSession {
 
   @@index([goalId])
   @@index([studentId])
-  @@unique([goalId, status], map: "uniq_active_session_per_goal") // ensures single ACTIVE per goal
   @@map("diagnostic_sessions")
 }
 

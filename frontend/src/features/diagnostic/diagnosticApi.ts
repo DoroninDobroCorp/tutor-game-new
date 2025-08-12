@@ -40,7 +40,7 @@ export const diagnosticApi = apiSlice.injectEndpoints({
       disclaimer?: string;
       totalTopics: number;
       initialQuestions?: Array<{ topicId: string; title: string; firstQuestion?: string | null }>
-    }, { goalId: string }>({
+    }, { goalId: string; forceNew?: boolean }>({
       query: (body) => ({
         url: '/student/diagnostics/start',
         method: 'POST',
@@ -89,6 +89,7 @@ export const diagnosticApi = apiSlice.injectEndpoints({
       transformResponse: (response: { data: { finished: boolean } }) => response.data,
       invalidatesTags: (_res, _err, { sessionId }) => [
         { type: 'Student' as const, id: `DIAG_${sessionId}` },
+        { type: 'Student' as const, id: 'CURRENT_LESSON' },
         { type: 'Goal' as const, id: 'LIST' },
       ],
     }),
@@ -119,6 +120,7 @@ export const diagnosticApi = apiSlice.injectEndpoints({
       transformResponse: (response: { data: any }) => response.data,
       invalidatesTags: (_res, _err, { sessionId }) => [
         { type: 'Student' as const, id: `DIAG_${sessionId}` },
+        { type: 'Student' as const, id: 'CURRENT_LESSON' },
         { type: 'Goal' as const, id: 'LIST' },
       ],
     }),
