@@ -21,7 +21,7 @@ const lesson_routes_1 = __importDefault(require("./routes/lesson.routes"));
 const roadmap_routes_1 = __importDefault(require("./routes/roadmap.routes"));
 const character_routes_1 = __importDefault(require("./routes/character.routes"));
 const story_routes_1 = __importDefault(require("./routes/story.routes"));
-const image_routes_1 = __importDefault(require("./routes/image.routes"));
+const diagnostic_routes_1 = __importDefault(require("./routes/diagnostic.routes"));
 const env_1 = require("./config/env");
 const websocket_service_1 = require("./services/websocket.service");
 const createServer = () => {
@@ -87,6 +87,7 @@ const createServer = () => {
     app.use('/api/teacher', teacher_routes_1.default);
     app.use('/api/student', student_routes_1.default);
     app.use('/api/chat', chat_routes_1.default);
+    app.use('/api/student/diagnostics', diagnostic_routes_1.default);
     // НОВАЯ, ПРАВИЛЬНАЯ ГРУППИРОВКА
     // Роуты, которые являются дочерними для "goals"
     app.use('/api/goals', goal_routes_1.default); // GET /api/goals, POST /api/goals
@@ -95,8 +96,6 @@ const createServer = () => {
     // Роуты, которые логически относятся к "lessons"
     app.use('/api/lessons', lesson_routes_1.default); // POST /api/lessons/:lessonId/generate-content
     app.use('/api/lessons', story_routes_1.default); // POST /api/lessons/:lessonId/story/generate
-    // Routes for image operations
-    app.use('/api/story', image_routes_1.default); // GET /api/story/generation/:generationId
     // Serve static files from frontend build
     const frontendDistPath = path_1.default.resolve(__dirname, '../../frontend/dist');
     // 1. Serve static files (JS, CSS, images)

@@ -143,6 +143,52 @@ export const goalApi = apiSlice.injectEndpoints({
                 { type: 'Goal', id: 'LIST' }
             ],
         }),
+
+        // Diagnostic Topics (Teacher)
+        getGoalTopics: builder.query<Array<{ id: string; title: string; description?: string | null }>, string>({
+            query: (goalId) => ({
+                url: `/goals/${goalId}/topics`,
+                method: 'GET',
+            }),
+            transformResponse: (response: { data: Array<{ id: string; title: string; description?: string | null }> }) => response.data,
+            providesTags: (_result, _error, goalId) => [{ type: 'Goal' as const, id: `TOPICS_${goalId}` }],
+        }),
+        upsertGoalTopics: builder.mutation<Array<{ id: string; title: string; description?: string | null }>, { goalId: string; topics: Array<{ id?: string; title: string; description?: string | null }> }>({
+            query: ({ goalId, topics }) => ({
+                url: `/goals/${goalId}/topics`,
+                method: 'PUT',
+                data: { topics },
+            }),
+            transformResponse: (response: { data: Array<{ id: string; title: string; description?: string | null }> }) => response.data,
+            invalidatesTags: (_res, _err, { goalId }) => [{ type: 'Goal' as const, id: `TOPICS_${goalId}` }],
+        }),
+        deleteGoalTopic: builder.mutation<{ message: string }, { goalId: string; topicId: string }>({
+            query: ({ goalId, topicId }) => ({
+                url: `/goals/${goalId}/topics/${topicId}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: (_res, _err, { goalId }) => [{ type: 'Goal' as const, id: `TOPICS_${goalId}` }],
+        }),
+
+        // Diagnostics latest summary for teacher
+        getLatestDiagnosticSummaryForGoalTeacher: builder.query<
+            { exists: boolean; summary?: { total: number; labels: { EXCELLENT: number; REFRESH: number; UNKNOWN: number } }; suggestedRoadmap?: Array<{ sectionTitle: string; lessons: string[] }> },
+            string
+        >({
+            query: (goalId) => ({ url: `/goals/${goalId}/diagnostics/latest-summary`, method: 'GET' }),
+            transformResponse: (response: { data: any }) => response.data,
+            providesTags: (_res, _err, goalId) => [{ type: 'Goal' as const, id: `DIAG_SUMMARY_${goalId}` }],
+        }),
+
+        // Diagnostics topics generation (AI) for teacher
+        generateDiagnosticTopics: builder.mutation<{ topics: string[] }, { goalId: string; teacherNote?: string }>({
+            query: ({ goalId, teacherNote }) => ({
+                url: `/goals/${goalId}/diagnostics/generate-topics`,
+                method: 'POST',
+                data: teacherNote ? { teacherNote } : {},
+            }),
+            transformResponse: (response: { data: { topics: string[] } }) => response.data,
+        }),
     }),
 });
 
@@ -158,4 +204,9 @@ export const {
     useGenerateCharacterForGoalMutation,
     useUploadCharacterImageMutation,
     useUpdateCharacterPromptMutation,
+    useGetGoalTopicsQuery,
+    useUpsertGoalTopicsMutation,
+    useDeleteGoalTopicMutation,
+    useGetLatestDiagnosticSummaryForGoalTeacherQuery,
+    useGenerateDiagnosticTopicsMutation,
 } = goalApi;

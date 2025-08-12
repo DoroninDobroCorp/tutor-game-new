@@ -48,7 +48,7 @@ export interface ContentSection {
     lessons: Lesson[];
 }
 
-export type LessonType = 'THEORY' | 'PRACTICE' | 'WITH_TEACHER' | 'CONTROL_WORK';
+export type LessonType = 'THEORY' | 'PRACTICE' | 'WITH_TEACHER' | 'CONTROL_WORK' | 'DIAGNOSTIC';
 
 export interface Lesson {
     id:string;
@@ -56,8 +56,9 @@ export interface Lesson {
     type: LessonType;
     status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
     order: number;
-    content?: { blocks: any[] } | null;
+    content?: { diagnostic?: boolean; topics?: string[]; blocks?: any[] } | null;
     storyChapter?: StoryChapter | null;
+    section?: { learningGoal?: { id: string } };
     // This field is useful for frontend but not for API
     previousLesson?: Lesson | null; 
     performanceLogs?: PerformanceLog[];

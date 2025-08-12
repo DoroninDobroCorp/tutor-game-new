@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../utils/errors';
+import { LessonType } from '@prisma/client';
 import prisma from '../db';
 import { generateLessonContent, generateControlWorkExercises } from '../services/gemini.service';
 
@@ -92,6 +93,88 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
     // The 'generatedData' object now contains both 'chatResponse' and 'blocks'
     // We don't save to db, just return the AI's proposal
     res.json({ success: true, data: generatedData });
+};
+
+// PATCH /api/lessons/:lessonId/diagnostic
+// Body: { topics: string[] }
+export const updateDiagnosticTopicsHandler = async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { topics } = req.body as { topics?: Array<string | { title?: string; firstQuestion?: string; firstQuestionExample?: string }>; };
+    const teacherId = req.user?.userId;
+
+    if (!Array.isArray(topics) || topics.length === 0) {
+        throw new AppError('Topics array is required', 400);
+    }
+    const cleanedTopics = topics
+        .map(t => {
+            if (typeof t === 'string') {
+                return { title: t.trim(), firstQuestion: null, firstQuestionExample: null };
+            }
+            return {
+                title: (t.title || '').trim(),
+                firstQuestion: (t.firstQuestion || '').trim() || null,
+                firstQuestionExample: (t.firstQuestionExample || '').trim() || null,
+            };
+        })
+        .filter(t => !!t.title);
+    if (cleanedTopics.length === 0) throw new AppError('Topics array is required', 400);
+
+    const lesson = await prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: { section: { include: { learningGoal: true } } }
+    });
+
+    if (!lesson || lesson.section.learningGoal.teacherId !== teacherId) {
+        throw new AppError('Lesson not found or you do not have permission', 404);
+    }
+
+    // Debug info
+    console.log('[updateDiagnosticTopicsHandler] attempt save', {
+        lessonId,
+        teacherId,
+        currentType: (lesson as any)?.type,
+        sectionId: lesson.sectionId,
+        topicsCount: topics.length,
+    });
+
+    // Sync both: the lesson content and goal-level Topic entities used by student diagnostic flow
+    let updated;
+    try {
+        updated = await prisma.$transaction(async (tx) => {
+            // 1) Update lesson to DIAGNOSTIC with topics in content
+            const upd = await tx.lesson.update({
+                where: { id: lessonId },
+                data: {
+                    type: LessonType.DIAGNOSTIC,
+                    content: { topics: cleanedTopics },
+                    status: 'PENDING_APPROVAL',
+                },
+            });
+
+            // 2) Replace goal topics
+            const goalId = lesson.section.learningGoal.id;
+            // Delete all existing topics for this goal and recreate from cleanedTopics
+            await tx.topic.deleteMany({ where: { learningGoalId: goalId } });
+            if (cleanedTopics.length) {
+                await tx.topic.createMany({
+                    data: cleanedTopics.map((t) => ({
+                        title: t.title,
+                        description: null,
+                        firstQuestion: t.firstQuestion,
+                        firstQuestionExample: t.firstQuestionExample,
+                        learningGoalId: goalId,
+                    })),
+                });
+            }
+
+            return upd;
+        });
+    } catch (err) {
+        console.error('[updateDiagnosticTopicsHandler] prisma update error:', err);
+        throw new AppError('Failed to save diagnostic topics', 500);
+    }
+
+    res.json({ success: true, data: updated });
 };
 
 export const updateLessonContentHandler = async (req: Request, res: Response) => {

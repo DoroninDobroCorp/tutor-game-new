@@ -15,6 +15,7 @@ import lessonRoutes from './routes/lesson.routes';
 import roadmapRoutes from './routes/roadmap.routes';
 import characterRoutes from './routes/character.routes';
 import storyRoutes from './routes/story.routes';
+import diagnosticRoutes from './routes/diagnostic.routes';
 import { config } from './config/env';
 import { WebSocketService } from './services/websocket.service';
 
@@ -94,6 +95,7 @@ export const createServer = () => {
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/chat', chatRoutes);
+  app.use('/api/student/diagnostics', diagnosticRoutes);
 
   // НОВАЯ, ПРАВИЛЬНАЯ ГРУППИРОВКА
   // Роуты, которые являются дочерними для "goals"

@@ -21,6 +21,7 @@ enum LessonType {
   PRACTICE
   WITH_TEACHER
   CONTROL_WORK
+  DIAGNOSTIC
 }
 
 enum LessonStatus {
@@ -28,6 +29,13 @@ enum LessonStatus {
   PENDING_APPROVAL
   APPROVED
   COMPLETED
+}
+
+// Knowledge level labels for diagnostic evaluation
+enum KnowledgeLevel {
+  EXCELLENT
+  REFRESH
+  UNKNOWN
 }
 
 
@@ -55,6 +63,9 @@ model User {
   learningGoals   LearningGoal[]          @relation("LearningGoalStudent")
   performanceLogs StudentPerformanceLog[]
   refreshTokens   RefreshToken[]
+
+  // Diagnostic sessions as student
+  diagnosticSessionsAsStudent DiagnosticSession[] @relation("DiagnosticSessionStudent")
 }
 
 model Teacher {
@@ -106,6 +117,10 @@ model LearningGoal {
   // --- STORY CHAPTERS ---
   storyChapters StoryChapter[]
   // ----------------------
+
+  // Diagnostic feature relations
+  topics              Topic[]              @relation("GoalTopics")
+  diagnosticSessions  DiagnosticSession[]  @relation("GoalDiagnosticSessions")
 
   @@map("learning_goals")
 }
@@ -215,3 +230,60 @@ model RefreshToken {
 }
 
 // Many-to-many relation between Teacher and Student is defined using the @relation("TeachersAndStudents")
+
+// -------------------------
+// DIAGNOSTIC MODELS (optional feature)
+
+model Topic {
+  id              String       @id @default(uuid())
+  title           String
+  description     String?
+  firstQuestion   String?
+  firstQuestionExample String?
+  learningGoalId  String
+  learningGoal    LearningGoal @relation("GoalTopics", fields: [learningGoalId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Reverse relations
+  diagnosticTurns DiagnosticTurn[]
+
+  @@index([learningGoalId])
+  @@map("topics")
+}
+
+model DiagnosticSession {
+  id         String        @id @default(uuid())
+  goalId     String
+  goal       LearningGoal  @relation("GoalDiagnosticSessions", fields: [goalId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User          @relation("DiagnosticSessionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  status     String        @default("ACTIVE") // ACTIVE, FINISHED
+  currentIdx Int           @default(0)         // index of next topic to ask
+  startedAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  turns      DiagnosticTurn[]
+
+  @@index([goalId])
+  @@index([studentId])
+  @@unique([goalId, status], map: "uniq_active_session_per_goal") // ensures single ACTIVE per goal
+  @@map("diagnostic_sessions")
+}
+
+model DiagnosticTurn {
+  id            String            @id @default(uuid())
+  sessionId     String
+  session       DiagnosticSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  topicId       String
+  topic         Topic             @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  questionText  String
+  studentAnswer String
+  aiLabel       KnowledgeLevel
+  aiComment     String?
+  createdAt     DateTime          @default(now())
+
+  @@index([sessionId])
+  @@index([topicId])
+  @@map("diagnostic_turns")
+}

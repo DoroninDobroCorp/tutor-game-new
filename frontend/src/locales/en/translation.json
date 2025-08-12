@@ -164,6 +164,21 @@
     "saving": "Saving...",
     "saveContent": "Save content"
   },
+  "diagnostics": {
+    "modalTitle": "Diagnostic topics",
+    "teacherNote": "Teacher's notes for topics (optional)",
+    "notePlaceholder": "E.g., focus more on algebra, less on set theory",
+    "generateTopics": "Generate topics",
+    "topicList": "Topic list",
+    "topicPlaceholder": "Topic",
+    "noTopics": "No topics added yet",
+    "noTopicsGenerated": "Failed to generate topics",
+    "generateError": "Topic generation error",
+    "topicsRequired": "Add at least one topic",
+    "saving": "Saving…",
+    "saved": "Topics saved",
+    "saveError": "Saving error"
+  },
   "webSocket": {
     "newStudentAnswer": "New answer from student",
     "studentWaitingForStory": "Student {{name}} is waiting for story continuation!",
@@ -189,6 +204,7 @@
     "title": "Edit Lesson Story",
     "storyText": "Story text",
     "storyTextPlaceholder": "Story text will appear here...",
+    "refinementPrompt": "Refinement",
     "refinementPromptPlaceholder": "Refinement for generation (e.g., 'make it funnier')...",
     "generateStoryText": "Generate story text",
     "generateText": "Generate text",
@@ -286,6 +302,7 @@
     "finishLesson": "Finish lesson",
     "startPractice": "Start practice",
     "video": "📺 Video",
+    "diagnosticTitle": "Diagnostic lesson",
     "assessmentTitle": "Knowledge check with AI assistant",
     "assessmentSuccessMessage": "Great! You nailed it. Let's move on!",
     "continueStory": "Continue the story"

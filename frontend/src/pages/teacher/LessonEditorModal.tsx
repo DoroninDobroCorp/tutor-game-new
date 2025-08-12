@@ -7,6 +7,7 @@ import { LessonContentEditor } from './components/LessonContentEditor';
 import LessonStoryEditor from './components/LessonStoryEditor';
 import { ControlWorkContentEditor } from './components/ControlWorkContentEditor';
 import { useTranslation } from 'react-i18next';
+import { DiagnosticTopicsModal } from './components/DiagnosticTopicsModal';
 
 // Lightbox component is now defined and managed within the modal
 const Lightbox = ({ src, onClose }: { src: string; onClose: () => void; }) => {
@@ -41,6 +42,7 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     const { goalId } = useParams<{ goalId: string }>();
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [currentTab, setCurrentTab] = useState(0);
+    const [diagModalOpen, setDiagModalOpen] = useState(false);
 
     if (!lesson) return null;
 
@@ -50,8 +52,9 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
     };
     
     return (
+        <>
         <Transition appear show={isOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-10" onClose={handleCloseModal}>
+            <Dialog as="div" className="relative z-10" onClose={diagModalOpen ? () => {} : handleCloseModal}>
                 <Transition.Child
                     as={Fragment}
                     enter="ease-out duration-300"
@@ -125,6 +128,31 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                                     lesson={lesson} 
                                                     onCloseModal={handleCloseModal}
                                                 />
+                                            ) : lesson.type === 'DIAGNOSTIC' ? (
+                                                <div className="space-y-4">
+                                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded">
+                                                        <p className="text-sm text-amber-800">
+                                                            {t('diagnostic.lessonContentInfo', 'Диагностический урок использует список тем. Сгенерируйте или отредактируйте темы ниже. Генерация и утверждение истории доступны на соседней вкладке.')}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-4 bg-gray-50 border rounded">
+                                                        <h4 className="text-sm font-semibold mb-2">{t('diagnostic.topics', 'Темы диагностики')}</h4>
+                                                        {(lesson.content as any)?.topics?.length ? (
+                                                            <ul className="list-disc pl-5 space-y-1">
+                                                                {(lesson.content as any).topics.map((topic: string, idx: number) => (
+                                                                    <li key={idx} className="text-sm text-gray-700">{topic}</li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-sm text-gray-500">{t('diagnostic.noTopics', 'Тем пока нет')}</p>
+                                                        )}
+                                                        <div className="mt-3">
+                                                            <button type="button" className="btn-primary text-sm" onClick={() => setDiagModalOpen(true)}>
+                                                                {t('diagnostic.editTopics', 'Сгенерировать/редактировать темы')}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             ) : (
                                                 <LessonContentEditor 
                                                     lesson={lesson} 
@@ -152,5 +180,15 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                 </div>
             </Dialog>
         </Transition>
+        {diagModalOpen && goalId && lesson && (
+            <DiagnosticTopicsModal
+                isOpen={diagModalOpen}
+                onClose={() => setDiagModalOpen(false)}
+                goalId={goalId}
+                lessonId={lesson.id}
+                initialTopics={(lesson.content as any)?.topics}
+            />
+        )}
+        </>
     );
 }

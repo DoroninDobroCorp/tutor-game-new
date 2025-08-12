@@ -161,14 +161,15 @@ const getCurrentUser = async (userId) => {
 exports.getCurrentUser = getCurrentUser;
 // Generate token helper function
 const generateToken = (user, type) => {
-    const secret = type === 'access' ? env_1.config.jwtSecret : env_1.config.jwtRefreshSecret;
-    const expiresIn = type === 'access' ? env_1.config.jwtExpiresIn : env_1.config.refreshTokenExpiresIn;
+    const secret = (type === 'access' ? env_1.config.jwtSecret : env_1.config.jwtRefreshSecret);
+    const expiresIn = (type === 'access' ? env_1.config.jwtExpiresIn : env_1.config.refreshTokenExpiresIn);
     const payload = {
         userId: user.id,
         role: user.role,
         type,
     };
-    return jsonwebtoken_1.default.sign(payload, secret, { expiresIn });
+    const options = { expiresIn };
+    return jsonwebtoken_1.default.sign(payload, secret, options);
 };
 // Generate both access and refresh tokens
 const generateTokens = async (user) => {

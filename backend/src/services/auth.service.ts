@@ -218,8 +218,8 @@ export const getCurrentUser = async (userId: string): Promise<SafeUser | null> =
 
 // Generate token helper function
 const generateToken = (user: User, type: 'access' | 'refresh'): string => {
-  const secret = type === 'access' ? config.jwtSecret : config.jwtRefreshSecret;
-  const expiresIn = type === 'access' ? config.jwtExpiresIn : config.refreshTokenExpiresIn;
+  const secret = (type === 'access' ? config.jwtSecret : config.jwtRefreshSecret) as jwt.Secret;
+  const expiresIn = (type === 'access' ? config.jwtExpiresIn : config.refreshTokenExpiresIn) as string | number;
 
   const payload = {
     userId: user.id,
@@ -227,7 +227,8 @@ const generateToken = (user: User, type: 'access' | 'refresh'): string => {
     type,
   };
 
-  return jwt.sign(payload, secret, { expiresIn });
+  const options: jwt.SignOptions = { expiresIn } as jwt.SignOptions;
+  return jwt.sign(payload, secret, options);
 };
 
 // Generate both access and refresh tokens

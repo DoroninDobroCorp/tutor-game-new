@@ -29,8 +29,10 @@ const envSchema = zod_1.z.object({
     // External APIs
     OPENAI_API_KEY: zod_1.z.string().optional(),
     GEMINI_API_KEY: zod_1.z.string().optional(),
-    LEONARDO_API_KEY: zod_1.z.string().optional(),
-    LEONARDO_MODEL_ID: zod_1.z.string().optional(),
+    // Google Cloud
+    GCP_PROJECT_ID: zod_1.z.string().optional(),
+    LOCATION: zod_1.z.string().optional(),
+    GOOGLE_APPLICATION_CREDENTIALS: zod_1.z.string().optional(),
     // Feature flags
     ENABLE_LOGGING: zod_1.z.string().default('true'),
 });
@@ -64,8 +66,9 @@ exports.config = {
     // External APIs
     openaiApiKey: envVars.data.OPENAI_API_KEY,
     geminiApiKey: envVars.data.GEMINI_API_KEY,
-    leonardoApiKey: envVars.data.LEONARDO_API_KEY,
-    leonardoModelId: envVars.data.LEONARDO_MODEL_ID,
+    // Google Cloud
+    gcpProjectId: envVars.data.GCP_PROJECT_ID,
+    gcpLocation: envVars.data.LOCATION,
     // Feature flags
     features: {
         logging: envVars.data.ENABLE_LOGGING === 'true',

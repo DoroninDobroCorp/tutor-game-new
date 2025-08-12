@@ -27,6 +27,46 @@ if (!gcpProjectId || !gcpLocation) {
   throw new Error('GCP_PROJECT_ID и LOCATION должны быть заданы для работы Gemini через Vertex AI.');
 }
 
+// ---------------------------------------------------------------
+// Generate diagnostic topics list
+// ---------------------------------------------------------------
+export async function generateDiagnosticTopics(subject: string, age: number, language: string, teacherNote?: string): Promise<{ topics: string[] }> {
+  const system = `You are an expert teacher assistant. Your task is to propose a concise list of DIAGNOSTIC TOPICS (not questions) that a teacher will later use to check the student's knowledge.
+Audience: a ${age}-year-old student.
+Language of output: ${language}.`;
+
+  const instructions = `
+Return ONLY valid JSON in the exact shape: { "topics": ["..."] }
+Rules:
+- Provide 5–12 short topic titles relevant to the subject below.
+- Topics must be diagnostic topics, not exercises/questions/tasks.
+- Do NOT include examples, questions, tasks, answers, explanations, or numbering.
+- Topics must be atomic and specific (each can be assessed later by Q&A).
+- Keep titles concise and clear in ${language}.`;
+
+  const prompt = `${system}
+Subject: ${subject}
+Teacher notes: ${teacherNote || 'none'}
+
+${instructions}`;
+  const attempts = [ { temp: 0.3, delay: 0 }, { temp: 0.4, delay: 500 }, { temp: 0.5, delay: 1000 } ];
+  let lastErr: unknown;
+  for (const a of attempts) {
+    try {
+      if (a.delay) await new Promise(r => setTimeout(r, a.delay));
+      const data = await callGemini(prompt, a.temp, true) as any;
+      if (!data || !Array.isArray(data.topics)) throw new AppError('AI returned invalid topics JSON', 502);
+      const topics = data.topics.filter((t: any) => typeof t === 'string' && t.trim()).map((t: string) => t.trim());
+      if (topics.length === 0) throw new AppError('AI returned empty topics', 502);
+      return { topics };
+    } catch (e) {
+      lastErr = e;
+      console.error(`[generateDiagnosticTopics] attempt failed (temp=${a.temp}):`, e);
+    }
+  }
+  throw lastErr instanceof AppError ? lastErr : new AppError('Failed to generate topics', 502);
+}
+
 // Глобальная инструкция для JSON-ответов: без текста, без markdown, только валидный JSON
 const STRICT_JSON_INSTRUCTION = [
   'SYSTEM:',
@@ -41,6 +81,9 @@ const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-pl
 type GeminiRole = 'user' | 'model';
 interface GeminiPart { text: string }
 interface GeminiContent { role: GeminiRole; parts: GeminiPart[] }
+
+// Diagnostic label type reused by diagnostic flow
+export type KnowledgeLabel = 'EXCELLENT' | 'REFRESH' | 'UNKNOWN';
 
 // Аккуратный парсер JSON из произвольного текстового ответа модели
 function parseJsonFromText(text: string) {
@@ -62,6 +105,42 @@ function parseJsonFromText(text: string) {
     }
     throw new Error('Invalid JSON from Gemini');
   }
+}
+
+// ---------------------------------------------------------------
+// Diagnostic knowledge label classifier
+// ---------------------------------------------------------------
+export async function classifyKnowledgeLevelLLM(params: { topicTitle: string; questionText: string; answer: string }): Promise<KnowledgeLabel> {
+  const { topicTitle, questionText, answer } = params;
+  const prompt = [
+    'You are an educational assistant. Classify the student\'s knowledge level by their answer.',
+    `Topic: ${topicTitle}`,
+    `Question: ${questionText}`,
+    `Answer: ${answer}`,
+    '',
+    'Return only one of the following labels exactly, no extra text:',
+    'EXCELLENT  (clearly knows and explains)',
+    'REFRESH    (partial knowledge, needs refresh)',
+    'UNKNOWN    (does not know or cannot explain)',
+    '',
+    'Output: a single label token only.'
+  ].join('\n');
+
+  try {
+    const text = await callGemini(prompt, 0.1, false) as unknown as string;
+    const upper = (typeof text === 'string' ? text : '').trim().toUpperCase();
+    if (upper.includes('EXCELLENT')) return 'EXCELLENT';
+    if (upper.includes('REFRESH')) return 'REFRESH';
+    if (upper.includes('UNKNOWN')) return 'UNKNOWN';
+  } catch (e) {
+    console.error('[classifyKnowledgeLevelLLM] fallback due to error:', e);
+  }
+
+  // Fallback heuristic
+  const len = answer.trim().length;
+  if (len > 200) return 'EXCELLENT';
+  if (len > 40) return 'REFRESH';
+  return 'UNKNOWN';
 }
 
 function createGeminiHistory(systemPrompt: string, chatHistory: { role: 'user' | 'assistant'; content: string }[]): GeminiContent[] {
@@ -106,11 +185,15 @@ async function callGemini(prompt: string, temperature: number, isJson: boolean) 
       .map((p: any) => p.text)
       .filter(Boolean)
       .join('');
-    if (!text) throw new Error('No content received from Gemini (Vertex)');
+    if (!text) {
+      console.error('Vertex response without content:', JSON.stringify(data, null, 2));
+      throw new AppError('No content received from Gemini (Vertex)', 502);
+    }
     return isJson ? parseJsonFromText(text) : text;
   } catch (err) {
     console.error('Error calling Gemini Vertex API:', (err as any)?.response?.data || err);
-    throw new Error('Failed to get response from Gemini');
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to get response from Gemini', 502);
   }
 }
 
@@ -142,11 +225,15 @@ async function callGeminiWithChat(history: GeminiContent[], temperature: number,
       .map((p: any) => p.text)
       .filter(Boolean)
       .join('');
-    if (!text) throw new Error('No content received from Gemini (Vertex)');
+    if (!text) {
+      console.error('Vertex chat response without content:', JSON.stringify(data, null, 2));
+      throw new AppError('No content received from Gemini (Vertex)', 502);
+    }
     return isJson ? parseJsonFromText(text) : text;
   } catch (err) {
     console.error('Error calling Gemini Vertex API (chat):', (err as any)?.response?.data || err);
-    throw new Error('Failed to get response from Gemini');
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to get response from Gemini', 502);
   }
 }
 

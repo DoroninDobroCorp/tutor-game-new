@@ -12,12 +12,18 @@ interface CreateGoalFormData {
     setting: string;
     studentAge: number;
     language: string;
+    // Optional toggle: create diagnostic lesson as the first step
+    createDiagnosticFirst?: boolean;
 }
 
 export default function CreateGoalPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors } } = useForm<CreateGoalFormData>();
+    const { register, handleSubmit, formState: { errors } } = useForm<CreateGoalFormData>({
+        defaultValues: {
+            createDiagnosticFirst: false,
+        }
+    });
     const { data: students, isLoading: isLoadingStudents } = useGetConnectedStudentsQuery();
     const [createGoal, { isLoading: isCreating }] = useCreateLearningGoalMutation();
 
@@ -105,6 +111,19 @@ export default function CreateGoalPage() {
                         <option value="English">{t('createGoal.english')}</option>
                     </select>
                     {errors.language && <p className="mt-1 text-sm text-red-600">{t('createGoal.languageError')}</p>}
+                </div>
+
+                {/* Optional toggle to start with a diagnostic lesson */}
+                <div className="flex items-center gap-3 pt-2">
+                    <input
+                        id="createDiagnosticFirst"
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300"
+                        {...register('createDiagnosticFirst')}
+                    />
+                    <label htmlFor="createDiagnosticFirst" className="text-sm text-gray-700">
+                        Начать с диагностического урока
+                    </label>
                 </div>
 
                 <button 

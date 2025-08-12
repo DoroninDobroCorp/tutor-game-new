@@ -17,6 +17,8 @@ import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft, FiPlus, FiEye, FiSend, FiSave, FiBookOpen } from 'react-icons/fi';
 import { RoadmapSection } from './components/RoadmapSection';
+import { DiagnosticTopicsModal } from './components/DiagnosticTopicsModal';
+// Legacy diagnostic components removed per new design
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { useTranslation } from 'react-i18next';
 
@@ -56,6 +58,10 @@ const RoadmapEditorPage = () => {
     const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
     const [showLogsModal, setShowLogsModal] = useState(false);
     const [showStoryModal, setShowStoryModal] = useState(false);
+    // Removed legacy diagnostics panel state
+    const [diagnosticModalOpen, setDiagnosticModalOpen] = useState(false);
+    const [diagnosticLessonId] = useState<string | null>(null);
+    const [diagnosticInitialTopics] = useState<string[] | undefined>(undefined);
     
     const [getLogs, { data: performanceLogs, isLoading: isLoadingLogs }] = useLazyGetPerformanceLogsQuery();
     const [getStoryHistory, { data: storyHistory, isLoading: isLoadingStory }] = useLazyGetGoalStoryHistoryQuery();
@@ -207,33 +213,78 @@ const RoadmapEditorPage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
+                    {/* Diagnostics legacy panel removed */}
                     <div className="bg-white rounded-lg shadow-md p-6">
                       <h2 className="text-xl font-semibold mb-4">{t('roadmapEditor.storyCharacter')}</h2>
                       <CharacterEditor goal={currentGoal} />
                     </div>
-
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <div className="mb-6 flex justify-between items-center flex-wrap gap-2">
                             <h2 className="text-xl font-semibold">{t('roadmapEditor.lessonPlan')}</h2>
                              <div className="flex gap-2">
                                 <button onClick={async () => { if (!goalId) return; await getLogs({ studentId: currentGoal.student.id, goalId }).unwrap(); setShowLogsModal(true); }} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><FiEye /> {t('roadmapEditor.viewAnswers')}</button>
                                 <button onClick={async () => { if (!goalId) return; getStoryHistory(goalId); setShowStoryModal(true);}} className="text-sm flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><FiBookOpen /> {t('roadmapEditor.viewStory')}</button>
-                            </div>
+                             </div>
                         </div>
                         <DragDropContext onDragEnd={onDragEnd}>
                             <Droppable droppableId="all-sections" direction="vertical" type="SECTIONS">
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-6">
                                         {roadmap.map((section, sectionIndex) => (
-                                            <RoadmapSection key={section.id} section={section} sectionIndex={sectionIndex} onRemoveSection={handleRemoveSection} onAddLesson={handleAddLesson} onRemoveLesson={handleRemoveLesson} onEditLesson={(lesson) => setEditingLesson(lesson)} onTitleChange={handleLessonTitleChange} onSectionTitleChange={handleSectionTitleChange} editingTitle={isEditingTitle} editingSectionIndex={editingSectionIndex} setEditingSectionIndex={setEditingSectionIndex} startEditing={(si, li) => setIsEditingTitle({section: si, lesson: li})} stopEditing={() => setIsEditingTitle({section: null, lesson: null})} />
+                                            <RoadmapSection
+                                                key={section.id}
+                                                section={section}
+                                                sectionIndex={sectionIndex}
+                                                onRemoveSection={handleRemoveSection}
+                                                onAddLesson={handleAddLesson}
+                                                onRemoveLesson={handleRemoveLesson}
+                                                onEditLesson={(lesson) => {
+                                                    // Always open the unified lesson editor modal for any lesson type,
+                                                    // including DIAGNOSTIC. Diagnostic topics can be edited from the Content tab.
+                                                    setEditingLesson(lesson);
+                                                }}
+                                                onTitleChange={handleLessonTitleChange}
+                                                onSectionTitleChange={handleSectionTitleChange}
+                                                editingTitle={isEditingTitle}
+                                                editingSectionIndex={editingSectionIndex}
+                                                setEditingSectionIndex={setEditingSectionIndex}
+                                                startEditing={(si, li) => setIsEditingTitle({ section: si, lesson: li })}
+                                                stopEditing={() => setIsEditingTitle({ section: null, lesson: null })}
+                                            />
                                         ))}
                                         {provided.placeholder}
                                     </div>
                                 )}
                             </Droppable>
                         </DragDropContext>
-                        <div className="mt-8">
+                        <div className="mt-8 flex gap-3 flex-wrap">
                             <button onClick={handleAddSection} className="btn-secondary flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
+                            <button
+                              onClick={() => {
+                                const newSection = {
+                                  id: `new-section-${Date.now()}`,
+                                  title: t('roadmapEditor.diagnosticSectionTitle', { defaultValue: 'Диагностика' }),
+                                  order: roadmap.length,
+                                  lessons: [
+                                    {
+                                      id: `new-lesson-${Date.now()}`,
+                                      title: t('roadmapEditor.diagnosticLessonTitle', { defaultValue: 'Диагностический урок' }),
+                                      type: 'DIAGNOSTIC' as const,
+                                      status: 'DRAFT' as const,
+                                      order: 0,
+                                      // No legacy diagnostic flag; only topics for diagnostic lessons
+                                      content: { topics: [] },
+                                      storyChapter: null,
+                                    },
+                                  ],
+                                };
+                                setRoadmap([...roadmap, newSection]);
+                                toast.success(t('roadmapEditor.diagnosticAddedSaveNow', { defaultValue: 'Диагностика добавлена. Нажмите "Сохранить", затем сгенерируйте темы.' }));
+                              }}
+                              className="btn-secondary flex items-center"
+                            >
+                              <FiPlus className="mr-2" /> {t('roadmapEditor.addDiagnostic', { defaultValue: 'Добавить диагностику' })}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -327,6 +378,16 @@ const RoadmapEditorPage = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {diagnosticModalOpen && diagnosticLessonId && goalId && (
+                <DiagnosticTopicsModal
+                    isOpen={diagnosticModalOpen}
+                    onClose={() => setDiagnosticModalOpen(false)}
+                    goalId={goalId}
+                    lessonId={diagnosticLessonId}
+                    initialTopics={diagnosticInitialTopics}
+                />
             )}
         </div>
     );

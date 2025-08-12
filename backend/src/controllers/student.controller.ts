@@ -41,13 +41,12 @@ export const getStudentProfile = async (req: Request, res: Response) => {
     throw new AppError('Student profile not found', 404);
   }
 
-  // Prepare response data
+  // Prepare response data (omit password safely)
+  const { password: _omit, ...safeUser } = userWithProfile as any;
   const responseData = {
-    ...userWithProfile, // Include id, email, firstName, lastName, role
-    password: '', // Clear password for security
+    ...safeUser, // Include id, email, firstName, lastName, role
     learningGoals: userWithProfile.learningGoals,
   };
-  delete responseData.password; // Ensure password is not sent to client
 
   res.json({
     success: true,
@@ -250,7 +249,8 @@ export const submitLessonHandler = async (req: Request, res: Response) => {
             try {
                 const practiceAnswers = JSON.parse(practiceAnswersJSON);
                 if (Array.isArray(practiceAnswers)) {
-                    const practiceBlocks = (lesson.content?.blocks || [])
+                    const contentAny: any = lesson.content as any;
+                    const practiceBlocks = (Array.isArray(contentAny?.blocks) ? contentAny.blocks : [])
                         .map((block: any, index: number) => ({ ...block, originalIndex: index }))
                         .filter((block: any) => block.type === 'practice');
 

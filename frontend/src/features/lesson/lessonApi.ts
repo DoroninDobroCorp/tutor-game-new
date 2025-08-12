@@ -2,7 +2,7 @@ import { apiSlice } from '../../app/api/apiSlice';
 import { Lesson, StoryChapter } from '../../types/models';
 
 export const lessonApi = apiSlice.injectEndpoints({
-    endpoints: (builder) => ({
+  endpoints: (builder) => ({
         generateLessonContent: builder.mutation<{ data: { chatResponse: string, blocks: any[] } }, { lessonId: string; chatHistory: any[] }>({
             query: ({ lessonId, chatHistory }) => ({
                 url: `/lessons/${lessonId}/generate-content`, data: { chatHistory },
@@ -27,6 +27,19 @@ export const lessonApi = apiSlice.injectEndpoints({
                 data: { content },
             }),
             invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Goal', id: 'LIST' }, { type: 'Lesson', id: lessonId }],
+        }),
+
+        // Save diagnostic topics for a lesson
+        saveDiagnosticTopics: builder.mutation<
+            { success: boolean; data: Lesson },
+            { lessonId: string; topics: Array<string | { title: string; firstQuestion?: string; firstQuestionExample?: string }> }
+        >({
+            query: ({ lessonId, topics }) => ({
+                url: `/lessons/${lessonId}/diagnostic`,
+                method: 'PATCH',
+                data: { topics },
+            }),
+            invalidatesTags: (_r, _e, { lessonId }) => [{ type: 'Lesson', id: lessonId }],
         }),
 
         generateStorySnippet: builder.mutation<{ data: { text: string; imagePrompt: string; useCharacterReference: boolean; } }, { lessonId: string, [key: string]: any }>({
@@ -75,6 +88,7 @@ export const lessonApi = apiSlice.injectEndpoints({
 
 export const {
     useGenerateLessonContentMutation,
+    useSaveDiagnosticTopicsMutation,
     useUpdateLessonContentMutation,
     useGenerateStorySnippetMutation,
     useApproveStorySnippetMutation,

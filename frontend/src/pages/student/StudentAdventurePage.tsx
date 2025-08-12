@@ -16,6 +16,7 @@ import {
     selectPracticeAnswers,
     selectStoryResponse,
 } from '../../features/student/adventureSlice';
+import DiagnosticPage from './DiagnosticPage';
 
 const YoutubeEmbed = ({ url }: { url:string }) => {
     const { t } = useTranslation();
@@ -343,11 +344,22 @@ export default function StudentAdventurePage() {
 
     const renderContent = () => {
         if (!lesson) {
-             return (
+            return (
                 <div className="text-center p-10 bg-white rounded-lg shadow">
                     <h2 className="text-2xl font-bold text-green-600">{t('studentAdventure.congratulations')}</h2>
                     <p className="mt-4 text-lg text-gray-700">{t('studentAdventure.allLessonsCompleted')}</p>
                     <button onClick={() => navigate('/student')} className="mt-6 btn-primary">{t('studentAdventure.backToCabinet')}</button>
+                </div>
+            );
+        }
+
+        // Embedded diagnostic lesson (separate lesson type)
+        if (lesson.type === 'DIAGNOSTIC') {
+            const goalId = lesson.section?.learningGoal?.id;
+            return (
+                <div className="bg-white rounded-lg shadow p-4">
+                    <h2 className="text-xl font-semibold mb-3">{t('studentAdventure.diagnosticTitle', { defaultValue: 'Диагностический урок' })}</h2>
+                    <DiagnosticPage goalId={goalId} embedded />
                 </div>
             );
         }
