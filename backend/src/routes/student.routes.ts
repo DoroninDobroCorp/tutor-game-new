@@ -12,6 +12,7 @@ import {
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../utils/errors';
 import { upload } from '../utils/fileUpload';
+import { getMyAchievements } from '../controllers/achievement.controller';
 
 const router = Router();
 
@@ -30,6 +31,9 @@ router.get('/goals/:goalId/completed-lessons', authorize('STUDENT'), asyncHandle
 // Story history
 router.get('/story/:goalId', authorize('STUDENT'), asyncHandler(getStoryHistoryHandler));
 router.get('/story/:goalId/summary', authorize('STUDENT'), asyncHandler(getStorySummaryHandler));
+
+// Achievements
+router.get('/achievements', authorize('STUDENT'), asyncHandler(getMyAchievements));
 
 
 // Keep profile route at the end to avoid route conflicts

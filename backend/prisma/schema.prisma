@@ -229,6 +229,25 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+// --- ACHIEVEMENTS ---
+model Achievement {
+  id        String   @id @default(uuid())
+  title     String
+  reason    String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  studentId String
+  student   User     @relation("AchievementStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   User     @relation("AchievementTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@map("achievements")
+}
+
 // Many-to-many relation between Teacher and Student is defined using the @relation("TeachersAndStudents")
 
 // -------------------------

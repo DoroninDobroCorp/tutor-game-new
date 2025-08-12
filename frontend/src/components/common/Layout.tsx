@@ -12,6 +12,7 @@ import {
   DocumentTextIcon,
   ChevronDoubleLeftIcon,
   RocketLaunchIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { useLogoutMutation } from '../../features/auth/authApi';
@@ -34,6 +35,7 @@ function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
     { name: t('studentNavigation.dashboard'), href: '/student', icon: HomeIcon, current: false },
     { name: t('studentNavigation.adventure'), href: '/student/adventure', icon: RocketLaunchIcon, current: false },
     { name: t('studentNavigation.stories'), href: '/student/stories', icon: BookOpenIcon, current: false },
+    { name: 'Achievements', href: '/student/achievements', icon: TrophyIcon, current: false },
     {
       name: t('studentNavigation.chat'),
       href: '/student/chat',
@@ -49,6 +51,7 @@ function getTeacherNavigation(t: (key: string) => string): NavigationItem[] {
     { name: t('teacherNavigation.dashboard'), href: '/teacher', icon: HomeIcon, current: false },
     { name: t('teacherNavigation.goals'), href: '/teacher/goals', icon: DocumentTextIcon, current: false },
     { name: t('teacherNavigation.students'), href: '/teacher/students', icon: UserGroupIcon, current: false },
+    { name: 'Achievements', href: '/teacher/achievements', icon: TrophyIcon, current: false },
     {
       name: t('teacherNavigation.chat'),
       href: '/teacher/chat',

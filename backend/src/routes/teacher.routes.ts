@@ -7,6 +7,13 @@ import { getStudentPerformanceLogs } from '../controllers/performanceLogs.contro
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { checkStudentAccess } from '../middlewares/teacher.middleware';
 import { asyncHandler } from '../utils/errors';
+import { upload } from '../utils/fileUpload';
+import {
+  getStudentAchievementsForTeacher,
+  generateAchievementImage,
+  createAchievement,
+  uploadAchievementImage,
+} from '../controllers/achievement.controller';
 
 const router = Router();
 
@@ -26,5 +33,11 @@ router.get(
   checkStudentAccess,
   asyncHandler(getStudentPerformanceLogs)
 );
+
+// Achievements management (protected)
+router.get('/achievements', asyncHandler(getStudentAchievementsForTeacher)); // expects ?studentId=
+router.post('/achievements/generate-image', asyncHandler(generateAchievementImage));
+router.post('/achievements', asyncHandler(createAchievement));
+router.post('/achievements/upload', upload.single('image'), asyncHandler(uploadAchievementImage));
 
 export default router;

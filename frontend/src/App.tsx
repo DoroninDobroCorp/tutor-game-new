@@ -17,8 +17,10 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import TeacherAchievementsPage from './pages/teacher/TeacherAchievementsPage';
 
 import StudentAdventurePage from './pages/student/StudentAdventurePage';
+import StudentAchievementsPage from './pages/student/StudentAchievementsPage';
 import StudentStoriesListPage from './pages/student/StudentStoriesListPage';
 import ChatPage from './pages/chat/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -65,6 +67,7 @@ function App() {
             <Route index element={<StudentDashboard />} />
             <Route path="adventure" element={<StudentAdventurePage />} />
             <Route path="stories" element={<StudentStoriesListPage />} />
+            <Route path="achievements" element={<StudentAchievementsPage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="story/:goalId" element={<StoryHistoryPage />} />
             <Route path="goal/:goalId/completed" element={<CompletedLessonsPage />} />
@@ -78,6 +81,7 @@ function App() {
             <Route path="create-goal" element={<CreateGoalPage />} />
             <Route path="goals/:goalId/edit" element={<RoadmapEditorPage />} />
             <Route path="students" element={<StudentsPage />} />
+            <Route path="achievements" element={<TeacherAchievementsPage />} />
             <Route path="chat" element={<ChatPage />} />
           </Route>
           
