@@ -55,7 +55,11 @@ export const submitFirstAnswersHandler = async (req: Request, res: Response) => 
       maxQuestions: 2,
     }));
     const aiGenerated = await generateFollowupsForTopics(aiInput);
-    // Map back to topicIds
+    console.debug('[diagnostics] followups raw from AI', {
+      requested: aiInput.map(i => ({ topicTitle: i.topicTitle, maxQuestions: i.maxQuestions })),
+      received: aiGenerated.map(g => ({ topicTitle: g.topicTitle, count: g.questions?.length || 0 }))
+    });
+    // Map back to topicIds: prefer input order (index) to avoid title mismatches
     const titleToId = new Map(topics.map(t => [t.title, t.id] as const));
     const banned = [
       /С чего бы ты начал/i,
@@ -63,8 +67,8 @@ export const submitFirstAnswersHandler = async (req: Request, res: Response) => 
       /Какие\s+шаги\s+ты\s+предпримешь/i,
       /Что\s+такое\s+.*в\s+целом/i,
     ];
-    const preliminary = aiGenerated.map(item => ({
-      topicId: titleToId.get(item.topicTitle) || '',
+    const preliminary = aiGenerated.map((item, idx) => ({
+      topicId: nonExcellent[idx]?.topicId || titleToId.get(item.topicTitle) || '',
       questions: (item.questions || []).map(q => q.trim()).filter(Boolean),
     })).filter(f => f.topicId);
 
@@ -86,6 +90,7 @@ export const submitFirstAnswersHandler = async (req: Request, res: Response) => 
       }
       return { topicId: f.topicId, questions: [probe] };
     }).filter(f => f.questions.length > 0);
+    console.debug('[diagnostics] followups after filter/fallback', followups.map(f => ({ topicId: f.topicId, count: f.questions.length })));
   }
 
   res.json({ success: true, data: { followups } });
