@@ -390,12 +390,14 @@
     "dashboard": "Панель управления",
     "adventure": "Продолжить приключение",
     "stories": "Архив заданий",
+    "achievements": "Достижения",
     "chat": "Чат"
   },
   "teacherNavigation": {
     "dashboard": "Панель управления",
     "goals": "Учебные планы",
     "students": "Студенты",
+    "achievements": "Достижения",
     "chat": "Чат"
   },
   "studentStories": {

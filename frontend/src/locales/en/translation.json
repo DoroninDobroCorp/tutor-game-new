@@ -393,12 +393,14 @@
     "dashboard": "Dashboard",
     "adventure": "Continue Adventure",
     "stories": "Task Archive",
+    "achievements": "Achievements",
     "chat": "Chat"
   },
   "teacherNavigation": {
     "dashboard": "Dashboard",
     "goals": "Learning Plans",
     "students": "Students",
+    "achievements": "Achievements",
     "chat": "Chat"
   },
   "studentStories": {

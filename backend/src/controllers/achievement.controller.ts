@@ -84,6 +84,36 @@ export const createAchievement = asyncHandler(async (req: Request, res: Response
     data: { studentId, teacherId, title, reason, imageUrl: imageUrl || null },
   });
 
+  // Notify student in chat about new achievement
+  try {
+    // Create a message record from teacher to student
+    const content = `🎉 You earned a new achievement: "${title}" — ${reason}`;
+    const newMessage = await prisma.message.create({
+      data: { content, senderId: teacherId, recipientId: studentId },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, role: true } },
+      },
+    });
+
+    // Emit via WebSocket if student is online
+    const wsService = req.app.get('wsService');
+    if (wsService && typeof wsService.emitToUser === 'function') {
+      const formattedMessage = {
+        id: newMessage.id,
+        recipientId: newMessage.recipientId,
+        senderId: newMessage.senderId,
+        senderName: `${newMessage.sender.firstName || ''} ${newMessage.sender.lastName || ''}`.trim(),
+        senderRole: newMessage.sender.role.toLowerCase(),
+        content: newMessage.content,
+        timestamp: newMessage.createdAt.toISOString(),
+        read: newMessage.read,
+      };
+      wsService.emitToUser(studentId, 'message', formattedMessage);
+    }
+  } catch (err) {
+    console.warn('Failed to send WS chat notification about achievement:', err);
+  }
+
   res.status(201).json({ success: true, data: achievement });
 });
 

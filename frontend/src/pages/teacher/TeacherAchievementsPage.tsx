@@ -92,7 +92,26 @@ export default function TeacherAchievementsPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <button className="btn" onClick={onGenerate} disabled={isGenerating}>{isGenerating ? t('achievements.generating', { defaultValue: 'Generating…' }) : t('achievements.generate', { defaultValue: 'Generate Image' })}</button>
+          <button
+            type="button"
+            className="btn-primary inline-flex items-center gap-2"
+            onClick={onGenerate}
+            disabled={isGenerating}
+            aria-busy={isGenerating}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`}
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a9.713 9.713 0 012.025 1.012m2.477 3.02c.258.64.463 1.31.607 2.003M12 3.75c1.073 0 2.107.187 3.067.53M3.75 12c0-1.073.187-2.107.53-3.067m.653-1.52A9.75 9.75 0 0112 3.75m-8.25 8.25c0 2.207.73 4.242 1.957 5.868m1.68 1.835A9.714 9.714 0 0012 20.25m6.293-2.132A9.707 9.707 0 0020.25 12" />
+            </svg>
+            {isGenerating ? t('achievements.generating', { defaultValue: 'Generating…' }) : t('achievements.generate', { defaultValue: 'Generate Image' })}
+          </button>
           <label className="btn-secondary cursor-pointer">
             <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(e.target.files?.[0] || undefined)} />
             {isUploading ? t('achievements.uploading', { defaultValue: 'Uploading…' }) : t('achievements.upload', { defaultValue: 'Upload Image' })}
