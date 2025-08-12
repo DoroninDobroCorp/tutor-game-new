@@ -177,13 +177,12 @@ export const startDiagnosticHandler = async (req: Request, res: Response) => {
 
   // Simple intro + disclaimer
   const intro = 'Ты входишь в новое приключение! Сейчас мы коротко поговорим по важным темам, чтобы понять, что ты уже знаешь. Готов?';
-  const disclaimer = 'Это диагностика. Абсолютно нормально чего-то не знать — главное отвечать честно. Если не уверен – так и пиши. У первого вопроса может быть пример ответа, чтобы было проще начать.';
+  const disclaimer = 'Это диагностика. Абсолютно нормально чего-то не знать — главное отвечать честно. Если не уверен – так и пиши.';
 
   const initialQuestions = topics.map((t) => ({
     topicId: t.id,
     title: t.title,
     firstQuestion: (t as any).firstQuestion || null,
-    firstQuestionExample: (t as any).firstQuestionExample || null,
   }));
 
   res.json({ success: true, data: { sessionId: session.id, intro, disclaimer, totalTopics: topics.length, initialQuestions } });

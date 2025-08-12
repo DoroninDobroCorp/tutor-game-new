@@ -99,7 +99,7 @@ export const generateLessonContentHandler = async (req: Request, res: Response) 
 // Body: { topics: string[] }
 export const updateDiagnosticTopicsHandler = async (req: Request, res: Response) => {
     const { lessonId } = req.params;
-    const { topics } = req.body as { topics?: Array<string | { title?: string; firstQuestion?: string; firstQuestionExample?: string }>; };
+    const { topics } = req.body as { topics?: Array<string | { title?: string; firstQuestion?: string }>; };
     const teacherId = req.user?.userId;
 
     if (!Array.isArray(topics) || topics.length === 0) {
@@ -108,12 +108,11 @@ export const updateDiagnosticTopicsHandler = async (req: Request, res: Response)
     const cleanedTopics = topics
         .map(t => {
             if (typeof t === 'string') {
-                return { title: t.trim(), firstQuestion: null, firstQuestionExample: null };
+                return { title: t.trim(), firstQuestion: null };
             }
             return {
                 title: (t.title || '').trim(),
                 firstQuestion: (t.firstQuestion || '').trim() || null,
-                firstQuestionExample: (t.firstQuestionExample || '').trim() || null,
             };
         })
         .filter(t => !!t.title);
@@ -161,7 +160,6 @@ export const updateDiagnosticTopicsHandler = async (req: Request, res: Response)
                         title: t.title,
                         description: null,
                         firstQuestion: t.firstQuestion,
-                        firstQuestionExample: t.firstQuestionExample,
                         learningGoalId: goalId,
                     })),
                 });

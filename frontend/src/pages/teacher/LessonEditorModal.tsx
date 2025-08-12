@@ -139,9 +139,19 @@ export default function LessonEditorModal({ isOpen, onClose, lesson }: { isOpen:
                                                         <h4 className="text-sm font-semibold mb-2">{t('diagnostic.topics', 'Темы диагностики')}</h4>
                                                         {(lesson.content as any)?.topics?.length ? (
                                                             <ul className="list-disc pl-5 space-y-1">
-                                                                {(lesson.content as any).topics.map((topic: string, idx: number) => (
-                                                                    <li key={idx} className="text-sm text-gray-700">{topic}</li>
-                                                                ))}
+                                                                {(lesson.content as any).topics.map((topic: any, idx: number) => {
+                                                                    const isString = typeof topic === 'string';
+                                                                    const title = isString ? topic : (topic?.title ?? '');
+                                                                    const firstQuestion = isString ? undefined : (topic?.firstQuestion ?? undefined);
+                                                                    return (
+                                                                        <li key={idx} className="text-sm text-gray-700">
+                                                                            <span className="font-medium">{title}</span>
+                                                                            {firstQuestion ? (
+                                                                                <span className="text-gray-500"> — {firstQuestion}</span>
+                                                                            ) : null}
+                                                                        </li>
+                                                                    );
+                                                                })}
                                                             </ul>
                                                         ) : (
                                                             <p className="text-sm text-gray-500">{t('diagnostic.noTopics', 'Тем пока нет')}</p>

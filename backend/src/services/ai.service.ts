@@ -40,6 +40,7 @@ export async function generateFollowupsForTopics(input: Array<{
     const tasks = input.map(async ({ topicTitle, firstQuestion, firstAnswer, language, maxQuestions }) => {
       const max = Math.min(2, Math.max(0, maxQuestions || 2));
       const prompt = `You are an educational assistant. Given a student's first answer for a topic, generate up to ${max} short follow-up questions in ${language || 'Russian'}. If the answer is excellent and further probing is unnecessary, return zero questions.
+Do NOT penalize typos or poor formatting; focus on conceptual understanding. If the answer is empty or very vague, start with the most basic clarifying question.
 Topic: ${topicTitle}
 First question: ${firstQuestion || '—'}
 Student first answer: ${firstAnswer}

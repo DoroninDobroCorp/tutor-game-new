@@ -39,7 +39,7 @@ export const diagnosticApi = apiSlice.injectEndpoints({
       intro: string;
       disclaimer?: string;
       totalTopics: number;
-      initialQuestions?: Array<{ topicId: string; title: string; firstQuestion?: string | null; firstQuestionExample?: string | null }>
+      initialQuestions?: Array<{ topicId: string; title: string; firstQuestion?: string | null }>
     }, { goalId: string }>({
       query: (body) => ({
         url: '/student/diagnostics/start',

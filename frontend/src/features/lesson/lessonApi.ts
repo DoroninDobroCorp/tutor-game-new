@@ -32,7 +32,7 @@ export const lessonApi = apiSlice.injectEndpoints({
         // Save diagnostic topics for a lesson
         saveDiagnosticTopics: builder.mutation<
             { success: boolean; data: Lesson },
-            { lessonId: string; topics: Array<string | { title: string; firstQuestion?: string; firstQuestionExample?: string }> }
+            { lessonId: string; topics: Array<string | { title: string; firstQuestion?: string }> }
         >({
             query: ({ lessonId, topics }) => ({
                 url: `/lessons/${lessonId}/diagnostic`,

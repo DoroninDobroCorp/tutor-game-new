@@ -30,19 +30,22 @@ if (!gcpProjectId || !gcpLocation) {
 // ---------------------------------------------------------------
 // Generate diagnostic topics list
 // ---------------------------------------------------------------
-export async function generateDiagnosticTopics(subject: string, age: number, language: string, teacherNote?: string): Promise<{ topics: string[] }> {
-  const system = `You are an expert teacher assistant. Your task is to propose a concise list of DIAGNOSTIC TOPICS (not questions) that a teacher will later use to check the student's knowledge.
+export async function generateDiagnosticTopics(subject: string, age: number, language: string, teacherNote?: string): Promise<{ topics: Array<{ title: string; firstQuestion: string }> }> {
+  const system = `You are an expert teacher assistant. Your task is to propose a concise list of DIAGNOSTIC TOPICS WITH A FIRST QUESTION for each. The aim is a quick knowledge check.
 Audience: a ${age}-year-old student.
 Language of output: ${language}.`;
 
   const instructions = `
-Return ONLY valid JSON in the exact shape: { "topics": ["..."] }
+Return ONLY valid JSON in the exact shape:
+{ "topics": [ { "title": "...", "firstQuestion": "..." } ] }
 Rules:
 - Provide 5–12 short topic titles relevant to the subject below.
-- Topics must be diagnostic topics, not exercises/questions/tasks.
-- Do NOT include examples, questions, tasks, answers, explanations, or numbering.
-- Topics must be atomic and specific (each can be assessed later by Q&A).
-- Keep titles concise and clear in ${language}.`;
+- Topics must be diagnostic topics (concepts/skills), not exercises like "Solve ...".
+- For each topic, write ONE brief, plain-language first question that reveals actual understanding.
+ 
+- Keep questions age-appropriate for a ${age}-year-old.
+- Be lenient: the goal is to assess understanding, not wording.
+- Do NOT include explanations outside the JSON or any numbering.`;
 
   const prompt = `${system}
 Subject: ${subject}
@@ -56,7 +59,16 @@ ${instructions}`;
       if (a.delay) await new Promise(r => setTimeout(r, a.delay));
       const data = await callGemini(prompt, a.temp, true) as any;
       if (!data || !Array.isArray(data.topics)) throw new AppError('AI returned invalid topics JSON', 502);
-      const topics = data.topics.filter((t: any) => typeof t === 'string' && t.trim()).map((t: string) => t.trim());
+      const topics = data.topics
+        .map((t: any) => {
+          if (typeof t === 'string') return { title: t.trim(), firstQuestion: '' };
+          if (!t || typeof t.title !== 'string' || typeof t.firstQuestion !== 'string') return null;
+          const title = t.title.trim();
+          const firstQuestion = t.firstQuestion.trim();
+          if (!title || !firstQuestion) return null;
+          return { title, firstQuestion };
+        })
+        .filter(Boolean);
       if (topics.length === 0) throw new AppError('AI returned empty topics', 502);
       return { topics };
     } catch (e) {
@@ -114,6 +126,7 @@ export async function classifyKnowledgeLevelLLM(params: { topicTitle: string; qu
   const { topicTitle, questionText, answer } = params;
   const prompt = [
     'You are an educational assistant. Classify the student\'s knowledge level by their answer.',
+    'Do NOT penalize typos, spelling, or formatting. Focus on the substance: understanding and ability to explain/do.',
     `Topic: ${topicTitle}`,
     `Question: ${questionText}`,
     `Answer: ${answer}`,

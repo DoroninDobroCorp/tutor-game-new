@@ -181,13 +181,13 @@ export const goalApi = apiSlice.injectEndpoints({
         }),
 
         // Diagnostics topics generation (AI) for teacher
-        generateDiagnosticTopics: builder.mutation<{ topics: string[] }, { goalId: string; teacherNote?: string }>({
+        generateDiagnosticTopics: builder.mutation<{ topics: Array<string | { title: string; firstQuestion: string }> }, { goalId: string; teacherNote?: string }>({
             query: ({ goalId, teacherNote }) => ({
                 url: `/goals/${goalId}/diagnostics/generate-topics`,
                 method: 'POST',
                 data: teacherNote ? { teacherNote } : {},
             }),
-            transformResponse: (response: { data: { topics: string[] } }) => response.data,
+            transformResponse: (response: { data: { topics: Array<string | { title: string; firstQuestion: string }> } }) => response.data,
         }),
     }),
 });

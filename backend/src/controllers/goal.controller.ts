@@ -254,7 +254,7 @@ export const getGoalTopicsHandler = async (req: Request, res: Response) => {
 export const upsertGoalTopicsHandler = async (req: Request, res: Response) => {
     const { goalId } = req.params;
     const teacherId = req.user?.userId;
-    const { topics } = req.body as { topics: Array<{ id?: string; title: string; description?: string; firstQuestion?: string; firstQuestionExample?: string }>; };
+    const { topics } = req.body as { topics: Array<{ id?: string; title: string; description?: string; firstQuestion?: string }>; };
 
     if (!teacherId) throw new AppError('User not authenticated', 401);
     if (!Array.isArray(topics)) throw new AppError('Invalid payload: topics array is required', 400);
@@ -277,7 +277,7 @@ export const upsertGoalTopicsHandler = async (req: Request, res: Response) => {
 
         // Upsert/create
         const saved: any[] = [];
-        for (const t of topics as Array<{ id?: string; title: string; description?: string; firstQuestion?: string; firstQuestionExample?: string }>) {
+        for (const t of topics as Array<{ id?: string; title: string; description?: string; firstQuestion?: string }>) {
             if (t.id && existingIds.has(t.id)) {
                 const updated = await tx.topic.update({
                     where: { id: t.id as string },
@@ -285,7 +285,6 @@ export const upsertGoalTopicsHandler = async (req: Request, res: Response) => {
                         title: t.title,
                         description: t.description ?? null,
                         firstQuestion: t.firstQuestion ?? null,
-                        firstQuestionExample: t.firstQuestionExample ?? null,
                     }
                 });
                 saved.push(updated);
@@ -295,7 +294,6 @@ export const upsertGoalTopicsHandler = async (req: Request, res: Response) => {
                         title: t.title,
                         description: t.description ?? null,
                         firstQuestion: t.firstQuestion ?? null,
-                        firstQuestionExample: t.firstQuestionExample ?? null,
                         learningGoalId: goalId,
                     }
                 });

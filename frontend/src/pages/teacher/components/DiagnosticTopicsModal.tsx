@@ -10,20 +10,33 @@ interface DiagnosticTopicsModalProps {
   onClose: () => void;
   goalId: string;
   lessonId: string;
-  initialTopics?: string[];
+  initialTopics?: any[];
 }
 
-type TopicRow = { title: string; firstQuestion?: string; firstQuestionExample?: string };
+type TopicRow = { title: string; firstQuestion?: string };
 
 export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ isOpen, onClose, goalId, lessonId, initialTopics }) => {
   const { t } = useTranslation();
-  const [topics, setTopics] = useState<TopicRow[]>(() => (initialTopics || []).map(t => ({ title: t })));
+  const [topics, setTopics] = useState<TopicRow[]>(() =>
+    (initialTopics || []).map((t: any) =>
+      typeof t === 'string'
+        ? { title: t }
+        : { title: String(t?.title ?? ''), firstQuestion: String(t?.firstQuestion ?? '') }
+    )
+  );
   const [note, setNote] = useState('');
   const [generateTopics, { isLoading: isGenerating }] = useGenerateDiagnosticTopicsMutation();
   const [saveTopics, { isLoading: isSaving }] = useSaveDiagnosticTopicsMutation();
 
   useEffect(() => {
-    if (isOpen) setTopics((initialTopics || []).map(t => ({ title: t })));
+    if (isOpen) {
+      const normalized: TopicRow[] = (initialTopics || []).map((t: any) =>
+        typeof t === 'string'
+          ? { title: t }
+          : { title: String(t?.title ?? ''), firstQuestion: String(t?.firstQuestion ?? '') }
+      );
+      setTopics(normalized);
+    }
   }, [isOpen, initialTopics]);
 
   if (!isOpen) return null;
@@ -39,7 +52,7 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
         }
       );
       if (res?.topics?.length) {
-        const mapped: TopicRow[] = (res.topics as any[]).map((x: any) => typeof x === 'string' ? { title: x } : { title: x.title || '', firstQuestion: x.firstQuestion || '', firstQuestionExample: x.firstQuestionExample || '' });
+        const mapped: TopicRow[] = (res.topics as any[]).map((x: any) => typeof x === 'string' ? { title: x } : { title: x.title || '', firstQuestion: x.firstQuestion || '' });
         setTopics(mapped);
       } else {
         toast.error(t('diagnostics.noTopicsGenerated', { defaultValue: 'Не удалось сгенерировать темы' }));
@@ -56,7 +69,6 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
       .map(t => ({
         title: (t.title || '').trim(),
         firstQuestion: (t.firstQuestion || '').trim() || undefined,
-        firstQuestionExample: (t.firstQuestionExample || '').trim() || undefined,
       }))
       .filter(t => !!t.title);
     try {
@@ -72,7 +84,7 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
     } catch {}
   };
 
-  const addTopic = () => setTopics([...topics, { title: '', firstQuestion: '', firstQuestionExample: '' }]);
+  const addTopic = () => setTopics([...topics, { title: '', firstQuestion: '' }]);
   const updateTopicField = (idx: number, field: keyof TopicRow, value: string) => {
     const next = [...topics];
     next[idx] = { ...next[idx], [field]: value };
@@ -113,10 +125,7 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
                     <label className="block text-xs text-gray-500 mb-1">{t('diagnostics.firstQuestion', { defaultValue: 'Первый вопрос (обязательно)' })}</label>
                     <input value={topic.firstQuestion || ''} onChange={(e) => updateTopicField(idx, 'firstQuestion', e.target.value)} className="w-full border rounded-md p-2 disabled:opacity-70" disabled={isGenerating || isSaving} placeholder={t('diagnostics.firstQuestionPlaceholder', { defaultValue: 'Например: Объясни, что такое дробь и приведи пример.' }) as string} />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">{t('diagnostics.firstQuestionExample', { defaultValue: 'Пример ответа (необязательно)' })}</label>
-                    <input value={topic.firstQuestionExample || ''} onChange={(e) => updateTopicField(idx, 'firstQuestionExample', e.target.value)} className="w-full border rounded-md p-2 disabled:opacity-70" disabled={isGenerating || isSaving} placeholder={t('diagnostics.firstQuestionExamplePlaceholder', { defaultValue: 'Короткий ориентир: 1/2 — это одна из двух равных частей...' }) as string} />
-                  </div>
+                  {/* example removed */}
                 </div>
               ))}
               {!topics.length && <div className="text-sm text-gray-500">{t('diagnostics.noTopics', { defaultValue: 'Темы пока не добавлены' })}</div>}

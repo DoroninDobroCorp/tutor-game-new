@@ -23,10 +23,8 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
   const [answer, setAnswer] = useState('');
   const [intro, setIntro] = useState<string | null>(null);
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
-  const [initialQuestions, setInitialQuestions] = useState<Array<{ topicId: string; title: string; firstQuestion?: string | null; firstQuestionExample?: string | null }> | null>(null);
-  const [firstAnswers, setFirstAnswers] = useState<Record<string, string>>({});
+  const [initialQuestions, setInitialQuestions] = useState<Array<{ topicId: string; title: string; firstQuestion?: string | null }> | null>(null);
   const [followups, setFollowups] = useState<Array<{ topicId: string; questions: string[] }> | null>(null);
-  const [followupAnswers, setFollowupAnswers] = useState<Record<string, string[]>>({});
   const [phase, setPhase] = useState<'INIT' | 'FIRST' | 'FOLLOWUPS' | 'LEGACY' | 'DONE'>('INIT');
 
   const { data: sessionData, isFetching: isFetchingSession } = useGetDiagnosticSessionQuery(sessionId!, { skip: !sessionId });
@@ -54,9 +52,6 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       setDisclaimer(res.disclaimer || null);
       if (Array.isArray(res.initialQuestions) && res.initialQuestions.length) {
         setInitialQuestions(res.initialQuestions);
-        const init: Record<string, string> = {};
-        res.initialQuestions.forEach((q) => { init[q.topicId] = ''; });
-        setFirstAnswers(init);
         setPhase('FIRST');
       } else {
         setPhase('LEGACY');
@@ -107,15 +102,11 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
 
   const handleSubmitFirst = async () => {
     if (!sessionId || !initialQuestions) return;
-    const answers = initialQuestions.map(q => ({ topicId: q.topicId, answer: firstAnswers[q.topicId] || '' }));
+    const answers = initialQuestions.map(q => ({ topicId: q.topicId, answer: '' }));
     // Require at least some input (not enforcing per-topic to keep UX forgiving)
     try {
       const data = await submitFirstAnswers({ sessionId, answers }).unwrap();
       setFollowups(data.followups || []);
-      // init followup answers structure
-      const init: Record<string, string[]> = {};
-      (data.followups || []).forEach(f => { init[f.topicId] = f.questions.map(() => ''); });
-      setFollowupAnswers(init);
       setPhase('FOLLOWUPS');
     } catch {
       toast.error('Не удалось отправить ответы');
@@ -125,10 +116,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
   const handleSubmitFollowups = async () => {
     if (!sessionId || !followups) return;
     try {
-      const items = followups.map(f => ({
-        topicId: f.topicId,
-        qa: f.questions.map((q, i) => ({ question: q, answer: (followupAnswers[f.topicId] || [])[i] || '' })),
-      }));
+      const items = followups.map(f => ({ topicId: f.topicId, qa: f.questions.map((q) => ({ question: q, answer: '' })) }));
       await submitFollowupAnswers({ sessionId, items }).unwrap();
       toast.success('Диагностика завершена');
       setPhase('DONE');
@@ -166,21 +154,12 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
                   <div key={q.topicId} className="border rounded p-3 bg-gray-50">
                     <div className="text-xs text-gray-500 mb-1">Тема: {q.title}</div>
                     <div className="font-medium">{q.firstQuestion || 'Ответь кратко по теме'}</div>
-                    {q.firstQuestionExample ? (
-                      <div className="mt-1 text-xs text-gray-600">Пример: {q.firstQuestionExample}</div>
-                    ) : null}
-                    <textarea
-                      rows={3}
-                      className="w-full border rounded px-3 py-2 mt-2"
-                      placeholder="Твой ответ..."
-                      value={firstAnswers[q.topicId] || ''}
-                      onChange={(e) => setFirstAnswers(prev => ({ ...prev, [q.topicId]: e.target.value }))}
-                    />
+                    {/* example removed */}
                   </div>
                 ))}
               </div>
               <div className="mt-4 flex justify-end">
-                <button onClick={handleSubmitFirst} disabled={isSubmittingFirst} className="btn-primary disabled:opacity-50">Отправить все ответы</button>
+                <button onClick={handleSubmitFirst} disabled={isSubmittingFirst} className="btn-primary disabled:opacity-50">Продолжить</button>
               </div>
             </div>
           )}
@@ -199,20 +178,6 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
                         {f.questions.map((q, i) => (
                           <div key={i}>
                             <div className="font-medium">{q}</div>
-                            <textarea
-                              rows={3}
-                              className="w-full border rounded px-3 py-2 mt-1"
-                              placeholder="Твой ответ..."
-                              value={(followupAnswers[f.topicId] || [])[i] || ''}
-                              onChange={(e) => setFollowupAnswers(prev => ({
-                                ...prev,
-                                [f.topicId]: (() => {
-                                  const arr = [...(prev[f.topicId] || Array(f.questions.length).fill(''))];
-                                  arr[i] = e.target.value;
-                                  return arr;
-                                })(),
-                              }))}
-                            />
                           </div>
                         ))}
                       </div>

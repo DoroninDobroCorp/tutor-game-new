@@ -239,7 +239,6 @@ model Topic {
   title           String
   description     String?
   firstQuestion   String?
-  firstQuestionExample String?
   learningGoalId  String
   learningGoal    LearningGoal @relation("GoalTopics", fields: [learningGoalId], references: [id], onDelete: Cascade)
   createdAt       DateTime     @default(now())
