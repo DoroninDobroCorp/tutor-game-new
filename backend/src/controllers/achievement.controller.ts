@@ -43,19 +43,25 @@ export const getStudentAchievementsForTeacher = asyncHandler(async (req: Request
 // Generate image for achievement (teacher only), without character reference
 export const generateAchievementImage = asyncHandler(async (req: Request, res: Response) => {
   const teacherId = (req as any).user?.userId;
-  const { prompt } = req.body as { prompt?: string };
+  const { prompt, title, reason } = req.body as { prompt?: string; title?: string; reason?: string };
   if (!teacherId) throw new AppError('Unauthorized', 401);
-  if (!prompt) throw new AppError('prompt is required', 400);
+  const effectivePrompt = (prompt && prompt.trim())
+    ? prompt
+    : `Create a celebratory achievement badge image for a student.
+Title: ${title || 'Great Achievement'}.
+Reason: ${reason || 'Outstanding performance and effort'}.
+Style: colorful, child-friendly, high-contrast, simple iconography, centered composition, no text on the image.`;
 
-  const imageBuffer = await generateImage(prompt);
+  const imageBuffer = await generateImage(effectivePrompt);
 
   const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+  await fs.promises.mkdir(uploadsDir, { recursive: true });
   const filename = `achievement-${Date.now()}.png`;
   const filepath = path.join(uploadsDir, filename);
   await fs.promises.writeFile(filepath, imageBuffer);
   const publicImageUrl = `/uploads/${filename}`;
 
-  res.json({ success: true, data: { imageUrl: publicImageUrl, prompt } });
+  res.json({ success: true, data: { imageUrl: publicImageUrl, prompt: effectivePrompt } });
 });
 
 // Create achievement (teacher only)

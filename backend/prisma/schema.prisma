@@ -58,11 +58,15 @@ model User {
 
   // Teacher relations
   taughtGoals LearningGoal[] @relation("LearningGoalTeacher")
+  // Achievements issued by this teacher
+  achievementsGiven   Achievement[] @relation("AchievementTeacher")
 
   // Student relations
   learningGoals   LearningGoal[]          @relation("LearningGoalStudent")
   performanceLogs StudentPerformanceLog[]
   refreshTokens   RefreshToken[]
+  // Achievements received by this student
+  achievementsAsStudent Achievement[] @relation("AchievementStudent")
 
   // Diagnostic sessions as student
   diagnosticSessionsAsStudent DiagnosticSession[] @relation("DiagnosticSessionStudent")

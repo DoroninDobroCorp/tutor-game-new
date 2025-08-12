@@ -56,6 +56,14 @@ export default function StudentDashboard() {
               <h3 className="font-medium text-xl">💬 {t('studentDashboard.chatWithTeacher')}</h3>
               <p className="text-sm text-soft mt-2">{t('studentDashboard.askQuestion')}</p>
             </Link>
+
+            <Link 
+              to="/student/achievements" 
+              className="p-6 rounded-xl hover:bg-white/70 transition-colors glass"
+            >
+              <h3 className="font-medium text-xl">🏆 {t('studentDashboard.achievements', { defaultValue: 'Achievements' })}</h3>
+              <p className="text-sm text-soft mt-2">{t('studentDashboard.viewYourAchievements', { defaultValue: 'View your earned achievements' })}</p>
+            </Link>
           </div>
         </section>
 

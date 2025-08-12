@@ -1,8 +1,20 @@
 import { apiSlice } from '../../app/api/apiSlice';
-import type { Achievement } from '../../types/models';
+
+// Local type to avoid cross-file coupling issues
+export interface Achievement {
+  id: string;
+  title: string;
+  reason: string;
+  imageUrl?: string | null;
+  createdAt: string;
+  studentId: string;
+  teacherId: string;
+}
 
 export interface GenerateImagePayload {
-  prompt: string;
+  prompt?: string;
+  title?: string;
+  reason?: string;
 }
 
 export const achievementsApi = apiSlice.injectEndpoints({

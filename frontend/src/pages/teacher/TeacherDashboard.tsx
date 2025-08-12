@@ -57,6 +57,17 @@ export default function TeacherDashboard() {
             <p className="text-sm text-gray-500">{t('teacherDashboard.chatWithStudentsDesc')}</p>
           </Link>
 
+          <Link
+            to="/teacher/achievements"
+            className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <span aria-hidden className="w-10 h-10 rounded-xl flex items-center justify-center brand-soft text-xl">🏆</span>
+              <h3 className="font-medium text-lg">{t('teacherDashboard.achievements', { defaultValue: 'Achievements' })}</h3>
+            </div>
+            <p className="text-sm text-gray-500">{t('teacherDashboard.achievementsDesc', { defaultValue: 'Issue and manage student achievements' })}</p>
+          </Link>
+
         </div>
       </div>
     </div>
