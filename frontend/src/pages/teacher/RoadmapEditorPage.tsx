@@ -162,15 +162,12 @@ const RoadmapEditorPage = () => {
                 order: lessonIndex,
             }))
         }));
-        
-        toast.promise(
-            updateRoadmap({ goalId, roadmap: roadmapWithOrder }).unwrap(),
-            {
-                loading: t('roadmapEditor.savingPlan'),
-                success: t('roadmapEditor.planSaved'),
-                error: t('roadmapEditor.saveError'),
-            }
-        );
+        try {
+            await updateRoadmap({ goalId, roadmap: roadmapWithOrder }).unwrap();
+            toast.success(t('roadmapEditor.planSaved'));
+        } catch (err) {
+            toast.error(getErrorMessage(err, t('roadmapEditor.saveError') as string));
+        }
     };
 
     const onDragEnd = (result: DropResult) => {
@@ -224,12 +221,12 @@ const RoadmapEditorPage = () => {
             <div className="flex justify-between items-center mb-6">
                 <Link to={routeTeacherGoals} className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> {t('roadmapEditor.back')}</Link>
                 <h1 className="text-2xl font-bold text-gray-900 text-center">{currentGoal.subject}</h1>
-                <button onClick={handleSave} disabled={isSaving} className="btn-primary disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
+                <button type="button" onClick={handleSave} disabled={isSaving} className="btn-primary disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
             </div>
             
             {/* Floating Save Button (bottom-right) */}
             <div className="fixed bottom-6 right-6 z-40">
-                <button onClick={handleSave} disabled={isSaving} className="btn-primary rounded-full px-5 py-3 disabled:opacity-50 flex items-center gap-2 shadow-lg">
+                <button type="button" onClick={handleSave} disabled={isSaving} className="btn-primary rounded-full px-5 py-3 disabled:opacity-50 flex items-center gap-2 shadow-lg">
                     <FiSave /> {t('roadmapEditor.save')}
                 </button>
             </div>
@@ -281,8 +278,9 @@ const RoadmapEditorPage = () => {
                             </Droppable>
                         </DragDropContext>
                         <div className="mt-8 flex gap-3 flex-wrap">
-                            <button onClick={handleAddSection} className="btn-secondary flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
+                            <button type="button" onClick={handleAddSection} className="btn-secondary flex items-center"><FiPlus className="mr-2" /> {t('roadmapEditor.addSection')}</button>
                             <button
+                              type="button"
                               onClick={() => {
                                 const newSection = {
                                   id: `new-section-${Date.now()}`,
@@ -328,7 +326,7 @@ const RoadmapEditorPage = () => {
                         </div>
                         <form ref={formRef} onSubmit={handleGeneratePlan} className="flex gap-2">
                             <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('roadmapEditor.askAiToChangePlan')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                            <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary p-3 disabled:opacity-50"><FiSend /></button>
+                            <button type="submit" aria-label={t('roadmapEditor.send', { defaultValue: 'Отправить' }) as string} disabled={isGenerating || !userMessage.trim()} className="btn-primary p-3 disabled:opacity-50"><FiSend /></button>
                         </form>
                     </div>
                 </div>

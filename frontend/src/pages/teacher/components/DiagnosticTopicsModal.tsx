@@ -93,14 +93,14 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
       <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl p-6 relative" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">{t('diagnostics.modalTitle', { defaultValue: 'Темы диагностики' })}</h2>
-          <Button type="button" onClick={onClose} variant="ghost" className="text-gray-500 hover:text-gray-700"><FiX size={18} /></Button>
+          <Button type="button" aria-label={t('common.close', { defaultValue: 'Закрыть' }) as string} onClick={onClose} variant="ghost" className="text-gray-500 hover:text-gray-700"><FiX size={18} /></Button>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm text-gray-600 mb-1">{t('diagnostics.teacherNote', { defaultValue: 'Пожелания к темам (необязательно)' })}</label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="disabled:opacity-70" disabled={isGenerating || isSaving} placeholder={t('diagnostics.notePlaceholder', { defaultValue: 'Например: больше по алгебре, меньше теории множеств' }) as string} />
-            <Button type="button" disabled={isGenerating} onClick={handleGenerate} variant="secondary" className="mt-2 flex items-center gap-2 disabled:opacity-50">
+            <Button type="button" aria-label={t('diagnostics.generateTopics', { defaultValue: 'Сгенерировать темы' }) as string} disabled={isGenerating} onClick={handleGenerate} variant="secondary" className="mt-2 flex items-center gap-2 disabled:opacity-50">
               <FiRefreshCw className={isGenerating ? 'animate-spin' : ''} /> {isGenerating ? t('diagnostics.generating', { defaultValue: 'Генерация…' }) : t('diagnostics.generateTopics', { defaultValue: 'Сгенерировать темы' })}
             </Button>
           </div>
@@ -108,14 +108,14 @@ export const DiagnosticTopicsModal: React.FC<DiagnosticTopicsModalProps> = ({ is
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium">{t('diagnostics.topicList', { defaultValue: 'Список тем' })}</h3>
-              <Button type="button" onClick={addTopic} disabled={isGenerating || isSaving} variant="secondary" className="text-sm flex items-center gap-1 disabled:opacity-50"><FiPlus /> {t('common.add', { defaultValue: 'Добавить' })}</Button>
+              <Button type="button" aria-label={t('diagnostics.addTopic', { defaultValue: 'Добавить тему' }) as string} onClick={addTopic} disabled={isGenerating || isSaving} variant="secondary" className="text-sm flex items-center gap-1 disabled:opacity-50"><FiPlus /> {t('common.add', { defaultValue: 'Добавить' })}</Button>
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
               {topics.map((topic, idx) => (
                 <div key={idx} className="border rounded-md p-3 space-y-2 bg-gray-50">
                   <div className="flex items-center gap-2">
                     <Input value={topic.title} onChange={(e) => updateTopicField(idx, 'title', e.target.value)} className="flex-1 disabled:opacity-70" disabled={isGenerating || isSaving} placeholder={t('diagnostics.topicPlaceholder', { defaultValue: 'Тема' }) as string} />
-                    <Button type="button" onClick={() => removeTopic(idx)} disabled={isGenerating || isSaving} variant="secondary" className="p-2 text-red-500 hover:text-red-700 disabled:opacity-50"><FiTrash2 /></Button>
+                    <Button type="button" aria-label={t('diagnostics.removeTopic', { defaultValue: 'Удалить тему' }) as string} onClick={() => removeTopic(idx)} disabled={isGenerating || isSaving} variant="secondary" className="p-2 text-red-500 hover:text-red-700 disabled:opacity-50"><FiTrash2 /></Button>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">{t('diagnostics.firstQuestion', { defaultValue: 'Первый вопрос (обязательно)' })}</label>

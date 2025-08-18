@@ -70,9 +70,11 @@ export const RoadmapSection = ({
                             ) : (
                                 <div className="flex items-center group" onClick={() => setEditingSectionIndex(sectionIndex)}>
                                     <Button 
+                                        type="button"
                                         variant="ghost"
                                         className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" 
                                         title={t('roadmapSection.editTitle') as string}
+                                        aria-label={t('roadmapSection.editTitle') as string}
                                     >
                                         <FiEdit2 />
                                     </Button>
@@ -81,10 +83,12 @@ export const RoadmapSection = ({
                             )}
                         </div>
                         <Button 
+                            type="button"
                             onClick={() => onRemoveSection(sectionIndex)} 
                             variant="ghost"
                             className="text-red-500 hover:text-red-700 p-1 ml-2 flex-shrink-0" 
                             title={t('roadmapSection.removeSection') as string}
+                            aria-label={t('roadmapSection.removeSection') as string}
                         >
                             <FiTrash2 />
                         </Button>
@@ -117,15 +121,15 @@ export const RoadmapSection = ({
                                                             <Input type="text" value={lesson.title} onChange={(e) => onTitleChange(e.target.value, sectionIndex, originalLessonIndex)} onBlur={stopEditing} onKeyDown={(e) => e.key === 'Enter' && stopEditing()} autoFocus className="border-b-2 border-gray-500 bg-transparent w-full focus:outline-none"/>
                                                         ) : (
                                                             <div className="flex items-center min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
-                                                                <Button variant="ghost" className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle') as string}><FiEdit2 size={14} /></Button>
+                                                                <Button type="button" variant="ghost" className="mr-2 text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle') as string} aria-label={t('roadmapSection.editTitle') as string}><FiEdit2 size={14} /></Button>
                                                                 <span className="cursor-pointer truncate">{lesson.title}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                     <span className="relative ml-2" title={isNewLesson ? (t('roadmapSection.savePlanFirst') as string) : undefined}>
-                                                        <Button onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, originalLessonIndex)} disabled={isNewLesson} variant="ghost" className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? (t('roadmapSection.configureContent') as string) : undefined}><FiSettings /></Button>
+                                                        <Button type="button" onClick={() => !isNewLesson && onEditLesson(lesson, sectionIndex, originalLessonIndex)} disabled={isNewLesson} variant="ghost" className={classNames('transition-opacity flex items-center', isNewLesson ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-600 opacity-0 group-hover:opacity-100')} title={!isNewLesson ? (t('roadmapSection.configureContent') as string) : undefined} aria-label={!isNewLesson ? (t('roadmapSection.configureContent') as string) : (t('roadmapSection.savePlanFirst') as string)}><FiSettings /></Button>
                                                     </span>
-                                                    <Button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} variant="ghost" className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.removeLesson') as string}><FiTrash2 size={14} /></Button>
+                                                    <Button type="button" onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} variant="ghost" className="ml-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.removeLesson') as string} aria-label={t('roadmapSection.removeLesson') as string}><FiTrash2 size={14} /></Button>
                                                 </li>
                                             )}
                                         </Draggable>
@@ -156,23 +160,22 @@ export const RoadmapSection = ({
                                             />
                                         ) : (
                                             <div className="flex items-center group min-w-0" onClick={() => startEditing(sectionIndex, originalLessonIndex)}>
-                                                <Button variant="ghost" className="mr-2 text-amber-600 hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle') as string}>
-                                                    <FiEdit2 size={14} />
-                                                </Button>
+                                                <Button type="button" variant="ghost" className="mr-2 text-amber-600 hover:text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity" title={t('roadmapSection.editTitle') as string} aria-label={t('roadmapSection.editTitle') as string}><FiEdit2 size={14} /></Button>
                                                 <span className="font-semibold truncate text-amber-800 cursor-pointer">{cw.title}</span>
                                             </div>
                                         )}
                                     </div>
                                     <span className="relative ml-4">
-                                         <Button onClick={() => onEditLesson(cw, sectionIndex, originalLessonIndex)} variant='ghost' className='text-gray-500 hover:text-amber-800' title={t('roadmapSection.configureControlWork') as string}><FiSettings /></Button>
+                                         <Button type="button" onClick={() => onEditLesson(cw, sectionIndex, originalLessonIndex)} variant='ghost' className='text-gray-500 hover:text-amber-800' title={t('roadmapSection.configureControlWork') as string} aria-label={t('roadmapSection.configureControlWork') as string}><FiSettings /></Button>
                                     </span>
-                                    <Button onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} variant="ghost" className="ml-2 text-red-500 hover:text-red-700" title={t('roadmapSection.removeControlWork') as string}><FiTrash2 size={14} /></Button>
+                                    <Button type="button" onClick={() => onRemoveLesson(sectionIndex, originalLessonIndex)} variant="ghost" className="ml-2 text-red-500 hover:text-red-700" title={t('roadmapSection.removeControlWork') as string} aria-label={t('roadmapSection.removeControlWork') as string}><FiTrash2 size={14} /></Button>
                                 </div>
                             </div>
                         );
                     })}
 
                     <Button 
+                        type="button"
                         onClick={() => onAddLesson(sectionIndex)}
                         variant="ghost"
                         className="flex items-center text-sm text-blue-600 hover:text-blue-800 mt-4 ml-2"
