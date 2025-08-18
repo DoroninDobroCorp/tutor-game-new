@@ -5,11 +5,13 @@ import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import type { Lesson } from '../../types/models';
 import { useTranslation } from 'react-i18next';
+import { routeStudentStories } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 const CompletedLessonsPage = () => {
     const { t } = useTranslation();
     const { goalId } = useParams<{ goalId: string }>();
-    const { data: completedLessons, isLoading, isError } = useGetCompletedLessonsQuery(goalId!, {
+    const { data: completedLessons, isLoading, isError, error } = useGetCompletedLessonsQuery(goalId!, {
         skip: !goalId,
     });
     const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
@@ -31,7 +33,7 @@ const CompletedLessonsPage = () => {
     }
 
     if (isError) {
-        return <div className="text-center p-8 text-red-500">{t('completedLessons.loadingError')}</div>;
+        return <div className="text-center p-8 text-red-500">{getErrorMessage(error, t('completedLessons.loadingError') as string)}</div>;
     }
 
     const sections = Object.keys(groupedBySection);
@@ -39,7 +41,7 @@ const CompletedLessonsPage = () => {
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="mb-6">
-                <Link to="/student/stories" className="flex items-center text-gray-600 hover:text-gray-800">
+                <Link to={routeStudentStories} className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
                     {t('completedLessons.backToArchive')}
                 </Link>

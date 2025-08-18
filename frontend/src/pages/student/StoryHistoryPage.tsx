@@ -3,11 +3,13 @@ import { useGetStoryHistoryQuery } from '../../features/student/studentApi';
 import Spinner from '../../components/common/Spinner';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { routeStudentDashboard } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 const StoryHistoryPage = () => {
     const { t } = useTranslation();
     const { goalId } = useParams<{ goalId: string }>();
-    const { data: storyChapters, isLoading, isError } = useGetStoryHistoryQuery(goalId!, {
+    const { data: storyChapters, isLoading, isError, error } = useGetStoryHistoryQuery(goalId!, {
         skip: !goalId,
     });
 
@@ -16,13 +18,13 @@ const StoryHistoryPage = () => {
     }
 
     if (isError) {
-        return <div className="text-center p-8 text-red-500">{t('storyHistory.loadingError')}</div>;
+        return <div className="text-center p-8 text-red-500">{getErrorMessage(error, t('storyHistory.loadingError') as string)}</div>;
     }
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="mb-6">
-                <Link to="/student" className="flex items-center text-gray-600 hover:text-gray-800">
+                <Link to={routeStudentDashboard} className="flex items-center text-gray-600 hover:text-gray-800">
                     <FiArrowLeft className="mr-2" />
                     {t('storyHistory.backToDashboard')}
                 </Link>

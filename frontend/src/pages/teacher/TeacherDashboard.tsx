@@ -3,6 +3,7 @@
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
 import { useTranslation } from 'react-i18next';
+import { routeTeacherStudents, routeTeacherGoals, routeTeacherChat, routeTeacherAchievements } from '../../app/routes';
 
 export default function TeacherDashboard() {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ export default function TeacherDashboard() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link 
-            to="/teacher/students" 
+            to={routeTeacherStudents} 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3 mb-1">
@@ -36,7 +37,7 @@ export default function TeacherDashboard() {
           </Link>
           
           <Link
-            to="/teacher/goals" 
+            to={routeTeacherGoals} 
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3 mb-1">
@@ -47,7 +48,7 @@ export default function TeacherDashboard() {
           </Link>
           
           <Link
-            to="/teacher/chat"
+            to={routeTeacherChat}
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3 mb-1">
@@ -58,7 +59,7 @@ export default function TeacherDashboard() {
           </Link>
 
           <Link
-            to="/teacher/achievements"
+            to={routeTeacherAchievements}
             className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3 mb-1">

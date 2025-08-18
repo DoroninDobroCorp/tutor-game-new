@@ -17,6 +17,8 @@ import {
     selectStoryResponse,
 } from '../../features/student/adventureSlice';
 import DiagnosticPage from './DiagnosticPage';
+import { routeStudentDashboard } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 const YoutubeEmbed = ({ url }: { url:string }) => {
     const { t } = useTranslation();
@@ -212,7 +214,7 @@ export default function StudentAdventurePage() {
             setAiResponse(result.data);
             setChatHistory([{ role: 'assistant', content: result.data.responseText }]);
         } catch (err) {
-            toast.error(t('studentAdventure.startPracticeDialogError'));
+            toast.error(getErrorMessage(err, t('studentAdventure.startPracticeDialogError') as string));
             setLessonPhase('content');
             setCurrentBlockIndex(blocks.length - 1);
         }
@@ -229,7 +231,7 @@ export default function StudentAdventurePage() {
             setAiResponse(result.data);
             setChatHistory(prev => [...prev, { role: 'assistant', content: result.data.responseText }]);
         } catch (err) {
-            toast.error(t('studentAdventure.sendMessageError'));
+            toast.error(getErrorMessage(err, t('studentAdventure.sendMessageError') as string));
             setChatHistory(chatHistory);
         }
     };
@@ -286,7 +288,7 @@ export default function StudentAdventurePage() {
                 setRequiredAnswers(prev => prev + 3);
             }
         } catch (err) {
-            toast.error(t('studentAdventure.checkAnswerError'));
+            toast.error(getErrorMessage(err, t('studentAdventure.checkAnswerError') as string));
             setChatHistory(chatHistory);
         }
     };
@@ -294,7 +296,7 @@ export default function StudentAdventurePage() {
     const handleGiveUp = () => {
         if (window.confirm(t('studentAdventure.giveUpConfirmation'))) {
             dispatch(resetAdventureState());
-            navigate('/student');
+            navigate(routeStudentDashboard);
         }
     };
     
@@ -327,9 +329,9 @@ export default function StudentAdventurePage() {
             await submitLesson({ lessonId: lesson.id, formData }).unwrap();
             toast.success(t('studentAdventure.lessonSubmitSuccess'), { duration: 4000 });
             dispatch(resetAdventureState());
-            navigate('/student');
+            navigate(routeStudentDashboard);
         } catch (err) {
-            toast.error(t('studentAdventure.lessonSubmitError'));
+            toast.error(getErrorMessage(err, t('studentAdventure.lessonSubmitError') as string));
         }
     };
     

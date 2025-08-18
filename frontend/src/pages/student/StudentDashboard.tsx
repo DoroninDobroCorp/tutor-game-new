@@ -4,6 +4,13 @@ import { useGetStudentProfileQuery } from '../../features/student/studentApi';
 import type { LearningGoal } from '../../types/models';
 import Spinner from '../../components/common/Spinner';
 import { useTranslation } from 'react-i18next';
+import { 
+  routeStudentAdventure,
+  routeStudentChat,
+  routeStudentAchievements,
+  routeStudentStory,
+  routeStudentGoalCompleted,
+} from '../../app/routes';
 
 export default function StudentDashboard() {
   const { t } = useTranslation();
@@ -42,7 +49,7 @@ export default function StudentDashboard() {
           <h2 className="text-xl font-semibold text-gray-700 mb-4">{t('studentDashboard.quickAccess')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link 
-              to="/student/adventure" 
+              to={routeStudentAdventure} 
               className="p-6 rounded-xl hover:bg-white/70 transition-colors brand-gradient text-white"
             >
               <h3 className="font-medium text-xl">🏰 {t('studentDashboard.continueAdventure')}</h3>
@@ -50,7 +57,7 @@ export default function StudentDashboard() {
             </Link>
             
             <Link 
-              to="/student/chat" 
+              to={routeStudentChat} 
               className="p-6 rounded-xl hover:bg-white/70 transition-colors glass"
             >
               <h3 className="font-medium text-xl">💬 {t('studentDashboard.chatWithTeacher')}</h3>
@@ -58,7 +65,7 @@ export default function StudentDashboard() {
             </Link>
 
             <Link 
-              to="/student/achievements" 
+              to={routeStudentAchievements} 
               className="p-6 rounded-xl hover:bg-white/70 transition-colors glass"
             >
               <h3 className="font-medium text-xl">🏆 {t('studentDashboard.achievements', { defaultValue: 'Achievements' })}</h3>
@@ -86,13 +93,13 @@ export default function StudentDashboard() {
                   </div>
                   <div className="mt-4 flex flex-col sm:flex-row gap-2">
                     <Link 
-                      to={`/student/story/${goal.id}`}
+                      to={routeStudentStory(goal.id)}
                       className="flex-1 text-center btn-secondary text-sm"
                     >
                       {t('studentDashboard.readStory')}
                     </Link>
                     <Link 
-                      to={`/student/goal/${goal.id}/completed`}
+                      to={routeStudentGoalCompleted(goal.id)}
                       className="flex-1 text-center btn-primary text-sm"
                     >
                       {t('studentDashboard.pastLessons')}

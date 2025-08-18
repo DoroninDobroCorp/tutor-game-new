@@ -4,17 +4,19 @@ import type { LearningGoal } from '../../types/models';
 import Spinner from '../../components/common/Spinner';
 import { FiBookOpen, FiClock } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { routeStudentGoalCompleted, routeStudentStory } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 export default function StudentStoriesListPage() {
   const { t } = useTranslation();
-  const { data: profile, isLoading, isError } = useGetStudentProfileQuery();
+  const { data: profile, isLoading, isError, error } = useGetStudentProfileQuery();
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><Spinner size="lg" /></div>;
   }
 
   if (isError) {
-    return <div className="text-center p-8 text-red-500">{t('studentStories.loadingError')}</div>;
+    return <div className="text-center p-8 text-red-500">{getErrorMessage(error, t('studentStories.loadingError') as string)}</div>;
   }
 
   const learningGoals = profile?.learningGoals || [];
@@ -38,13 +40,13 @@ export default function StudentStoriesListPage() {
                 <FiBookOpen className="w-8 h-8 text-gray-300" />
               </div>
               <div className="mt-4 pt-4 border-t border-gray-200 flex items-center space-x-6">
-                <Link to={`/student/story/${goal.id}`} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
-                    <FiBookOpen className="mr-2" />
-                    {t('studentStories.readStory')}
+                <Link to={routeStudentStory(goal.id)} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                  <FiBookOpen className="mr-2" />
+                  {t('studentStories.readStory')}
                 </Link>
-                <Link to={`/student/goal/${goal.id}/completed`} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
-                    <FiClock className="mr-2" />
-                    {t('studentStories.completedLessons')}
+                <Link to={routeStudentGoalCompleted(goal.id)} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                  <FiClock className="mr-2" />
+                  {t('studentStories.completedLessons')}
                 </Link>
               </div>
             </div>

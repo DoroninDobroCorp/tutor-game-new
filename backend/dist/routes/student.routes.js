@@ -5,6 +5,7 @@ const student_controller_1 = require("../controllers/student.controller");
 const auth_middleware_1 = require("../middlewares/auth.middleware");
 const errors_1 = require("../utils/errors");
 const fileUpload_1 = require("../utils/fileUpload");
+const achievement_controller_1 = require("../controllers/achievement.controller");
 const router = (0, express_1.Router)();
 // Protect all routes with authentication
 router.use(auth_middleware_1.authenticate);
@@ -18,6 +19,8 @@ router.get('/goals/:goalId/completed-lessons', (0, auth_middleware_1.authorize)(
 // Story history
 router.get('/story/:goalId', (0, auth_middleware_1.authorize)('STUDENT'), (0, errors_1.asyncHandler)(student_controller_1.getStoryHistoryHandler));
 router.get('/story/:goalId/summary', (0, auth_middleware_1.authorize)('STUDENT'), (0, errors_1.asyncHandler)(student_controller_1.getStorySummaryHandler));
+// Achievements
+router.get('/achievements', (0, auth_middleware_1.authorize)('STUDENT'), (0, errors_1.asyncHandler)(achievement_controller_1.getMyAchievements));
 // Keep profile route at the end to avoid route conflicts
 router.get('/profile', (0, errors_1.asyncHandler)(student_controller_1.getStudentProfile));
 exports.default = router;

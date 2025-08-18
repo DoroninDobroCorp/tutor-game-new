@@ -22,6 +22,7 @@ import { DiagnosticTopicsModal } from './components/DiagnosticTopicsModal';
 // Legacy diagnostic components removed per new design
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { useTranslation } from 'react-i18next';
+import { routeTeacherGoals } from '../../app/routes';
 
 // Тип для логов успеваемости
 interface PerformanceLog {
@@ -220,7 +221,7 @@ const RoadmapEditorPage = () => {
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-6">
             <div className="flex justify-between items-center mb-6">
-                <Link to="/teacher/goals" className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> {t('roadmapEditor.back')}</Link>
+                <Link to={routeTeacherGoals} className="flex items-center text-gray-600 hover:text-gray-900"><FiArrowLeft className="mr-2" /> {t('roadmapEditor.back')}</Link>
                 <h1 className="text-2xl font-bold text-gray-900 text-center">{currentGoal.subject}</h1>
                 <button onClick={handleSave} disabled={isSaving} className="btn-primary disabled:opacity-50 flex items-center gap-2"><FiSave />{t('roadmapEditor.save')}</button>
             </div>

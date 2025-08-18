@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useConnectStudentMutation, useGetConnectedStudentsQuery } from './teacherApi';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 interface ConnectStudentForm {
   email: string;
@@ -21,7 +22,7 @@ export default function StudentsPage() {
       setShowAddForm(false);
       refetch();
     } catch (error: any) {
-      toast.error(error.data?.message || 'Failed to connect student');
+      toast.error(getErrorMessage(error, 'Failed to connect student'));
     }
   };
 

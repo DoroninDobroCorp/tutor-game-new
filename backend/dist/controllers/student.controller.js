@@ -8,6 +8,7 @@ const errors_1 = require("../utils/errors");
 const db_1 = __importDefault(require("../db"));
 const gemini_service_1 = require("../services/gemini.service");
 const chat_service_1 = require("../services/chat.service");
+const client_1 = require("@prisma/client");
 const getStudentProfile = async (req, res) => {
     if (!req.user) {
         throw new errors_1.AppError('Not authenticated', 401);
@@ -63,13 +64,15 @@ const getCurrentLessonHandler = async (req, res) => {
                     studentId: studentId,
                 },
             },
-            storyChapter: {
-                teacherSnippetStatus: 'APPROVED',
-            },
             // Exclude completed lessons
             NOT: {
-                status: 'COMPLETED'
-            }
+                status: 'COMPLETED',
+            },
+            // Allow either: diagnostic lessons (no story approval required) OR lessons with approved story
+            OR: [
+                { type: client_1.LessonType.DIAGNOSTIC },
+                { storyChapter: { teacherSnippetStatus: 'APPROVED' } },
+            ],
         },
         orderBy: [
             { section: { order: 'asc' } },
@@ -79,9 +82,9 @@ const getCurrentLessonHandler = async (req, res) => {
             storyChapter: true,
             section: {
                 include: {
-                    learningGoal: true
-                }
-            }
+                    learningGoal: true,
+                },
+            },
         },
     });
     if (!currentLesson) {

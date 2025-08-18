@@ -1,33 +1,36 @@
 // Файл: tutor-game/frontend/src/App.tsx
 
 import { Routes, Route, Navigate, Outlet, useOutletContext } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { Toaster } from 'react-hot-toast';
 
 // Хуки и состояние
 import { useAppSelector } from './app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from './features/auth/authSlice';
 
-// Компоненты и страницы
-import CreateGoalPage from './pages/teacher/CreateGoalPage';
-import RoadmapEditorPage from './pages/teacher/RoadmapEditorPage';
-import LearningGoalsListPage from './pages/teacher/LearningGoalsListPage';
+// Компоненты и страницы (ленивая загрузка)
 import Layout from './components/common/Layout';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import StudentDashboard from './pages/student/StudentDashboard';
-import TeacherDashboard from './pages/teacher/TeacherDashboard';
-import TeacherAchievementsPage from './pages/teacher/TeacherAchievementsPage';
+import Spinner from './components/common/Spinner';
+import { routeLogin, routeTeacherDashboard, routeStudentDashboard } from './app/routes';
 
-import StudentAdventurePage from './pages/student/StudentAdventurePage';
-import StudentAchievementsPage from './pages/student/StudentAchievementsPage';
-import StudentStoriesListPage from './pages/student/StudentStoriesListPage';
-import ChatPage from './pages/chat/ChatPage';
-import NotFoundPage from './pages/NotFoundPage';
-import StudentsPage from './features/teacher/StudentsPage';
-import StoryHistoryPage from './pages/student/StoryHistoryPage';
-import CompletedLessonsPage from './pages/student/CompletedLessonsPage';
-import DiagnosticPage from './pages/student/DiagnosticPage';
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
+const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
+const CreateGoalPage = lazy(() => import('./pages/teacher/CreateGoalPage'));
+const RoadmapEditorPage = lazy(() => import('./pages/teacher/RoadmapEditorPage'));
+const LearningGoalsListPage = lazy(() => import('./pages/teacher/LearningGoalsListPage'));
+const TeacherAchievementsPage = lazy(() => import('./pages/teacher/TeacherAchievementsPage'));
+const StudentAdventurePage = lazy(() => import('./pages/student/StudentAdventurePage'));
+const StudentAchievementsPage = lazy(() => import('./pages/student/StudentAchievementsPage'));
+const StudentStoriesListPage = lazy(() => import('./pages/student/StudentStoriesListPage'));
+const ChatPage = lazy(() => import('./pages/chat/ChatPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const StudentsPage = lazy(() => import('./features/teacher/StudentsPage'));
+const StoryHistoryPage = lazy(() => import('./pages/student/StoryHistoryPage'));
+const CompletedLessonsPage = lazy(() => import('./pages/student/CompletedLessonsPage'));
+const DiagnosticPage = lazy(() => import('./pages/student/DiagnosticPage'));
 
 // Создаем единый компонент-обертку для защищенных маршрутов по ролям
 const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' }) => {
@@ -37,12 +40,12 @@ const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' })
 
   if (!isAuthenticated) {
     // Если не аутентифицирован, перенаправляем на логин
-    return <Navigate to="/login" replace />;
+    return <Navigate to={routeLogin} replace />;
   }
 
   if (user?.role.toLowerCase() !== requiredRole) {
     // Если роль не совпадает, перенаправляем на их собственный дашборд
-    const userDashboard = user?.role === 'teacher' ? '/teacher' : '/student';
+    const userDashboard = user?.role === 'teacher' ? routeTeacherDashboard : routeStudentDashboard;
     return <Navigate to={userDashboard} replace />;
   }
 
@@ -53,7 +56,8 @@ const PrivateRoute = ({ requiredRole }: { requiredRole: 'student' | 'teacher' })
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Routes>
+      <Suspense fallback={<div className="flex justify-center items-center h-screen bg-gray-50"><Spinner size="lg" /></div>}>
+        <Routes>
         {/* Публичные роуты, которые не используют Layout */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -88,7 +92,8 @@ function App() {
           {/* Страница 404 для всех остальных путей внутри Layout */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
       <Toaster position="top-right" />
     </div>
   );

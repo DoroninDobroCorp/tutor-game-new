@@ -4,6 +4,8 @@ import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-hot-toast';
 import { FiTrash2 } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { routeTeacherCreateGoal, routeTeacherGoalEdit } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 export default function LearningGoalsListPage() {
   const { t } = useTranslation();
@@ -17,7 +19,7 @@ export default function LearningGoalsListPage() {
         toast.success(t('learningGoalsList.deleteSuccess'));
         // refetch() is no longer needed, invalidatesTags will do the job
       } catch (err) {
-        toast.error(t('learningGoalsList.deleteError'));
+        toast.error(getErrorMessage(err, t('learningGoalsList.deleteError') as string));
         console.error(err);
       }
     }
@@ -28,7 +30,7 @@ export default function LearningGoalsListPage() {
   }
 
   if (error) {
-    return <div className="text-red-500">{t('learningGoalsList.loadingError')}</div>;
+    return <div className="text-red-500">{getErrorMessage(error, t('learningGoalsList.loadingError') as string)}</div>;
   }
 
   return (
@@ -36,7 +38,7 @@ export default function LearningGoalsListPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('learningGoalsList.title')}</h1>
         <Link
-          to="/teacher/create-goal"
+          to={routeTeacherCreateGoal}
           className="btn-primary"
         >
           + {t('learningGoalsList.createNewPlan')}
@@ -48,16 +50,16 @@ export default function LearningGoalsListPage() {
             goals.map((goal) => (
               <li key={goal.id} className="p-4 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <Link to={`/teacher/goals/${goal.id}/edit`} className="block flex-grow">
+                  <Link to={routeTeacherGoalEdit(goal.id)} className="block flex-grow">
                     <div>
                       <p className="text-sm font-medium text-gray-600 truncate">{goal.subject}</p>
                       <p className="text-sm text-gray-500">{t('learningGoalsList.forStudent', { firstName: goal.student?.firstName, lastName: goal.student?.lastName })}</p>
                     </div>
                   </Link>
                   <div className="ml-4 flex-shrink-0 flex items-center space-x-4">
-                     <span className="chip">
-                       {t('learningGoalsList.sectionsCount', { count: goal.sections?.length || 0 })}
-                     </span>
+                    <span className="chip">
+                      {t('learningGoalsList.sectionsCount', { count: goal.sections?.length || 0 })}
+                    </span>
                     <button
                       onClick={() => handleDelete(goal.id, goal.subject)}
                       disabled={isDeleting}

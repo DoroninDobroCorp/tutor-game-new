@@ -21,6 +21,21 @@ import { logout } from '../../features/auth/authSlice';
 import { selectTotalUnreadCount, setUnreadCounts } from '../../features/chat/chatSlice';
 import type { Lesson } from '../../types/models';
 import LessonEditorModal from '../../pages/teacher/LessonEditorModal';
+import {
+  routeHome,
+  routeLogin,
+  routeRegister,
+  routeStudentRoot,
+  routeStudentAdventure,
+  routeStudentStories,
+  routeStudentAchievements,
+  routeStudentChat,
+  routeTeacherRoot,
+  routeTeacherGoals,
+  routeTeacherStudents,
+  routeTeacherAchievements,
+  routeTeacherChat,
+} from '../../app/routes';
 
 interface NavigationItem {
   name: string;
@@ -32,13 +47,13 @@ interface NavigationItem {
 
 function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
   return [
-    { name: t('studentNavigation.dashboard'), href: '/student', icon: HomeIcon, current: false },
-    { name: t('studentNavigation.adventure'), href: '/student/adventure', icon: RocketLaunchIcon, current: false },
-    { name: t('studentNavigation.stories'), href: '/student/stories', icon: BookOpenIcon, current: false },
-    { name: t('studentNavigation.achievements'), href: '/student/achievements', icon: TrophyIcon, current: false },
+    { name: t('studentNavigation.dashboard'), href: routeStudentRoot, icon: HomeIcon, current: false },
+    { name: t('studentNavigation.adventure'), href: routeStudentAdventure, icon: RocketLaunchIcon, current: false },
+    { name: t('studentNavigation.stories'), href: routeStudentStories, icon: BookOpenIcon, current: false },
+    { name: t('studentNavigation.achievements'), href: routeStudentAchievements, icon: TrophyIcon, current: false },
     {
       name: t('studentNavigation.chat'),
-      href: '/student/chat',
+      href: routeStudentChat,
       icon: ChatBubbleLeftEllipsisIcon,
       current: false,
       showBadge: true,
@@ -48,13 +63,13 @@ function getStudentNavigation(t: (key: string) => string): NavigationItem[] {
 
 function getTeacherNavigation(t: (key: string) => string): NavigationItem[] {
   return [
-    { name: t('teacherNavigation.dashboard'), href: '/teacher', icon: HomeIcon, current: false },
-    { name: t('teacherNavigation.goals'), href: '/teacher/goals', icon: DocumentTextIcon, current: false },
-    { name: t('teacherNavigation.students'), href: '/teacher/students', icon: UserGroupIcon, current: false },
-    { name: t('teacherNavigation.achievements'), href: '/teacher/achievements', icon: TrophyIcon, current: false },
+    { name: t('teacherNavigation.dashboard'), href: routeTeacherRoot, icon: HomeIcon, current: false },
+    { name: t('teacherNavigation.goals'), href: routeTeacherGoals, icon: DocumentTextIcon, current: false },
+    { name: t('teacherNavigation.students'), href: routeTeacherStudents, icon: UserGroupIcon, current: false },
+    { name: t('teacherNavigation.achievements'), href: routeTeacherAchievements, icon: TrophyIcon, current: false },
     {
       name: t('teacherNavigation.chat'),
-      href: '/teacher/chat',
+      href: routeTeacherChat,
       icon: ChatBubbleLeftEllipsisIcon,
       current: false,
       showBadge: true,
@@ -142,7 +157,7 @@ export default function Layout() {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const totalUnreadCount = useAppSelector(selectTotalUnreadCount);
   const [logoutUser] = useLogoutMutation();
-  const chatPath = user?.role === 'teacher' ? '/teacher/chat' : '/student/chat';
+  const chatPath = user?.role === 'teacher' ? routeTeacherChat : routeStudentChat;
 
   // Use polling to periodically check for unread messages
   const { data: unreadData } = useGetUnreadSummaryQuery(undefined, {
@@ -185,11 +200,11 @@ export default function Layout() {
     try {
       await logoutUser().unwrap();
       dispatch(logout());
-      navigate('/login');
+      navigate(routeLogin);
     } catch (err) {
       console.error('Failed to logout:', err);
       dispatch(logout());
-      navigate('/login');
+      navigate(routeLogin);
     }
   };
 
@@ -246,7 +261,7 @@ export default function Layout() {
                   <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
                     <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
                       <div className="flex h-16 shrink-0 items-center">
-                        <Link to="/" className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/70 transition">
+                        <Link to={routeHome} className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/70 transition">
                           <span className="inline-block h-6 w-6 rounded-lg brand-bg" />
                           <span className="text-lg font-heading font-extrabold brand-text">{t('app.name')}</span>
                         </Link>
@@ -305,7 +320,7 @@ export default function Layout() {
           )}>
             <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/90 backdrop-blur px-4 pb-4">
               <div className="flex h-16 shrink-0 items-center justify-between px-2">
-                <Link to="/" className={classNames(
+                <Link to={routeHome} className={classNames(
                   'flex items-center gap-2 whitespace-nowrap transition-opacity duration-200',
                   isSidebarCollapsed && 'opacity-0 w-0'
                 )}>
@@ -421,10 +436,10 @@ export default function Layout() {
                 <div className="flex items-center gap-x-3">
                   <ThemeSwitcher />
                   <LanguageSwitcher />
-                  <Link to="/login" className="btn-secondary text-sm">
+                  <Link to={routeLogin} className="btn-secondary text-sm">
                     {t('login.short')}
                   </Link>
-                  <Link to="/register" className="btn-primary text-sm">
+                  <Link to={routeRegister} className="btn-primary text-sm">
                     {t('register.short')}
                   </Link>
                 </div>

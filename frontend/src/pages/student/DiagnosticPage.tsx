@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Spinner from '../../components/common/Spinner';
+import Button from '../../components/ui/Button';
+import Textarea from '../../components/ui/Textarea';
 import {
   useStartDiagnosticMutation,
   useGetDiagnosticSessionQuery,
@@ -11,6 +13,8 @@ import {
   useSubmitFirstAnswersMutation,
   useSubmitFollowupAnswersMutation,
 } from '../../features/diagnostic/diagnosticApi';
+import { routeStudentAdventure } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalId?: string; embedded?: boolean } = {}) {
   const { goalId: goalIdParam } = useParams<{ goalId: string }>();
@@ -59,7 +63,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
   useEffect(() => {
     if (phase === 'DONE') {
       // Slight delay to allow success UI to render
-      const id = setTimeout(() => navigate('/student/adventure'), 500);
+      const id = setTimeout(() => navigate(routeStudentAdventure), 500);
       return () => clearTimeout(id);
     }
   }, [phase, navigate]);
@@ -111,7 +115,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       if (err.message?.includes('Goal not found or access denied') || err.status === 404) {
         toast.error('Нет доступа к этой цели. Откройте ссылку как ученик данной цели (или войдите под учеником).');
       } else {
-        toast.error('Не удалось начать диагностику');
+        toast.error(getErrorMessage(e, 'Не удалось начать диагностику'));
       }
     }
   };
@@ -155,7 +159,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       if (err.message?.includes('Goal not found or access denied') || err.status === 404) {
         toast.error('Нет доступа к этой цели. Откройте ссылку как ученик данной цели (или войдите под учеником).');
       } else {
-        toast.error('Не удалось перезапустить диагностику');
+        toast.error(getErrorMessage(e, 'Не удалось перезапустить диагностику'));
       }
     }
   };
@@ -170,7 +174,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
         setQuestion({ topicId: res.topicId, text: res.question, index: res.index || 0, total: res.total || 0 });
       }
     } catch (e) {
-      toast.error('Не удалось получить вопрос');
+      toast.error(getErrorMessage(e, 'Не удалось получить вопрос'));
     }
   };
 
@@ -181,7 +185,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       setAnswer('');
       await handleNext();
     } catch (e) {
-      toast.error('Не удалось отправить ответ');
+      toast.error(getErrorMessage(e, 'Не удалось отправить ответ'));
     }
   };
 
@@ -191,7 +195,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       await finishDiagnostic({ sessionId }).unwrap();
       toast.success('Диагностика завершена');
     } catch (e) {
-      toast.error('Не удалось завершить');
+      toast.error(getErrorMessage(e, 'Не удалось завершить'));
     }
   };
 
@@ -234,8 +238,8 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
         }
         setPhase('FOLLOWUPS');
       }
-    } catch {
-      toast.error('Не удалось отправить ответы');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Не удалось отправить ответы'));
     }
   };
 
@@ -282,8 +286,8 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
         setFinalRoadmap(res.suggestedRoadmap || null);
         toast.success('Диагностика завершена');
         setPhase('DONE');
-      } catch {
-        toast.error('Не удалось отправить уточняющие ответы');
+      } catch (e) {
+        toast.error(getErrorMessage(e, 'Не удалось отправить уточняющие ответы'));
       }
     }
   };
@@ -295,7 +299,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
       {!started && (
         <div className="bg-white rounded-lg shadow p-6">
           <p className="mb-4">Диагностика поможет понять твой уровень по темам. Нажми старт, чтобы начать.</p>
-          <button onClick={handleStart} disabled={isStarting || !effectiveGoalId} className="btn-primary disabled:opacity-50">Старт</button>
+          <Button onClick={handleStart} disabled={isStarting || !effectiveGoalId} variant="primary">Старт</Button>
         </div>
       )}
 
@@ -308,7 +312,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
               )}
             </div>
             <div className="ml-3">
-              <button onClick={handleRestart} className="btn-secondary">Начать заново</button>
+              <Button onClick={handleRestart} variant="secondary">Начать заново</Button>
             </div>
           </div>
           {disclaimer && (
@@ -322,14 +326,14 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
                 <div className="border rounded p-3 bg-gray-50">
                   <div className="text-xs text-gray-500 mb-1">Тема {firstIdx + 1} из {initialQuestions.length}: {initialQuestions[firstIdx]?.title}</div>
                   <div className="font-medium">{initialQuestions[firstIdx]?.firstQuestion || 'Ответь кратко по теме'}</div>
-                  <textarea rows={4} value={firstAnswerText} onChange={(e) => setFirstAnswerText(e.target.value)} className="w-full mt-2 border rounded px-3 py-2" placeholder="Твой ответ..." />
+                  <Textarea rows={4} value={firstAnswerText} onChange={(e) => setFirstAnswerText((e.target as HTMLTextAreaElement).value)} className="w-full mt-2" placeholder="Твой ответ..." />
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>Шаг {firstIdx + 1}/{initialQuestions.length}</span>
                 </div>
               </div>
               <div className="mt-4 flex justify-end">
-                <button onClick={handleFirstAnswerNext} disabled={isSubmittingFirst || !firstAnswerText.trim()} className="btn-primary disabled:opacity-50">Ответить</button>
+                <Button onClick={handleFirstAnswerNext} disabled={isSubmittingFirst || !firstAnswerText.trim()} variant="primary">Ответить</Button>
               </div>
             </div>
           )}
@@ -344,13 +348,13 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
                   <div className="border rounded p-3 bg-gray-50">
                     <div className="text-xs text-gray-500 mb-1">Вопрос {followupIdx + 1} из {followupLinear.length}</div>
                     <div className="font-medium">{followupLinear[followupIdx]?.question}</div>
-                    <textarea rows={4} value={followupAnswerText} onChange={(e) => setFollowupAnswerText(e.target.value)} className="w-full mt-2 border rounded px-3 py-2" placeholder="Твой ответ..." />
+                    <Textarea rows={4} value={followupAnswerText} onChange={(e) => setFollowupAnswerText((e.target as HTMLTextAreaElement).value)} className="w-full mt-2" placeholder="Твой ответ..." />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Шаг {followupIdx + 1}/{followupLinear.length}</span>
                   </div>
                   <div className="mt-2 flex justify-end">
-                    <button onClick={handleFollowupAnswerNext} disabled={isSubmittingFollowups || !followupAnswerText.trim()} className="btn-primary disabled:opacity-50">Ответить</button>
+                    <Button onClick={handleFollowupAnswerNext} disabled={isSubmittingFollowups || !followupAnswerText.trim()} variant="primary">Ответить</Button>
                   </div>
                 </div>
               )}
@@ -393,7 +397,7 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
               </div>
 
               {phase === 'LEGACY' && !question && sessionData.session.status === 'ACTIVE' && (
-                <button onClick={handleNext} disabled={isFetchingNext} className="btn-secondary mt-3 disabled:opacity-50">Следующий вопрос</button>
+                <Button onClick={handleNext} disabled={isFetchingNext} variant="secondary" className="mt-3">Следующий вопрос</Button>
               )}
 
               {phase === 'LEGACY' && question && (
@@ -401,18 +405,18 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded">
                     <div className="text-xs text-gray-500">Тема {question.index + 1} из {question.total}</div>
                     <div className="font-semibold">{question.text}</div>
-                  </div>
-                  <textarea rows={3} value={answer} onChange={e => setAnswer(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Твой ответ..." />
-                  <div className="flex gap-2">
-                    <button onClick={handleSendAnswer} disabled={isAnswering || !answer.trim()} className="btn-primary disabled:opacity-50">Отправить</button>
-                    <button onClick={() => setAnswer('')} className="btn-secondary">Очистить</button>
+                    <Textarea rows={3} value={answer} onChange={e => setAnswer((e.target as HTMLTextAreaElement).value)} placeholder="Твой ответ..." />
+                    <div className="flex gap-2">
+                      <Button onClick={handleSendAnswer} disabled={isAnswering || !answer.trim()} variant="primary">Отправить</Button>
+                      <Button onClick={() => setAnswer('')} variant="secondary">Очистить</Button>
+                    </div>
                   </div>
                 </div>
               )}
 
               {phase === 'LEGACY' && (
                 <div className="mt-4">
-                  <button onClick={handleFinish} disabled={isFinishing} className="btn-secondary disabled:opacity-50">Завершить</button>
+                  <Button onClick={handleFinish} disabled={isFinishing} variant="secondary">Завершить</Button>
                 </div>
               )}
             </div>
@@ -422,8 +426,8 @@ export default function DiagnosticPage({ goalId: goalIdProp, embedded }: { goalI
             <div className="bg-white rounded-lg shadow p-4">
               <div className="p-3 bg-green-50 border border-green-200 rounded mb-3">Спасибо! Диагностика завершена. Отличная работа!</div>
               <div className="mb-3 flex gap-2">
-                <button onClick={() => navigate('/student/adventure')} className="btn-primary">Начать историю</button>
-                <button onClick={handleRestart} className="btn-secondary">Пройти заново</button>
+                <Button onClick={() => navigate(routeStudentAdventure)} variant="primary">Начать историю</Button>
+                <Button onClick={handleRestart} variant="secondary">Пройти заново</Button>
               </div>
               {finalSummary && (
                 <div className="mb-4">
