@@ -8,6 +8,8 @@ import { toast } from 'react-hot-toast';
 import { useAppSelector } from '@/app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '@/app/api/errorHelpers';
+import { routeRegister, routeTeacherDashboard, routeStudentDashboard } from '@/app/routes';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -36,7 +38,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       toast.success(t('auth.loginSuccess'));
-      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      const targetPath = user.role.toLowerCase() === 'teacher' ? routeTeacherDashboard : routeStudentDashboard;
       navigate(targetPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -47,17 +49,7 @@ export default function LoginPage() {
       // Call the API and let the useEffect handle navigation
       await login(data).unwrap();
     } catch (error: unknown) {
-      let errorMessage = t('auth.loginFailedDefault');
-
-      if (error && typeof error === 'object') {
-        if ('status' in error && 'data' in error) {
-          const data = error.data as { message?: string };
-          errorMessage = data?.message || errorMessage;
-        } else if ('message' in error) {
-          errorMessage = String(error.message);
-        }
-      }
-
+      const errorMessage = getErrorMessage(error, t('auth.loginFailedDefault') as string);
       setError(errorMessage);
       toast.error(errorMessage);
     }
@@ -73,7 +65,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-soft">
             {t('login.or')}{' '}
             <Link
-              to="/register"
+              to={routeRegister}
               className="font-medium brand-text hover:opacity-90"
             >
               {t('login.createAccount')}

@@ -8,7 +8,8 @@ import { toast } from 'react-hot-toast';
 import { useAppSelector } from '@/app/hooks';
 import { selectIsAuthenticated, selectCurrentUser } from '@/features/auth/authSlice';
 import { useTranslation } from 'react-i18next';
-
+import { getErrorMessage } from '@/app/api/errorHelpers';
+import { routeLogin, routeTeacherDashboard, routeStudentDashboard } from '@/app/routes';
 
 const registerSchema = z
   .object({
@@ -50,7 +51,7 @@ export default function RegisterPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       toast.success(t('auth.registerSuccess'));
-      const targetPath = user.role.toLowerCase() === 'teacher' ? '/teacher' : '/student';
+      const targetPath = user.role.toLowerCase() === 'teacher' ? routeTeacherDashboard : routeStudentDashboard;
       navigate(targetPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -71,22 +72,11 @@ export default function RegisterPage() {
 
     } catch (error: unknown) {
       console.error('Registration error:', error);
-      let errorMessage = t('auth.registerFailedDefault');
-      
-      if (error && typeof error === 'object') {
-        if ('status' in error && 'data' in error) {
-          const data = error.data as { message?: string };
-          errorMessage = data?.message || errorMessage;
-        } else if ('message' in error) {
-          errorMessage = String(error.message);
-        }
-      }
-      
+      const errorMessage = getErrorMessage(error, t('auth.registerFailedDefault') as string);
       setError(errorMessage);
       toast.error(errorMessage);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -98,7 +88,7 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-soft">
             {t('register.alreadyMember')}{' '}
             <Link
-              to="/login"
+              to={routeLogin}
               className="font-medium brand-text hover:opacity-90"
             >
               {t('register.signIn')}

@@ -23,6 +23,7 @@ import { DiagnosticTopicsModal } from './components/DiagnosticTopicsModal';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { useTranslation } from 'react-i18next';
 import { routeTeacherGoals } from '../../app/routes';
+import { getErrorMessage } from '../../app/api/errorHelpers';
 
 // Тип для логов успеваемости
 interface PerformanceLog {
@@ -91,7 +92,7 @@ const RoadmapEditorPage = () => {
     }, [chatHistory]);
 
     if (isLoading || !currentGoal) return <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>;
-    if (error) return <div className="text-center text-red-500 p-10">{t('roadmapEditor.loadingError')}</div>;
+    if (error) return <div className="text-center text-red-500 p-10">{getErrorMessage(error, t('roadmapEditor.loadingError') as string)}</div>;
     
     const handleImportFromDiagnostic = (sections: SuggestedSection[]) => {
         // Map diagnostic suggestedRoadmap to internal roadmap shape
@@ -146,7 +147,7 @@ const RoadmapEditorPage = () => {
             setChatHistory(prev => [...prev, aiResponse]);
             toast.success(t('roadmapEditor.planUpdated'));
         } catch (err) {
-            toast.error(t('roadmapEditor.generateError'));
+            toast.error(getErrorMessage(err, t('roadmapEditor.generateError') as string));
             setChatHistory(chatHistory); // Revert on error
         }
     };

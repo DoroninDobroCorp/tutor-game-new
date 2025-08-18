@@ -350,7 +350,7 @@ export default function StudentAdventurePage() {
                 <div className="text-center p-10 bg-white rounded-lg shadow">
                     <h2 className="text-2xl font-bold text-green-600">{t('studentAdventure.congratulations')}</h2>
                     <p className="mt-4 text-lg text-gray-700">{t('studentAdventure.allLessonsCompleted')}</p>
-                    <button onClick={() => navigate('/student')} className="mt-6 btn-primary">{t('studentAdventure.backToCabinet')}</button>
+                    <button onClick={() => navigate(routeStudentDashboard)} className="mt-6 btn-primary">{t('studentAdventure.backToCabinet')}</button>
                 </div>
             );
         }

@@ -5,6 +5,9 @@ import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiSend, FiSave } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '../../../app/api/errorHelpers';
+import Button from '../../../components/ui/Button';
+import Textarea from '../../../components/ui/Textarea';
 
 interface LessonContentBlock {
     id: string;
@@ -61,7 +64,7 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
             setChatHistory(prev => [...prev, { role: 'assistant', content: responseData.chatResponse }]);
             toast.success(t('controlWorkContentEditor.tasksUpdated'));
         } catch (err: any) {
-            toast.error(err.data?.message || t('controlWorkContentEditor.generateError'));
+            toast.error(getErrorMessage(err, t('controlWorkContentEditor.generateError') as string));
             setChatHistory(chatHistory); // Revert history
         }
     };
@@ -72,8 +75,8 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
             await updateContent({ lessonId: lesson.id, content: { blocks: blocksToSave } }).unwrap();
             toast.success(t('controlWorkContentEditor.controlWorkSaved'));
             onCloseModal();
-        } catch {
-            toast.error(t('controlWorkContentEditor.saveError'));
+        } catch (err) {
+            toast.error(getErrorMessage(err, t('controlWorkContentEditor.saveError') as string));
         }
     };
 
@@ -94,12 +97,12 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                         {blocks.map((block, index) => (
                             <div key={block.id} className="p-4 rounded-md border bg-amber-50 border-amber-200">
                                 <label className="font-semibold text-gray-700">{t('controlWorkContentEditor.task', { number: index + 1 })}</label>
-                                <textarea 
+                                <Textarea 
                                     value={block.content} 
                                     onChange={(e) => handleBlockContentChange(index, e.target.value)}
                                     rows={4} 
-                                    className="w-full p-2 border border-gray-300 rounded-md text-sm mt-2" 
-                                    placeholder={t('controlWorkContentEditor.taskTextPlaceholder')} 
+                                    className="text-sm mt-2" 
+                                    placeholder={t('controlWorkContentEditor.taskTextPlaceholder') as string} 
                                 />
                             </div>
                         ))}
@@ -117,36 +120,37 @@ export const ControlWorkContentEditor = ({ lesson, onCloseModal }: ControlWorkCo
                     {isGenerating && <div className="text-sm p-2 rounded-lg bg-blue-100" style={{ maxWidth: '85%' }}><Spinner size="sm" /></div>}
                 </div>
                 <form onSubmit={handleGenerateContent} className="flex gap-2">
-                    <textarea 
+                    <Textarea 
                         rows={1} 
                         value={userMessage} 
                         onChange={e => setUserMessage(e.target.value)} 
-                        placeholder={blocks.length > 0 ? t('controlWorkContentEditor.askAiToRedo') : t('controlWorkContentEditor.startGeneration')} 
-                        className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" 
+                        placeholder={(blocks.length > 0 ? t('controlWorkContentEditor.askAiToRedo') : t('controlWorkContentEditor.startGeneration')) as string} 
+                        className="flex-1 w-full" 
                     />
-                   <button type="submit" disabled={isGenerating} className="btn-primary text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                   <Button type="submit" disabled={isGenerating} className="text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                         <FiSend />
-                    </button>
+                    </Button>
                 </form>
             </div>
 
             <div className="mt-6 flex justify-end items-center gap-x-4">
-                <button 
+                <Button 
                     type="button" 
                     onClick={onCloseModal} 
-                    className="btn-secondary text-sm"
+                    variant="secondary"
+                    className="text-sm"
                 >
                     {t('controlWorkContentEditor.close')}
-                </button>
-                <button 
+                </Button>
+                <Button 
                     type="button" 
                     onClick={handleSaveContent} 
                     disabled={isSaving || isGenerating || blocks.length === 0} 
-                    className="btn-primary text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isSaving ? <Spinner size="sm" /> : <FiSave />}
                     {isSaving ? t('controlWorkContentEditor.saving') : t('controlWorkContentEditor.save')}
-                </button>
+                </Button>
             </div>
         </div>
     );

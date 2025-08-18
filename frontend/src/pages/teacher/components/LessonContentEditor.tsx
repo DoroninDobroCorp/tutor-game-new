@@ -6,6 +6,10 @@ import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiTrash2, FiMove, FiSend } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '../../../app/api/errorHelpers';
+import Button from '../../../components/ui/Button';
+import Input from '../../../components/ui/Input';
+import Textarea from '../../../components/ui/Textarea';
 
 interface LessonContentBlock {
     id: string;
@@ -92,8 +96,8 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
             setBlocks(blocksWithIds);
             setChatHistory(prev => [...prev, { role: 'assistant', content: responseData.chatResponse }]);
             toast.success(t('lessonContentEditor.contentUpdated'));
-        } catch {
-            toast.error(t('lessonContentEditor.generateError'));
+        } catch (err) {
+            toast.error(getErrorMessage(err, t('lessonContentEditor.generateError') as string));
             setChatHistory(chatHistory); // Revert history on error
         }
     };
@@ -103,8 +107,8 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
         try {
             await updateContent({ lessonId: lesson.id, content: { blocks: blocksToSave } }).unwrap();
             toast.success(t('lessonContentEditor.contentSaved'));
-        } catch {
-            toast.error(t('lessonContentEditor.saveError'));
+        } catch (err) {
+            toast.error(getErrorMessage(err, t('lessonContentEditor.saveError') as string));
         }
     };
 
@@ -124,13 +128,13 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                                                         <div {...provided.dragHandleProps} className="text-gray-400 cursor-grab"><FiMove /></div>
                                                         <span className={`px-2 py-0.5 text-xs font-medium capitalize rounded-full ${ block.type === 'theory' ? 'bg-blue-100 text-blue-800' :  block.type === 'practice' ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800' }`}>{block.type}</span>
                                                         {block.type !== 'youtube' && (<>
-                                                          <input type="number" value={block.duration} onChange={(e) => handleBlockChange(index, 'duration', e.target.value)} className="w-16 p-1 text-xs border rounded-md" title={t('lessonContentEditor.durationInMinutes')} />
+                                                          <Input type="number" value={block.duration} onChange={(e) => handleBlockChange(index, 'duration', e.target.value)} className="w-16 p-1 text-xs" title={t('lessonContentEditor.durationInMinutes') as string} />
                                                           <span className="text-xs text-gray-500">{t('lessonContentEditor.minutes')}</span>
                                                         </>)}
                                                     </div>
                                                     <button onClick={() => removeBlock(index)} className="text-red-500 hover:text-red-700" title={t('lessonContentEditor.removeBlock')}><FiTrash2 size={16} /></button>
                                                 </div>
-                                                <textarea value={block.content} onChange={(e) => handleBlockChange(index, 'content', e.target.value)} rows={block.type === 'youtube' ? 1 : 4} className="w-full p-2 border border-gray-300 rounded-md text-sm mt-2" placeholder={block.type === 'youtube' ? t('lessonContentEditor.youtubeLinkPlaceholder') : t('lessonContentEditor.textPlaceholder')} />
+                                                <Textarea value={block.content} onChange={(e) => handleBlockChange(index, 'content', e.target.value)} rows={block.type === 'youtube' ? 1 : 4} className="text-sm mt-2" placeholder={(block.type === 'youtube' ? t('lessonContentEditor.youtubeLinkPlaceholder') : t('lessonContentEditor.textPlaceholder')) as string} />
                                             </div>
                                         )}
                                     </Draggable>
@@ -141,9 +145,9 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                     </Droppable>
                 </DragDropContext>
                 <div className="mt-4 flex gap-2">
-                    <button onClick={() => addBlock('theory')} className="text-sm px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700">+ {t('lessonContentEditor.theory')}</button>
-                    <button onClick={() => addBlock('practice')} className="text-sm px-3 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700">+ {t('lessonContentEditor.practice')}</button>
-                    <button onClick={() => addBlock('youtube')} className="text-sm px-3 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700">+ YouTube</button>
+                    <Button variant="secondary" className="text-sm" onClick={() => addBlock('theory')}>+ {t('lessonContentEditor.theory')}</Button>
+                    <Button variant="secondary" className="text-sm" onClick={() => addBlock('practice')}>+ {t('lessonContentEditor.practice')}</Button>
+                    <Button variant="secondary" className="text-sm" onClick={() => addBlock('youtube')}>+ YouTube</Button>
                 </div>
             </div>
 
@@ -157,27 +161,28 @@ export const LessonContentEditor = ({ lesson, onCloseModal }: LessonContentEdito
                     {isGenerating && <div className="text-sm p-2 rounded-lg bg-blue-100" style={{ maxWidth: '85%' }}><Spinner size="sm" /></div>}
                 </div>
                 <form ref={formRef} onSubmit={handleGenerateContent} className="flex gap-2">
-                    <textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={blocks.length > 0 ? t('lessonContentEditor.askAiToRedoContent') : t('lessonContentEditor.askAiToMakeContent')} className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
-                   <button type="submit" disabled={isGenerating || !userMessage.trim()} className="btn-primary text-sm disabled:opacity-50"><FiSend /></button>
+                    <Textarea rows={2} value={userMessage} onChange={e => setUserMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder={(blocks.length > 0 ? t('lessonContentEditor.askAiToRedoContent') : t('lessonContentEditor.askAiToMakeContent')) as string} className="flex-1 w-full" />
+                   <Button type="submit" disabled={isGenerating || !userMessage.trim()} className="text-sm disabled:opacity-50"><FiSend /></Button>
                 </form>
             </div>
             
             <div className="mt-6 flex justify-end gap-x-4">
-                <button 
+                <Button 
                     type="button" 
                     onClick={onCloseModal} 
-                    className="btn-secondary text-sm"
+                    variant="secondary"
+                    className="text-sm"
                 >
                     {t('lessonContentEditor.close')}
-                </button>
-                <button 
+                </Button>
+                <Button 
                     type="button" 
                     onClick={handleSaveContent} 
                     disabled={isSaving || isGenerating || blocks.length === 0} 
-                    className="btn-primary text-sm disabled:opacity-50"
+                    className="text-sm disabled:opacity-50"
                 >
                     {isSaving ? t('lessonContentEditor.saving') : t('lessonContentEditor.saveContent')}
-                </button>
+                </Button>
             </div>
         </div>
     );

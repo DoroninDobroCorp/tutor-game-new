@@ -10,6 +10,10 @@ import { toast } from 'react-hot-toast';
 import Spinner from '../../../components/common/Spinner';
 import { FiMaximize2, FiX, FiRefreshCcw, FiSend, FiUpload, FiCheckCircle } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '../../../app/api/errorHelpers';
+import Button from '../../../components/ui/Button';
+import Input from '../../../components/ui/Input';
+import Textarea from '../../../components/ui/Textarea';
 
 interface LessonStoryEditorProps {
     lesson: Lesson;
@@ -56,7 +60,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
             setGeneratedImageUrl(null); // Reset image on new text
             toast.success(t('lessonStoryEditor.snippetGenerated'));
         } catch (err) {
-            toast.error(t('lessonStoryEditor.snippetGenerationFailed'));
+            toast.error(getErrorMessage(err, t('lessonStoryEditor.snippetGenerationFailed') as string));
             console.error(err);
         }
     };
@@ -76,8 +80,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
             setUploadedImageFile(null); // Clear uploaded file if any
             toast.success(t('lessonStoryEditor.imageGenerated'));
         } catch (err: any) {
-            const errorMessage = err?.data?.message || t('lessonStoryEditor.imageGenerationFailed');
-            toast.error(errorMessage);
+            toast.error(getErrorMessage(err, t('lessonStoryEditor.imageGenerationFailed') as string));
             console.error(err);
         }
     };
@@ -103,7 +106,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                 toast.success(t('lessonStoryEditor.lessonApproved'));
                 onClose();
             } catch (err) {
-                toast.error(t('lessonStoryEditor.approvalFailed'));
+                toast.error(getErrorMessage(err, t('lessonStoryEditor.approvalFailed') as string));
                 console.error(err);
             }
         }
@@ -124,7 +127,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
             toast.success(t('lessonStoryEditor.lessonApprovedWithUpload'));
             onClose();
         } catch(err) {
-            toast.error(t('lessonStoryEditor.approvalFailed'));
+            toast.error(getErrorMessage(err, t('lessonStoryEditor.approvalFailed') as string));
             console.error(err);
         }
     };
@@ -145,12 +148,12 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
             {/* Story Text */}
             <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">{t('lessonStoryEditor.storyText')}</label>
-                <textarea
+                <Textarea
                     value={storyText}
-                    onChange={(e) => setStoryText(e.target.value)}
+                    onChange={(e) => setStoryText((e.target as HTMLTextAreaElement).value)}
                     rows={6}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder={t('lessonStoryEditor.storyTextPlaceholder')}
+                    className="w-full"
+                    placeholder={t('lessonStoryEditor.storyTextPlaceholder') as string}
                 />
             </div>
             
@@ -158,21 +161,17 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
             <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">{t('lessonStoryEditor.refinementPrompt')}</label>
                 <div className="flex space-x-2">
-                    <input
+                    <Input
                         type="text"
                         value={refinementPrompt}
-                        onChange={(e) => setRefinementPrompt(e.target.value)}
-                        className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder={t('lessonStoryEditor.refinementPromptPlaceholder')}
+                        onChange={(e) => setRefinementPrompt((e.target as HTMLInputElement).value)}
+                        className="flex-grow"
+                        placeholder={t('lessonStoryEditor.refinementPromptPlaceholder') as string}
                     />
-                    <button
-                        onClick={handleGenerateSnippet}
-                        disabled={isLoading}
-                        className="btn-primary disabled:opacity-50 flex items-center"
-                    >
+                    <Button onClick={handleGenerateSnippet} disabled={isLoading} className="flex items-center">
                         {isGeneratingSnippet ? <Spinner size="sm" /> : <FiSend className="mr-2" />}
-                         {t('lessonStoryEditor.generateText')}
-                    </button>
+                        {t('lessonStoryEditor.generateText')}
+                    </Button>
                 </div>
             </div>
 
@@ -183,31 +182,23 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                 <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">{t('lessonStoryEditor.imagePrompt')}</label>
                     <div className="flex space-x-2">
-                        <textarea
+                        <Textarea
                             value={imagePrompt}
-                            onChange={(e) => setImagePrompt(e.target.value)}
+                            onChange={(e) => setImagePrompt((e.target as HTMLTextAreaElement).value)}
                             rows={3}
-                            className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder={t('lessonStoryEditor.imagePromptPlaceholder')}
+                            className="flex-grow"
+                            placeholder={t('lessonStoryEditor.imagePromptPlaceholder') as string}
                         />
                          <div className="flex flex-col space-y-2">
-                            <button
-                                onClick={handleRegenerateImage}
-                                disabled={isLoading || !imagePrompt}
-                                className="btn-primary disabled:opacity-50 flex items-center justify-center"
-                            >
+                            <Button onClick={handleRegenerateImage} disabled={isLoading || !imagePrompt} className="flex items-center justify-center">
                                 {isGeneratingImage ? <Spinner size="sm"/> : <FiRefreshCcw className="mr-2" />}
                                 {t('lessonStoryEditor.generateImage')}
-                            </button>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isLoading}
-                                className="btn-secondary disabled:opacity-50 flex items-center justify-center"
-                            >
+                            </Button>
+                            <Button onClick={() => fileInputRef.current?.click()} disabled={isLoading} variant="secondary" className="flex items-center justify-center">
                                 <FiUpload className="mr-2" />
                                 {t('lessonStoryEditor.uploadImage')}
-                            </button>
-                             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/png, image/jpeg, image/webp" />
+                            </Button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/png, image/jpeg, image/webp" />
                         </div>
                     </div>
                     <div className="flex items-center mt-2">
@@ -219,7 +210,7 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                             className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                         />
                         <label htmlFor="use-character-ref" className="ml-2 block text-sm text-gray-900">
-                             {t('lessonStoryEditor.useCharacterReference')}
+                         {t('lessonStoryEditor.useCharacterReference')}
                         </label>
                     </div>
                 </div>
@@ -235,9 +226,9 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
                         <div className="relative group">
                             <img src={generatedImageUrl} alt="Generated story" className="max-h-56 object-contain rounded-md" />
                              <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => setShowLightbox(true)} className="p-2 bg-white text-black rounded-full">
+                                <Button onClick={() => setShowLightbox(true)} variant="secondary" className="p-2 rounded-full !bg-white !text-black">
                                     <FiMaximize2 size={24} />
-                                 </button>
+                                </Button>
                              </div>
                         </div>
                     ) : (
@@ -248,23 +239,19 @@ const LessonStoryEditor = ({ lesson, goalId, onClose }: LessonStoryEditorProps) 
 
             {/* Approval Button */}
             <div className="flex justify-end pt-4">
-                <button
-                    onClick={handleApprove}
-                    disabled={isLoading || !storyText}
-                    className="btn-primary font-bold flex items-center disabled:opacity-50"
-                >
+                <Button onClick={handleApprove} disabled={isLoading || !storyText} className="font-bold flex items-center">
                     {isLoading ? <Spinner size="sm"/> : <FiCheckCircle className="mr-2" />}
-                     {t('lessonStoryEditor.approveAndSend')}
-                </button>
+                    {t('lessonStoryEditor.approveAndSend')}
+                </Button>
             </div>
 
              {/* Lightbox */}
             {showLightbox && generatedImageUrl && (
                 <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50" onClick={() => setShowLightbox(false)}>
                     <img src={generatedImageUrl} alt="Enlarged story" className="max-w-[90vw] max-h-[90vh] object-contain" />
-                    <button onClick={() => setShowLightbox(false)} className="absolute top-4 right-4 text-white text-4xl">
+                    <Button onClick={() => setShowLightbox(false)} variant="ghost" className="absolute top-4 right-4 text-white text-4xl">
                         <FiX />
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>
